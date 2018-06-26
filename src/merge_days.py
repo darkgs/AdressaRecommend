@@ -72,9 +72,6 @@ def merge_per_time():
 	list_merged.sort(key=lambda x:x[0])
 	write_log('Merging per_time : Sort End')
 
-	for sequence in list_merged:
-		print(sequence[0])
-
 	with open(out_dir + '/per_time.json', 'w') as f_time:
 		json.dump(list_merged, f_time)
 

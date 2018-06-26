@@ -4,8 +4,7 @@ define asked_delete
 if [ $$answer = "y" ]; then \
 	if [ -e $1 ]; then \
 		rm -rf $1; \
-	fi; \
-	echo yes; \
+	fi \
 else \
 	exit -1; \
 fi
