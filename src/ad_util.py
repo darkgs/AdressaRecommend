@@ -1,5 +1,12 @@
 
 import os
+import datetime
+
+def write_log(log):
+	with open('log.txt', 'a') as log_f:
+		time_stamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+		log_f.write(time_stamp + ' ' + log + '\n')
+
 
 def get_files_under_path(p_path=None):
 	ret = []

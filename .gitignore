@@ -1,3 +1,5 @@
 *.swp
 data
 *.pyc
+log.txt
+cache/
