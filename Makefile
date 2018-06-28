@@ -12,7 +12,8 @@ endef
 
 # mode in [simple, one_week, three_month]
 MODE=simple
-MODE=one_week
+#MODE=one_week
+#MODE=three_month
 
 BASE_PATH=cache/$(MODE)
 DATA_SET=data/simple data/one_week data/three_month
@@ -27,6 +28,10 @@ data/one_week:
 data/three_month:
 	$(info [Makefile] $@)
 
+data/article_info.json:
+	$(info [Makefile] $@)
+	@python src/extract_article_info.py -o $@
+
 $(BASE_PATH)/data_per_day: $(DATA_SET) src/raw_to_per_day.py
 	$(info [Makefile] $@)
 	$(call asked_delete, $@)
@@ -37,6 +42,14 @@ $(BASE_PATH)/data_for_all: $(DATA_SET) $(BASE_PATH)/data_per_day src/merge_days.
 	$(call asked_delete, $@)
 	@python3 src/merge_days.py -i $(BASE_PATH)/data_per_day -o $@ -m $(MODE)
 
-run: $(BASE_PATH)/data_for_all
+cache/article_to_vec.json: data/article_info.json src/article_w2v.py
+	$(info [Makefile] $@)
+	@python src/article_w2v.py -i data/article_info.json -o $@
+
+simple_rnn: src/simple_rnn.py
+	$(info [Makefile] $@)
+	@python src/simple_rnn.py
+
+run: simple_rnn
 	$(info run)
 

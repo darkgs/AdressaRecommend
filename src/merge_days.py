@@ -75,6 +75,8 @@ def merge_per_time():
 	with open(out_dir + '/per_time.json', 'w') as f_time:
 		json.dump(list_merged, f_time)
 
+	list_merged = None
+
 	write_log('Merging per_time End')
 
 def main():
