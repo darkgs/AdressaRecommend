@@ -70,7 +70,7 @@ def generate_rnn_input():
 	total_count = len(events_per_user.keys())
 	count = 0
 	for user_id, events in events_per_user.items():
-		if i % 1000 == 0:
+		if count % 1000 == 0:
 			write_log('processing {}/{}'.format(count,total_count))
 		count += 1
 
