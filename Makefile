@@ -46,9 +46,9 @@ cache/article_to_vec.json: data/article_info.json src/article_w2v.py
 	$(info [Makefile] $@)
 	@python src/article_w2v.py -i data/article_info.json -o $@
 
-simple_rnn: src/simple_rnn.py
+simple_rnn: $(BASE_PATH)/data_for_all cache/article_to_vec.json src/simple_rnn.py
 	$(info [Makefile] $@)
-	@python src/simple_rnn.py
+	@python src/simple_rnn.py -m $(MODE) -d $(BASE_PATH)/data_for_all -w cache/article_to_vec.json
 
 run: simple_rnn
 	$(info run)

@@ -1,8 +1,17 @@
 
 import os
+import json
+import random
+
+from optparse import OptionParser
 
 import tensorflow as tf
 import numpy as np
+
+parser = OptionParser()
+parser.add_option('-m', '--mode', dest='mode', type='string', default=None)
+parser.add_option('-d', '--data_path', dest='data_path', type='string', default=None)
+parser.add_option('-w', '--w2v_json', dest='w2v_json', type='string', default=None)
 
 def generate_random_set(batch_size, time_steps, vector_dim):
 	T = 100
@@ -17,7 +26,85 @@ def generate_random_set(batch_size, time_steps, vector_dim):
 
 	return datas
 
+dataset_mode = None
+w2v_path = None
+per_time_path = None
+per_user_path = None
+
+
+def generate_rnn_input():
+	global w2v_path, per_time_path, per_user_path
+
+	rnn_input = {
+		'train': {},
+		'valid': {},
+		'test': {},
+	}
+
+	print('Per_time Load : start')
+	with open(per_time_path, 'r') as f_per_time:
+		events_per_time = json.load(f_per_time)
+	print('Per_time Load : end')
+
+	train_time_limit = events_per_time[len(events_per_time)*7/10][0]
+
+	print('Per_user Load : start')
+	with open(per_user_path, 'r') as f_per_user:
+		events_per_user = json.load(f_per_user)
+	print('Per_user Load : end')
+
+	print('w2v Load : start')
+	with open(w2v_path, 'r') as f_w2v:
+		dict_w2v = json.load(f_w2v)
+	print('w2v Load : end')
+
+	valid_url_list = dict_w2v.keys()
+
+	print('Extract sequences : start')
+	for user_id, events in events_per_user.items():
+		sequence = []
+		for timestamp, url in events:
+			if url not in valid_url_list:
+				continue
+			sequence.append(dict_w2v[url])
+
+		input_type = 'train'
+		if events[-1][0] > train_time_limit:
+			if random.random() < 0.5:
+				input_type = 'valid'
+			else:
+				input_type = 'test'
+
+		batch_size = len(sequence)
+		if batch_size < 2:
+			continue
+
+		if rnn_input[input_type].get(batch_size, None) == None:
+			rnn_input[input_type][batch_size] = []
+		rnn_input[input_type][batch_size].append(sequence)
+	print('Extract sequences : end')
+
+	for input_type, dict_input in rnn_input.keys():
+		print('==={}==='.format(input_type))
+		for batch_size, sequences in dict_input.items():
+			print('{} : {}'.format(batch_size, len(sequences)))
+
+
 def main():
+	global dataset_mode, w2v_path, per_time_path, per_user_path
+
+	options, args = parser.parse_args()
+	if (options.mode == None) or (options.data_path == None) or (options.w2v_json == None):
+		return
+
+	dataset_mode = options.mode
+	w2v_path = options.w2v_json
+	per_time_path = options.data_path + '/per_time.json'
+	per_user_path = options.data_path + '/per_user.json'
+
+	generate_rnn_input()
+
+	return 
 	# Dataset
 	batch_total = 1000
 	time_steps = 10
@@ -95,5 +182,7 @@ def main():
 			})
 		))
 
+
 if __name__ == '__main__':
 	main()
+

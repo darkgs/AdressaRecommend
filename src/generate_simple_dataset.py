@@ -19,7 +19,7 @@ def generate_simple_dataset():
 	for data_path in get_files_under_path(one_week_path):
 		simple_data = ''
 		with open(data_path, 'r') as f_data:
-			for i in range(10):
+			for i in range(1000):
 				simple_data += f_data.readline().strip() + '\n'
 
 		target_path = os.path.join(simple_path, os.path.basename(data_path))
