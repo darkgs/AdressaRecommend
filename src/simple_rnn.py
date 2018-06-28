@@ -2,16 +2,21 @@
 import os
 import json
 import random
+#import pathlib
 
 from optparse import OptionParser
 
 import tensorflow as tf
 import numpy as np
 
+from ad_util import write_log
+
+
 parser = OptionParser()
 parser.add_option('-m', '--mode', dest='mode', type='string', default=None)
 parser.add_option('-d', '--data_path', dest='data_path', type='string', default=None)
 parser.add_option('-w', '--w2v_json', dest='w2v_json', type='string', default=None)
+parser.add_option('-c', '--cache_path', dest='cache_path', type='string', default=None)
 
 def generate_random_set(batch_size, time_steps, vector_dim):
 	T = 100
@@ -30,10 +35,11 @@ dataset_mode = None
 w2v_path = None
 per_time_path = None
 per_user_path = None
+cache_path = None
 
 
 def generate_rnn_input():
-	global w2v_path, per_time_path, per_user_path
+	global w2v_path, per_time_path, per_user_path, cache_path
 
 	rnn_input = {
 		'train': {},
@@ -41,27 +47,33 @@ def generate_rnn_input():
 		'test': {},
 	}
 
-	print('Per_time Load : start')
+	write_log('Per_time Load : start')
 	with open(per_time_path, 'r') as f_per_time:
 		events_per_time = json.load(f_per_time)
-	print('Per_time Load : end')
+	write_log('Per_time Load : end')
 
 	train_time_limit = events_per_time[len(events_per_time)*7/10][0]
 
-	print('Per_user Load : start')
+	write_log('Per_user Load : start')
 	with open(per_user_path, 'r') as f_per_user:
 		events_per_user = json.load(f_per_user)
-	print('Per_user Load : end')
+	write_log('Per_user Load : end')
 
-	print('w2v Load : start')
+	write_log('w2v Load : start')
 	with open(w2v_path, 'r') as f_w2v:
 		dict_w2v = json.load(f_w2v)
-	print('w2v Load : end')
+	write_log('w2v Load : end')
 
 	valid_url_list = dict_w2v.keys()
 
-	print('Extract sequences : start')
+	write_log('Extract sequences : start')
+	total_count = len(events_per_user.keys())
+	count = 0
 	for user_id, events in events_per_user.items():
+		if i % 1000 == 0:
+			write_log('processing {}/{}'.format(count,total_count))
+		count += 1
+
 		sequence = []
 		for timestamp, url in events:
 			if url not in valid_url_list:
@@ -82,25 +94,33 @@ def generate_rnn_input():
 		if rnn_input[input_type].get(batch_size, None) == None:
 			rnn_input[input_type][batch_size] = []
 		rnn_input[input_type][batch_size].append(sequence)
-	print('Extract sequences : end')
+	write_log('Extract sequences : end')
 
-	for input_type, dict_input in rnn_input.keys():
+	with open(cache_path + '/rnn_input.json', 'w') as f_input:
+		json.dump(rnn_input, f_input)
+
+	for input_type, dict_input in rnn_input.items():
 		print('==={}==='.format(input_type))
 		for batch_size, sequences in dict_input.items():
 			print('{} : {}'.format(batch_size, len(sequences)))
 
 
 def main():
-	global dataset_mode, w2v_path, per_time_path, per_user_path
+	global dataset_mode, w2v_path, per_time_path, per_user_path, cache_path
 
 	options, args = parser.parse_args()
-	if (options.mode == None) or (options.data_path == None) or (options.w2v_json == None):
+	if ((options.mode == None) or (options.data_path == None) or
+			(options.w2v_json == None) or (options.cache_path == None)):
 		return
 
 	dataset_mode = options.mode
 	w2v_path = options.w2v_json
 	per_time_path = options.data_path + '/per_time.json'
 	per_user_path = options.data_path + '/per_user.json'
+	cache_path = options.cache_path
+
+#	pathlib.Path(cache_path).mkdir(parents=True, exist_ok=True)
+	os.system('mkdir -p ' + cache_path)
 
 	generate_rnn_input()
 
@@ -173,9 +193,9 @@ def main():
 				})
 		
 		if i % 100 == 0:
-			print('Iter {} valid Loss:{:.6f}, Accuracy:{:.5f}'.format(i, loss, acc))
+			write_log('Iter {} valid Loss:{:.6f}, Accuracy:{:.5f}'.format(i, loss, acc))
 
-	print('Testing Accuracy : {}'.format(
+	write_log('Testing Accuracy : {}'.format(
 		sess.run(cos_similarity, feed_dict={
 				_inputs: input_test[:,:-1,:],
 				y: input_test[:,-1,:],
