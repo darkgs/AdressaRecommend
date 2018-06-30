@@ -11,13 +11,16 @@ parser = OptionParser()
 parser.add_option('-m', '--mode', dest='mode', type='string', default=None)
 parser.add_option('-i', '--input', dest='input', type='string', default=None)
 parser.add_option('-o', '--output', dest='output', type='string', default=None)
+parser.add_option('-w', '--w2v_path', dest='w2v_path', type='string', default=None)
 
 data_mode = None
 out_dir = None
 per_day_path = None
+w2v_path = None
+valid_urls = []
 
 def merge_per_user():
-	global data_mode, out_dir, per_day_path
+	global data_mode, out_dir, per_day_path, valid_urls
 
 	write_log('Merging per_user Start')
 	user_files = get_files_under_path(per_day_path + '/per_user')
@@ -41,6 +44,8 @@ def merge_per_user():
 
 	write_log('Merging per_user : sorting start')
 	for user_id in dict_merged:
+		# (timestamp, url)
+		dict_merged[user_id] = list(filter(lambda x: x[1] in valid_urls, dict_merged[user_id]))
 		dict_merged[user_id].sort(key=lambda x:x[0])
 	write_log('Merging per_user : sorting end')
 
@@ -52,7 +57,7 @@ def merge_per_user():
 	dict_merged = None
 
 def merge_per_time():
-	global data_mode, out_dir, per_day_path
+	global data_mode, out_dir, per_day_path, valid_urls
 	write_log('Merging per_time Start')
 
 	time_files = get_files_under_path(per_day_path + '/per_time')
@@ -69,6 +74,8 @@ def merge_per_time():
 	write_log('Merging per_time : Load End')
 
 	write_log('Merging per_time : Sort Start')
+	# (timestamp, user_id, url)
+	list_merged = list(filter(lambda x:x[2] in valid_urls, list_merged))
 	list_merged.sort(key=lambda x:x[0])
 	write_log('Merging per_time : Sort End')
 
@@ -80,18 +87,27 @@ def merge_per_time():
 	write_log('Merging per_time End')
 
 def main():
-	global data_mode, out_dir, per_day_path
+	global data_mode, out_dir, per_day_path, w2v_path, valid_urls
 
 	options, args = parser.parse_args()
 
-	if (options.mode == None) or (options.output == None) or (options.input == None):
+	if (options.mode == None) or (options.output == None) or (options.input == None) or (options.w2v_path == None):
 		return
 
 	data_mode = options.mode
 	per_day_path = options.input
 	out_dir = options.output
+	w2v_path = options.w2v_path
 
 	pathlib.Path(out_dir).mkdir(parents=True, exist_ok=True)
+
+	write_log('w2v Load : start')
+	with open(w2v_path, 'r') as f_w2v:
+		dict_w2v = json.load(f_w2v)
+	write_log('w2v Load : end')
+
+	valid_urls = dict_w2v.keys()
+	dict_w2v = None
 
 	merge_per_user()
 	merge_per_time()

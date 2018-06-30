@@ -53,7 +53,7 @@ class MultiWorker(object):
 
 			self._working_sema.acquire()
 			self._child_count += 1
-			Thread(target=run_on_subproc, args=work).start()
+			Thread(target=run_on_subproc, args=(work,)).start()
 			self._working_sema.release()
 
 		while(self._child_count > 0):

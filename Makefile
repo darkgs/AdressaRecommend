@@ -12,8 +12,8 @@ endef
 
 # mode in [simple, one_week, three_month]
 MODE=simple
-MODE=one_week
-#MODE=three_month
+#MODE=one_week
+MODE=three_month
 
 BASE_PATH=cache/$(MODE)
 DATA_SET=data/simple data/one_week data/three_month
@@ -37,18 +37,23 @@ $(BASE_PATH)/data_per_day: $(DATA_SET) src/raw_to_per_day.py
 	$(call asked_delete, $@)
 	@python3 src/raw_to_per_day.py -o $@ -m $(MODE)
 
-$(BASE_PATH)/data_for_all: $(DATA_SET) $(BASE_PATH)/data_per_day src/merge_days.py
+$(BASE_PATH)/data_for_all: $(DATA_SET) data/article_info.json $(BASE_PATH)/data_per_day src/merge_days.py
 	$(info [Makefile] $@)
 	$(call asked_delete, $@)
-	@python3 src/merge_days.py -i $(BASE_PATH)/data_per_day -o $@ -m $(MODE)
+	@python3 src/merge_days.py -i $(BASE_PATH)/data_per_day -o $@ -m $(MODE) -w data/article_info.json
 
 cache/article_to_vec.json: data/article_info.json src/article_w2v.py
 	$(info [Makefile] $@)
 	@python src/article_w2v.py -i data/article_info.json -o $@
 
-simple_rnn: $(BASE_PATH)/data_for_all cache/article_to_vec.json src/simple_rnn.py
+$(BASE_PATH)/rnn_input: $(DATA_SET) cache/article_to_vec.json $(BASE_PATH)/data_for_all src/rnn_input_preprocess.py
 	$(info [Makefile] $@)
-	@python src/simple_rnn.py -m $(MODE) -d $(BASE_PATH)/data_for_all -w cache/article_to_vec.json -c $(BASE_PATH)/model/simple_rnn
+	$(call asked_delete, $@)
+	@python3 src/rnn_input_preprocess.py -d $(BASE_PATH)/data_for_all -w cache/article_to_vec.json -o $@
+
+simple_rnn: $(BASE_PATH)/rnn_input src/simple_rnn.py
+	$(info [Makefile] $@)
+	@python src/simple_rnn.py -d $(BASE_PATH)/data_for_all -i $(BASE_PATH)/rnn_input
 
 run: simple_rnn
 	$(info run)
