@@ -43,11 +43,14 @@ def get_input_batch(input_type='train'):
 	valid_end_idx = int(total_length * 8 / 10)
 
 	if input_type == 'train':
-		return dict_rnn_input['seq_lengths'][:train_end_idx]
+		return dict_rnn_input['seq_lengths'][:train_end_idx], \
+			dict_rnn_input['rnn_input'][:train_end_idx]
 	elif input_type == 'valid':
-		return dict_rnn_input['seq_lengths'][train_end_idx:valid_end_idx]
+		return dict_rnn_input['seq_lengths'][train_end_idx:valid_end_idx], \
+			dict_rnn_input['rnn_input'][train_end_idx:valid_end_idx]
 	else:
-		return dict_rnn_input['seq_lengths'][valid_end_idx:]
+		return dict_rnn_input['seq_lengths'][valid_end_idx:], \
+			dict_rnn_input['rnn_input'][valid_end_idx:]
 
 def main():
 	global per_time_path, per_user_path, dict_rnn_input
@@ -66,15 +69,18 @@ def main():
 		dict_rnn_input = json.load(f_input)
 	print('Loading rnn_input : end')
 
-	train_size = len(get_input_batch(input_type='train'))
-	valid_size = len(get_input_batch(input_type='valid'))
-	test_size = len(get_input_batch(input_type='test'))
+	seq_lengths_train, rnn_input = get_input_batch(input_type='train')
+	input_train = np.array(rnn_input)
+	rnn_input = None
 
-	print(np.array(get_input_batch(input_type='train')).shape)
+	seq_lengths_valid, rnn_input = get_input_batch(input_type='valid')
+	input_valid = np.array(rnn_input)
+	rnn_input = None
 
-	print(train_size, valid_size, test_size)
+	seq_lengths_test, rnn_input = get_input_batch(input_type='test')
+	input_test = np.array(rnn_input)
+	rnn_input = None
 
-	return 
 	# Dataset
 	batch_total = 1000
 	time_steps = 10
@@ -82,12 +88,14 @@ def main():
 
 	hidden_layer_size = 20
 
-	input_train = generate_random_set(batch_size=batch_total*6/10,
-			time_steps=time_steps, vector_dim=vector_dim)
-	input_valid = generate_random_set(batch_size=batch_total*2/10,
-			time_steps=time_steps, vector_dim=vector_dim)
-	input_test = generate_random_set(batch_size=batch_total*2/10,
-			time_steps=time_steps, vector_dim=vector_dim)
+#	input_train = generate_random_set(batch_size=batch_total*6/10,
+#			time_steps=time_steps, vector_dim=vector_dim)
+#	input_valid = generate_random_set(batch_size=batch_total*2/10,
+#			time_steps=time_steps, vector_dim=vector_dim)
+#	input_test = generate_random_set(batch_size=batch_total*2/10,
+#			time_steps=time_steps, vector_dim=vector_dim)
+
+	return
 
 	# Graph
 	_inputs = tf.placeholder(tf.float32,
@@ -95,10 +103,11 @@ def main():
 #			shape=[None, None, vector_dim], name='inputs')
 
 	y = tf.placeholder(tf.float32,
-			shape=[None, vector_dim], name='output')
+			shape=[None, None, vector_dim], name='output')
 
-	rnn_cell = tf.contrib.rnn.BasicRNNCell(hidden_layer_size)
+	rnn_cell = tf.contrib.rnn.LSTMCell(hidden_layer_size)
 	outputs, _ = tf.nn.dynamic_rnn(rnn_cell, _inputs, dtype=tf.float32)
+
 
 	Wl = tf.Variable(tf.truncated_normal([hidden_layer_size, vector_dim],
 				mean=0, stddev=.01))
@@ -107,7 +116,7 @@ def main():
 	def get_linear_layer(vector):
 		return tf.matmul(vector, Wl) + bl
 
-	last_rnn_output = outputs[:,-1,:]
+	last_rnn_output = outputs
 	final_output = get_linear_layer(last_rnn_output)
 
 	softmax = tf.nn.softmax_cross_entropy_with_logits(logits=final_output,
@@ -118,14 +127,14 @@ def main():
 
 	normalize_output = tf.nn.l2_normalize(final_output,0)
 	normalize_y = tf.nn.l2_normalize(y,0)
-	cos_similarity = tf.reduce_sum(tf.multiply(normalize_output, normalize_y))
+	cos_similarity = tf.reduce_sum(tf.subtract(normalize_output, normalize_y))
 
 	# Session
 	sess = tf.InteractiveSession()
 	sess.run(tf.global_variables_initializer())
 
 	for i in range(1000):
-		batch_x, batch_y = input_train[:,:-1,:], input_train[:,-1,:]
+		batch_x, batch_y = input_train[:,:-1,:], input_train[:,1:,:]
 
 		sess.run(train_step, feed_dict={
 					_inputs: batch_x,
@@ -134,12 +143,12 @@ def main():
 
 		acc = sess.run(cos_similarity, feed_dict={
 					_inputs: input_valid[:,:-1,:],
-					y: input_valid[:,-1,:],
+					y: input_valid[:,1:,:],
 				})
 
 		loss = sess.run(cross_entropy, feed_dict={
 					_inputs: input_valid[:,:-1,:],
-					y: input_valid[:,-1,:],
+					y: input_valid[:,1:,:],
 				})
 		
 		if i % 100 == 0:
@@ -148,7 +157,7 @@ def main():
 	print('Testing Accuracy : {}'.format(
 		sess.run(cos_similarity, feed_dict={
 				_inputs: input_test[:,:-1,:],
-				y: input_test[:,-1,:],
+				y: input_test[:,1:,:],
 			})
 		))
 

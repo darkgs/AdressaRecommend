@@ -55,6 +55,10 @@ simple_rnn: $(BASE_PATH)/rnn_input src/simple_rnn.py
 	$(info [Makefile] $@)
 	@python src/simple_rnn.py -d $(BASE_PATH)/data_for_all -i $(BASE_PATH)/rnn_input -r $(BASE_PATH)/rnn_input
 
-run: simple_rnn
+cnn_rnn: src/cnn_rnn.py
+	$(info [Makefile] $@)
+	@python src/cnn_rnn.py
+
+run: cnn_rnn
 	$(info run)
 
