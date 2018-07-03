@@ -8,10 +8,10 @@ import numpy as np
 from ad_util import write_log
 
 article_embeding_dimension = 5
-sequences_size = 1000
-max_seq_len = 10
-candidate_size = 5
-batch_size = 20
+sequences_size = 10000
+max_seq_len = 30
+candidate_size = 10
+batch_size = 5000
 
 urls = ['url' + str(i) for i in range(256)]
 
@@ -75,6 +75,7 @@ def get_sentence_batch(batch_size, data_x,
 
 	return x, y, seq_lens, candi
 
+
 def main():
 	global urls
 	global article_embeding_dimension, sequences_size
@@ -112,15 +113,17 @@ def main():
 	with tf.Session() as sess:
 		sess.run(tf.global_variables_initializer())
 
-		x_batch, y_batch, seq_lens, candi = get_sentence_batch(batch_size=batch_size,
-				data_x=sequences, data_candi=candidates,
-				data_seqlens=sequence_lens, dict_url2idx=dict_url2idx)
+		for epoch in range(100):
+			print('epoch : {}'.format(epoch))
+			x_batch, y_batch, seq_lens, candi = get_sentence_batch(batch_size=batch_size,
+					data_x=sequences, data_candi=candidates,
+					data_seqlens=sequence_lens, dict_url2idx=dict_url2idx)
 
-		sess.run(lstm_cell, feed_dict={
-				_inputs:x_batch,
-				_ys:y_batch,
-				_seqlens:seq_lens,
-			})
+			sess.run(train_step, feed_dict={
+					_inputs:x_batch,
+					_ys:y_batch,
+					_seqlens:seq_lens,
+				})
 
 
 if __name__ == '__main__':
