@@ -9,9 +9,9 @@ from ad_util import write_log
 
 article_embeding_dimension = 5
 sequences_size = 10000
-max_seq_len = 30
+max_seq_len = 10
 candidate_size = 10
-batch_size = 5000
+batch_size = 10000
 
 urls = ['url' + str(i) for i in range(256)]
 
@@ -85,9 +85,11 @@ def main():
 	dict_url2idx, dict_idx2url = generate_test_url2idx_idx2url()
 	sequences, sequence_lens, candidates = generate_test_sequences()
 
-	_inputs = tf.placeholder(tf.int32, shape=[batch_size, max_seq_len-1])
-	_ys = tf.placeholder(tf.int32, shape=[batch_size, max_seq_len-1])
-	_seqlens = tf.placeholder(tf.int32, shape=[batch_size])
+#	_inputs = tf.placeholder(tf.int32, shape=[None, max_seq_len-1])
+#	_ys = tf.placeholder(tf.int32, shape=[None, max_seq_len-1])
+	_inputs = tf.placeholder(tf.int32, shape=[None, None])
+	_ys = tf.placeholder(tf.int32, shape=[None, None])
+	_seqlens = tf.placeholder(tf.int32, shape=[None])
 
 	hidden_layer_size = 250
 
@@ -110,11 +112,17 @@ def main():
 		loss = tf.losses.cosine_distance(ys_norm, outputs_norm, axis=1)
 		train_step = tf.train.AdamOptimizer(1e-3).minimize(loss)
 
+		acc, acc_op = tf.metrics.mean_cosine_distance(ys_norm, outputs_norm, 1)
+
+	x_test, y_test, seq_lens_test, candi_test = get_sentence_batch(batch_size=100,
+			data_x=sequences, data_candi=candidates,
+			data_seqlens=sequence_lens, dict_url2idx=dict_url2idx)
+
 	with tf.Session() as sess:
 		sess.run(tf.global_variables_initializer())
+		sess.run(tf.local_variables_initializer())
 
 		for epoch in range(100):
-			print('epoch : {}'.format(epoch))
 			x_batch, y_batch, seq_lens, candi = get_sentence_batch(batch_size=batch_size,
 					data_x=sequences, data_candi=candidates,
 					data_seqlens=sequence_lens, dict_url2idx=dict_url2idx)
@@ -124,6 +132,15 @@ def main():
 					_ys:y_batch,
 					_seqlens:seq_lens,
 				})
+
+			valid_loss = sess.run(loss, feed_dict={
+					_inputs:x_test,
+					_ys:y_test,
+					_seqlens:seq_lens_test,
+				})
+
+			print('epoch : {} - valid loss : {}'.format(epoch, valid_loss))
+
 
 
 if __name__ == '__main__':
