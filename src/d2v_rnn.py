@@ -8,7 +8,7 @@ import numpy as np
 from ad_util import write_log
 
 article_embeding_dimension = 5
-sequences_size = 1000
+sequences_size = 100
 max_seq_len = 10
 candidate_size = 5
 batch_size = 20
@@ -106,8 +106,8 @@ def main():
 		outputs_norm = tf.nn.l2_normalize(outputs,0)
 		ys_norm = tf.nn.l2_normalize(tf.reshape(embed_y, [-1, article_embeding_dimension]),0)
 
-		loss = tf.losses.cosine_distance(ys_norm, outputs_norm, axis=1)
-		train_step = tf.train.AdamOptimizer(1e-3).minimize(loss)
+		cos_loss = tf.losses.cosine_distance(ys_norm, outputs_norm, axis=1)
+		train_step = tf.train.AdamOptimizer(1e-3).minimize(cos_loss)
 
 	with tf.Session() as sess:
 		sess.run(tf.global_variables_initializer())
@@ -116,7 +116,7 @@ def main():
 				data_x=sequences, data_candi=candidates,
 				data_seqlens=sequence_lens, dict_url2idx=dict_url2idx)
 
-		sess.run(lstm_cell, feed_dict={
+		sess.run(rnn_outputs, feed_dict={
 				_inputs:x_batch,
 				_ys:y_batch,
 				_seqlens:seq_lens,
