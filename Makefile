@@ -11,8 +11,8 @@ fi
 endef
 
 # mode in [simple, one_week, three_month]
-MODE=simple
-MODE=one_week
+#MODE=simple
+#MODE=one_week
 MODE=three_month
 
 BASE_PATH=cache/$(MODE)
@@ -59,10 +59,10 @@ cnn_rnn: src/cnn_rnn.py
 	$(info [Makefile] $@)
 	@python src/cnn_rnn.py
 
-d2v_rnn: cache/article_to_vec.json $(BASE_PATH)/data_for_all src/d2v_rnn.py
+d2v_rnn: cache/article_to_vec.json $(BASE_PATH)/rnn_input src/d2v_rnn.py
 	$(info [Makefile] $@)
-	@python src/d2v_rnn.py -w cache/article_to_vec.json -d $(BASE_PATH)/data_for_all
+	@python src/d2v_rnn.py -u cache/article_to_vec.json -i $(BASE_PATH)/rnn_input
 
-run: $(BASE_PATH)/rnn_input
+run: d2v_rnn
 	$(info run)
 

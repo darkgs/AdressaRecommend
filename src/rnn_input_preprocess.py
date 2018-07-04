@@ -31,9 +31,9 @@ def generate_unique_url_idxs():
 
 	cur_idx = 0
 	for url in dict_ret.keys():
-		dict_ret[url] = cur_idx
 		cur_idx += 1
-	dict_ret['url_pad'] = -1
+		dict_ret[url] = cur_idx
+	dict_ret['url_pad'] = 0
 
 	return dict_ret
 
