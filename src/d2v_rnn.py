@@ -20,6 +20,8 @@ def generate_batchs(input_type='train', batch_size=10):
 	global dict_rnn_input
 
 	total_len = len(dict_rnn_input['sequence'])
+	if batch_size < 0:
+		batch_size = total_len
 
 	if input_type == 'train':
 		idx_from = 0
@@ -53,17 +55,45 @@ def generate_batchs(input_type='train', batch_size=10):
 def main():
 	global dict_rnn_input
 
-	hidden_layer_size = 250
+	hidden_layer_size = 350
+	rnn_layer_count = 3
 
 	options, args = parser.parse_args()
 
 	if (options.input == None) or (options.u2v_path == None):
 		return
 
+	x = tf.constant(
+			[
+				[0.1,0.5,0.3,0.7],
+				[0.4,0.5,0.5,0.3],
+				[0.1,0.5,0.2,0.1],
+				[0.1,0.4,0.3,0.7],
+				[0.2,0.4,0.3,0.7],
+			]
+		)
+	y = tf.transpose(tf.constant(
+			[
+				[0.3,0.4,0.1,-0.1],
+				[0.1,0.4,0.3,-0.2],
+				[0.3,0.2,0.5,-0.1],
+			]
+		))
+
+	z = tf.transpose(tf.matmul(x,y))
+
+	_, indices = tf.nn.top_k(z, 2)
+	sess = tf.InteractiveSession()
+	print(z.eval())
+	print(indices.eval())
+	sess.close()
+
+	return
+
 	rnn_input_path = options.input + '/rnn_input.json'
 	url2vec_path = options.u2v_path
 
-	print('Loading start')
+	write_log('Loading start')
 	with open(rnn_input_path, 'r') as f_input:
 		dict_rnn_input = json.load(f_input)
 
@@ -76,20 +106,22 @@ def main():
 
 	with open(url2vec_path, 'r') as f_u2v:
 		dict_url2vec = json.load(f_u2v)
-	print('Loading end')
+	write_log('Loading end')
 
-	print('Generate embeddings : start')
+	write_log('Generate embeddings : start')
 	url_count = len(dict_rnn_input['idx2url'])
 	embedding_dimension = len(dict_url2vec.items()[0][1])
 
 	dict_url2vec['url_pad'] = [0.0]*embedding_dimension
 
 	with tf.name_scope('embeddings'):
-		embeddings = tf.Variable(
+#		embeddings = tf.Variable(
+		embeddings = tf.constant(
 					[dict_url2vec[dict_rnn_input['idx2url'][str(i)]] for i in range(url_count)],
+					dtype=tf.float32,
 					name='embedding',
 				)
-	print('Generate embeddings : end')
+	write_log('Generate embeddings : end')
 
 #	_inputs = tf.placeholder(tf.int32, shape=[None, max_seq_len-1])
 #	_ys = tf.placeholder(tf.int32, shape=[None, max_seq_len-1])
@@ -102,7 +134,10 @@ def main():
 		embed_y = tf.nn.embedding_lookup(embeddings, _ys)
 
 	with tf.variable_scope('lstm'):
-		lstm_cell = tf.contrib.rnn.BasicLSTMCell(hidden_layer_size)
+		lstm_cell = tf.contrib.rnn.MultiRNNCell(
+			[tf.contrib.rnn.BasicLSTMCell(hidden_layer_size) \
+				for _ in range(rnn_layer_count)])
+
 		rnn_outputs, states = tf.nn.dynamic_rnn(lstm_cell,
 				embed_x, sequence_length=_seqlens, dtype=tf.float32)
 		rnn_outputs_stratch = tf.reshape(rnn_outputs, [-1, hidden_layer_size])
@@ -114,13 +149,14 @@ def main():
 		cos_loss = tf.losses.cosine_distance(ys_norm, outputs_norm, axis=1)
 		train_step = tf.train.AdamOptimizer(1e-3).minimize(cos_loss)
 
+	with tf.variable_scope('metric'):
 		acc, acc_op = tf.metrics.mean_cosine_distance(ys_norm, outputs_norm, 1)
 
 	with tf.Session() as sess:
 		sess.run(tf.global_variables_initializer())
 		sess.run(tf.local_variables_initializer())
 
-		for epoch in range(100):
+		for epoch in range(1000):
 			train_x, train_y, train_seq_len = generate_batchs(input_type='train', batch_size=10000)
 
 			sess.run(train_step, feed_dict={
@@ -129,15 +165,15 @@ def main():
 					_seqlens: train_seq_len,
 				})
 
-			valid_x, valid_y, valid_seq_len = generate_batchs(input_type='valid', batch_size=100)
+			test_x, test_y, test_seq_len = generate_batchs(input_type='test', batch_size=100)
 
-			valid_loss = sess.run(cos_loss, feed_dict={
-					_xs: valid_x,
-					_ys: valid_y,
-					_seqlens: valid_seq_len,
+			test_loss = sess.run(cos_loss, feed_dict={
+					_xs: test_x,
+					_ys: test_y,
+					_seqlens: test_seq_len,
 				})
 
-			print('epoch : {} - valid loss : {}'.format(epoch, valid_loss))
+			write_log('epoch : {} - test loss : {}'.format(epoch, test_loss))
 
 if __name__ == '__main__':
 	main()
