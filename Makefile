@@ -6,13 +6,14 @@ if [ $$answer = "y" ]; then \
 		rm -rf $1; \
 	fi \
 else \
+	touch $1; \
 	exit -1; \
 fi
 endef
 
 # mode in [simple, one_week, three_month]
 MODE=simple
-MODE=one_week
+#MODE=one_week
 #MODE=three_month
 
 BASE_PATH=cache/$(MODE)

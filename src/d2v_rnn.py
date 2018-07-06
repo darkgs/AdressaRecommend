@@ -25,12 +25,12 @@ def generate_batchs(input_type='train', batch_size=10):
 
 	if input_type == 'train':
 		idx_from = 0
-		idx_to = int(total_len * 6 / 10)
-	elif input_type == 'valid':
-		idx_from = int(total_len * 6 / 10)
 		idx_to = int(total_len * 8 / 10)
-	else:
+	elif input_type == 'valid':
 		idx_from = int(total_len * 8 / 10)
+		idx_to = int(total_len * 9 / 10)
+	else:
+		idx_from = int(total_len * 9 / 10)
 		idx_to = total_len
 
 	batch_size = min(batch_size, idx_to - idx_from)
@@ -127,8 +127,6 @@ def main():
 		train_step = tf.train.AdamOptimizer(1e-3).minimize(loss)
 
 	with tf.variable_scope('metric'):
-		acc, acc_op = tf.metrics.mean_cosine_distance(ys_norm, outputs_norm, 1)
-
 		rank_scores = tf.matmul(embeddings, tf.transpose(tf.reshape(outputs, [-1, embedding_dimension])))
 		_, top_all = tf.nn.top_k(tf.transpose(rank_scores), embeddings.shape[0])
 
@@ -137,8 +135,8 @@ def main():
 		sess.run(tf.global_variables_initializer())
 		sess.run(tf.local_variables_initializer())
 
-		for epoch in range(1000):
-			train_x, train_y, train_seq_len = generate_batchs(input_type='train', batch_size=10000)
+		for epoch in range(5000):
+			train_x, train_y, train_seq_len = generate_batchs(input_type='train', batch_size=1000)
 
 			sess.run(train_step, feed_dict={
 					_xs: train_x,

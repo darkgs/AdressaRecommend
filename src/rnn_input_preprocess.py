@@ -16,6 +16,7 @@ parser.add_option('-o', '--output_file_path', dest='output_file_path', type='str
 
 dict_w2v = None
 dict_per_user = None
+dict_per_time = None
 dict_url_idx = None
 seperated_output_path = None
 
@@ -81,7 +82,7 @@ def preprocess_rnn_input(args=(-1, [])):
 	write_log('worker({}) : end'.format(worker_id))
 
 def generate_rnn_input(seperated_input_path=None, output_path=None):
-	global dict_url_idx
+	global dict_url_idx, dict_per_time
 
 	if (seperated_input_path == None) or (output_path == None):
 		return
@@ -114,8 +115,31 @@ def generate_rnn_input(seperated_input_path=None, output_path=None):
 	seq_len = list(map(lambda x:len(x[2]), merged_sequences))
 	sequence = list(map(lambda x:x[2], merged_sequences))
 
+	write_log('Generate idx2url : start')
 	merged_sequences = None
 	dict_idx2url = {idx:word for word, idx in dict_url_idx.items()}
+	write_log('Generate idx2url : end')
+
+	write_log('Generate candidate data structure : start')
+	dict_time_idx = {}
+
+	prev_timestamp = None
+	for (timestamp, user_id, url) in dict_per_time:
+		if prev_timestamp != timestamp:
+			if prev_timestamp != None:
+				dict_time_idx[prev_timestamp]['next_time'] = timestamp
+			dict_time_idx[timestamp] = {
+				'prev_time': prev_timestamp,
+				'next_time': None,
+				'indices': {},
+			}
+
+		idx_of_url = dict_url_idx[url]
+		dict_time_idx[timestamp]['indices'][idx_of_url] = dict_time_idx[timestamp]['indices'].get(idx_of_url, 0) + 1
+
+		prev_timestamp = timestamp
+
+	write_log('Generate candidate data structure : end')
 
 	write_log('Save rnn_inputs : start')
 	dict_rnn_input = {
@@ -123,14 +147,16 @@ def generate_rnn_input(seperated_input_path=None, output_path=None):
 		'seq_len': seq_len,
 		'sequence': sequence,
 		'idx2url': dict_idx2url,
+		'time_idx': dict_time_idx,
 	}
 
 	with open(output_path, 'w') as f_input:
 		json.dump(dict_rnn_input, f_input)
 	write_log('Save rnn_inputs : end')
 
+
 def main():
-	global dict_w2v, dict_per_user, dict_url_idx, seperated_output_path
+	global dict_w2v, dict_per_user, dict_per_time, dict_url_idx, seperated_output_path
 
 	options, args = parser.parse_args()
 	if (options.w2v_path == None) or (options.data_path == None) or (options.output_file_path == None):
@@ -155,6 +181,9 @@ def main():
 
 	with open(per_user_path, 'r') as f_user:
 		dict_per_user = json.load(f_user)
+
+	with open(per_time_path, 'r') as f_time:
+		dict_per_time = json.load(f_time)
 
 	user_ids = list(dict_per_user.keys())
 	dict_url_idx = generate_unique_url_idxs()
