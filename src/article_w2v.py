@@ -42,7 +42,7 @@ def generate_w2v_map():
 	write_log('W2V Generate labeled_sentences : End')
 
 	w2v_model = gensim.models.Doc2Vec(alpha=.025, min_alpha=.001, min_count=1,
-					vector_size=100, window=5, dm=0, dbow_words=1, workers=16, epochs=5)
+					vector_size=200, window=10, dm=0, dbow_words=1, workers=16, epochs=10)
 
 	w2v_model.build_vocab(labeled_sentences)
 

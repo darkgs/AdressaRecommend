@@ -55,40 +55,13 @@ def generate_batchs(input_type='train', batch_size=10):
 def main():
 	global dict_rnn_input
 
-	hidden_layer_size = 350
+	hidden_layer_size = 300
 	rnn_layer_count = 3
 
 	options, args = parser.parse_args()
 
 	if (options.input == None) or (options.u2v_path == None):
 		return
-
-	x = tf.constant(
-			[
-				[0.1,0.5,0.3,0.7],
-				[0.4,0.5,0.5,0.3],
-				[0.1,0.5,0.2,0.1],
-				[0.1,0.4,0.3,0.7],
-				[0.2,0.4,0.3,0.7],
-			]
-		)
-	y = tf.transpose(tf.constant(
-			[
-				[0.3,0.4,0.1,-0.1],
-				[0.1,0.4,0.3,-0.2],
-				[0.3,0.2,0.5,-0.1],
-			]
-		))
-
-	z = tf.transpose(tf.matmul(x,y))
-
-	_, indices = tf.nn.top_k(z, 2)
-	sess = tf.InteractiveSession()
-	print(z.eval())
-	print(indices.eval())
-	sess.close()
-
-	return
 
 	rnn_input_path = options.input + '/rnn_input.json'
 	url2vec_path = options.u2v_path
@@ -125,8 +98,8 @@ def main():
 
 #	_inputs = tf.placeholder(tf.int32, shape=[None, max_seq_len-1])
 #	_ys = tf.placeholder(tf.int32, shape=[None, max_seq_len-1])
-	_xs = tf.placeholder(tf.int32, shape=[None, None])
-	_ys = tf.placeholder(tf.int32, shape=[None, None])
+	_xs = tf.placeholder(tf.int32, shape=[None, max_seq_len-1])
+	_ys = tf.placeholder(tf.int32, shape=[None, max_seq_len-1])
 	_seqlens = tf.placeholder(tf.int32, shape=[None])
 
 	with tf.name_scope('embeddings'):
@@ -135,7 +108,8 @@ def main():
 
 	with tf.variable_scope('lstm'):
 		lstm_cell = tf.contrib.rnn.MultiRNNCell(
-			[tf.contrib.rnn.BasicLSTMCell(hidden_layer_size) \
+#			[tf.contrib.rnn.BasicLSTMCell(hidden_layer_size) \
+			[tf.contrib.rnn.GRUCell(hidden_layer_size) \
 				for _ in range(rnn_layer_count)])
 
 		rnn_outputs, states = tf.nn.dynamic_rnn(lstm_cell,
@@ -143,14 +117,21 @@ def main():
 		rnn_outputs_stratch = tf.reshape(rnn_outputs, [-1, hidden_layer_size])
 		outputs = tf.layers.dense(rnn_outputs_stratch, embedding_dimension)
 
-		outputs_norm = tf.nn.l2_normalize(outputs,0)
-		ys_norm = tf.nn.l2_normalize(tf.reshape(embed_y, [-1, embedding_dimension]),0)
+		ys_stratch = tf.reshape(embed_y, [-1, embedding_dimension])
 
-		cos_loss = tf.losses.cosine_distance(ys_norm, outputs_norm, axis=1)
-		train_step = tf.train.AdamOptimizer(1e-3).minimize(cos_loss)
+		outputs_norm = tf.nn.l2_normalize(outputs,0)
+		ys_norm = tf.nn.l2_normalize(ys_stratch,0)
+
+#		loss = tf.losses.cosine_distance(ys_norm, outputs_norm, axis=1)
+		loss = tf.losses.mean_squared_error(outputs, ys_stratch)
+		train_step = tf.train.AdamOptimizer(1e-3).minimize(loss)
 
 	with tf.variable_scope('metric'):
 		acc, acc_op = tf.metrics.mean_cosine_distance(ys_norm, outputs_norm, 1)
+
+		rank_scores = tf.matmul(embeddings, tf.transpose(tf.reshape(outputs, [-1, embedding_dimension])))
+		_, top_all = tf.nn.top_k(tf.transpose(rank_scores), embeddings.shape[0])
+
 
 	with tf.Session() as sess:
 		sess.run(tf.global_variables_initializer())
@@ -165,15 +146,31 @@ def main():
 					_seqlens: train_seq_len,
 				})
 
-			test_x, test_y, test_seq_len = generate_batchs(input_type='test', batch_size=100)
+			test_x, test_y, test_seq_len = generate_batchs(input_type='train', batch_size=100)
 
-			test_loss = sess.run(cos_loss, feed_dict={
+			test_loss, test_top_all = sess.run([loss, top_all], feed_dict={
 					_xs: test_x,
 					_ys: test_y,
 					_seqlens: test_seq_len,
 				})
 
-			write_log('epoch : {} - test loss : {}'.format(epoch, test_loss))
+			answers = tf.reshape(test_y, (-1, 1)).eval().tolist()
+			rank_infos = tf.reshape(test_top_all, (-1, url_count)).eval().tolist()
+
+			predict_total = 0
+			predict_mrr = 0.0
+			for batch_idx in range(len(test_seq_len)):
+				for seq_idx in range(test_seq_len[batch_idx]):
+					valid_idx = batch_idx * (max_seq_len-1) + seq_idx
+
+					predict_total += 1
+					hit_rank = rank_infos[valid_idx].index(answers[valid_idx][0]) + 1
+					if hit_rank > 0:
+						predict_mrr += 1.0/float(hit_rank)
+
+			mrr_metric = predict_mrr / float(predict_total)
+
+			write_log('epoch : {} - test loss:{} - mrr:{}'.format(epoch, test_loss, mrr_metric))
 
 if __name__ == '__main__':
 	main()
