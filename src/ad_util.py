@@ -1,6 +1,9 @@
 
 import os
+import json
 import datetime
+
+import numpy as np
 
 def write_log(log):
 	with open('log.txt', 'a') as log_f:
@@ -31,23 +34,27 @@ class RNN_Input:
 		with open(rnn_input_path, 'r') as f_input:
 			self._dict_rnn_input = json.load(f_input)
 
+		self._url_count = len(self._dict_rnn_input['idx2url'])
+		self._max_seq_len = max(self._dict_rnn_input['seq_len'])
+
 		# Padding, Is there better way?
 		self.padding()
-		self._url_count = len(self._dict_rnn_input['idx2url'])
 
 		write_log('Initializing RNN_Input instance : end')
 
 
 	def padding(self):
-		max_seq_len = max(self._dict_rnn_input['seq_len'])
 		for seq_entry in self._dict_rnn_input['sequence']:
-			pad_count = max_seq_len - len(seq_entry)
+			pad_count = self._max_seq_len - len(seq_entry)
 			if pad_count > 0:
 				seq_entry += [0] * pad_count
 
 
 	def idx2url(self, idx):
 		return self._dict_rnn_input['idx2url'][str(idx)]
+
+	def max_seq_len(self):
+		return self._max_seq_len
 
 
 	def url_count(self):

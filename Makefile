@@ -14,7 +14,7 @@ endef
 # mode in [simple, one_week, three_month]
 MODE=simple
 MODE=one_week
-MODE=three_month
+#MODE=three_month
 
 BASE_PATH=cache/$(MODE)
 DATA_SET=data/simple data/one_week data/three_month

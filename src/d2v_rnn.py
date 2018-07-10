@@ -9,112 +9,13 @@ import numpy as np
 from optparse import OptionParser
 
 from ad_util import write_log
+from ad_util import RNN_Input
 
 parser = OptionParser()
 parser.add_option('-i', '--input', dest='input', type='string', default=None)
 parser.add_option('-u', '--u2v_path', dest='u2v_path', type='string', default=None)
 
-dict_rnn_input = {}
-
-def get_candidates(start_time=-1, end_time=-1, idx_count=0):
-	global dict_rnn_input
-
-	if (start_time < 0) or (end_time < 0) or (idx_count <= 0):
-		return []
-
-#	entry of : dict_rnn_input['time_idx']
-#	(timestamp) :
-#	{
-#		prev_time: (timestamp)
-#		next_time: (timestamp)
-#		'indices': { idx:count, ... }
-#	}
-
-	# swap if needs
-	if start_time > end_time:
-		tmp_time = start_time
-		start_time = end_time
-		end_time = tmp_time
-
-	cur_time = start_time
-
-	dict_merged = {}
-	while(cur_time < end_time):
-		cur_time = dict_rnn_input['time_idx'][str(cur_time)]['next_time']
-		for idx, count in dict_rnn_input['time_idx'][str(cur_time)]['indices'].items():
-			dict_merged[idx] = dict_merged.get(idx, 0) + count
-
-	steps = 0
-	time_from_start = start_time
-	time_from_end = end_time
-	while(len(dict_merged.keys()) < idx_count):
-		if time_from_start == None and time_from_end == None:
-			break
-
-		if steps % 2 == 0:
-			if time_from_start == None:
-				steps += 1
-				continue
-			cur_time = dict_rnn_input['time_idx'][str(time_from_start)]['prev_time']
-			time_from_start = cur_time
-		else:
-			if time_from_end == None:
-				steps += 1
-				continue
-			cur_time = dict_rnn_input['time_idx'][str(time_from_end)]['next_time']
-			time_from_end = cur_time
-
-		if cur_time == None:
-			continue
-
-		for idx, count in dict_rnn_input['time_idx'][str(cur_time)]['indices'].items():
-			dict_merged[idx] = dict_merged.get(idx, 0) + count
-
-	ret_sorted = sorted(dict_merged.items(), key=lambda x:x[1], reverse=True)
-	return list(map(lambda x: int(x[0]), ret_sorted))
-
-
-def generate_batchs(input_type='train', batch_size=10):
-	global dict_rnn_input
-
-	total_len = len(dict_rnn_input['sequence'])
-	if batch_size < 0:
-		batch_size = total_len
-
-	if input_type == 'train':
-		idx_from = 0
-		idx_to = int(total_len * 8 / 10)
-	elif input_type == 'valid':
-		idx_from = int(total_len * 8 / 10)
-		idx_to = int(total_len * 9 / 10)
-	else:
-		idx_from = int(total_len * 9 / 10)
-		idx_to = total_len
-
-	batch_size = min(batch_size, idx_to - idx_from)
-
-	data_idxs = list(range(idx_from, idx_to))
-	np.random.shuffle(data_idxs)
-
-#	dict_rnn_input['timestamp']
-#	dict_rnn_input['seq_len']
-#	dict_rnn_input['idx2url']
-#	dict_rnn_input['sequence']
-#	dict_rnn_input['time_idx']
-
-	sequence = np.matrix(np.array(dict_rnn_input['sequence'])[data_idxs][:batch_size].tolist())
-	seq_len = np.array(dict_rnn_input['seq_len'])[data_idxs][:batch_size]
-
-	timestamps = np.array(dict_rnn_input['timestamp'])[data_idxs][:batch_size]
-
-	input_x = sequence[:,:-1]
-	input_y = sequence[:,1:]
-
-	return input_x, input_y, seq_len-1, timestamps
-
-
 def main():
-	global dict_rnn_input
 
 	hidden_layer_size = 1000
 	rnn_layer_count = 3
@@ -128,22 +29,15 @@ def main():
 	url2vec_path = options.u2v_path
 
 	write_log('Loading start')
-	with open(rnn_input_path, 'r') as f_input:
-		dict_rnn_input = json.load(f_input)
-
-	# Padding.. better way??
-	max_seq_len = max(dict_rnn_input['seq_len'])
-	for seq_entry in dict_rnn_input['sequence']:
-		pad_count = max_seq_len - len(seq_entry)
-		if pad_count > 0:
-			seq_entry += [0] * pad_count
+	rnn_input = RNN_Input(rnn_input_path)
 
 	with open(url2vec_path, 'r') as f_u2v:
 		dict_url2vec = json.load(f_u2v)
 	write_log('Loading end')
 
 	write_log('Generate embeddings : start')
-	url_count = len(dict_rnn_input['idx2url'])
+	url_count = rnn_input.url_count()
+	max_seq_len = rnn_input.max_seq_len()
 	embedding_dimension = len(dict_url2vec.items()[0][1])
 
 	dict_url2vec['url_pad'] = [0.0]*embedding_dimension
@@ -151,7 +45,7 @@ def main():
 	with tf.name_scope('embeddings'):
 #		embeddings = tf.Variable(
 		embeddings = tf.constant(
-					[dict_url2vec[dict_rnn_input['idx2url'][str(i)]] for i in range(url_count)],
+					[dict_url2vec[rnn_input.idx2url(i)] for i in range(url_count)],
 					dtype=tf.float32,
 					name='embedding',
 				)
@@ -199,7 +93,7 @@ def main():
 
 		for epoch in range(10000):
 #			write_log('epoch : {} - start'.format(epoch))
-			train_x, train_y, train_seq_len, train_timestamps = generate_batchs(input_type='train', batch_size=500)
+			train_x, train_y, train_seq_len, train_timestamps = rnn_input.generate_batchs(input_type='train', batch_size=500)
 
 			sess.run(train_step, feed_dict={
 					_xs: train_x,
@@ -211,7 +105,7 @@ def main():
 			if epoch % 200 == 0:
 				write_log('epoch : {} - metric start'.format(epoch))
 
-				test_x, test_y, test_seq_len, test_timestamps = generate_batchs(input_type='test', batch_size=100)
+				test_x, test_y, test_seq_len, test_timestamps = rnn_input.generate_batchs(input_type='test', batch_size=100)
 				test_loss, test_top_all = sess.run([loss, top_all], feed_dict={
 						_xs: test_x,
 						_ys: test_y,
@@ -228,7 +122,7 @@ def main():
 					cand_start_time = test_timestamps[batch_idx][0]
 					cand_end_time = test_timestamps[batch_idx][1]
 
-					cand_indices = get_candidates(start_time=cand_start_time,
+					cand_indices = rnn_input.get_candidates(start_time=cand_start_time,
 							end_time=cand_end_time, idx_count=100)
 
 					for seq_idx in range(test_seq_len[batch_idx]):
