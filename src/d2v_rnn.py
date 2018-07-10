@@ -16,6 +16,64 @@ parser.add_option('-u', '--u2v_path', dest='u2v_path', type='string', default=No
 
 dict_rnn_input = {}
 
+def get_candidates(start_time=-1, end_time=-1, idx_count=0):
+	global dict_rnn_input
+
+	if (start_time < 0) or (end_time < 0) or (idx_count <= 0):
+		return []
+
+#	entry of : dict_rnn_input['time_idx']
+#	(timestamp) :
+#	{
+#		prev_time: (timestamp)
+#		next_time: (timestamp)
+#		'indices': { idx:count, ... }
+#	}
+
+	# swap if needs
+	if start_time > end_time:
+		tmp_time = start_time
+		start_time = end_time
+		end_time = tmp_time
+
+	cur_time = start_time
+
+	dict_merged = {}
+	while(cur_time < end_time):
+		cur_time = dict_rnn_input['time_idx'][str(cur_time)]['next_time']
+		for idx, count in dict_rnn_input['time_idx'][str(cur_time)]['indices'].items():
+			dict_merged[idx] = dict_merged.get(idx, 0) + count
+
+	steps = 0
+	time_from_start = start_time
+	time_from_end = end_time
+	while(len(dict_merged.keys()) < idx_count):
+		if time_from_start == None and time_from_end == None:
+			break
+
+		if steps % 2 == 0:
+			if time_from_start == None:
+				steps += 1
+				continue
+			cur_time = dict_rnn_input['time_idx'][str(time_from_start)]['prev_time']
+			time_from_start = cur_time
+		else:
+			if time_from_end == None:
+				steps += 1
+				continue
+			cur_time = dict_rnn_input['time_idx'][str(time_from_end)]['next_time']
+			time_from_end = cur_time
+
+		if cur_time == None:
+			continue
+
+		for idx, count in dict_rnn_input['time_idx'][str(cur_time)]['indices'].items():
+			dict_merged[idx] = dict_merged.get(idx, 0) + count
+
+	ret_sorted = sorted(dict_merged.items(), key=lambda x:x[1], reverse=True)
+	return list(map(lambda x: int(x[0]), ret_sorted))
+
+
 def generate_batchs(input_type='train', batch_size=10):
 	global dict_rnn_input
 
@@ -42,20 +100,23 @@ def generate_batchs(input_type='train', batch_size=10):
 #	dict_rnn_input['seq_len']
 #	dict_rnn_input['idx2url']
 #	dict_rnn_input['sequence']
+#	dict_rnn_input['time_idx']
 
 	sequence = np.matrix(np.array(dict_rnn_input['sequence'])[data_idxs][:batch_size].tolist())
 	seq_len = np.array(dict_rnn_input['seq_len'])[data_idxs][:batch_size]
 
+	timestamps = np.array(dict_rnn_input['timestamp'])[data_idxs][:batch_size]
+
 	input_x = sequence[:,:-1]
 	input_y = sequence[:,1:]
 
-	return input_x, input_y, seq_len-1
+	return input_x, input_y, seq_len-1, timestamps
 
 
 def main():
 	global dict_rnn_input
 
-	hidden_layer_size = 300
+	hidden_layer_size = 1000
 	rnn_layer_count = 3
 
 	options, args = parser.parse_args()
@@ -96,6 +157,7 @@ def main():
 				)
 	write_log('Generate embeddings : end')
 
+
 #	_inputs = tf.placeholder(tf.int32, shape=[None, max_seq_len-1])
 #	_ys = tf.placeholder(tf.int32, shape=[None, max_seq_len-1])
 	_xs = tf.placeholder(tf.int32, shape=[None, max_seq_len-1])
@@ -135,8 +197,9 @@ def main():
 		sess.run(tf.global_variables_initializer())
 		sess.run(tf.local_variables_initializer())
 
-		for epoch in range(5000):
-			train_x, train_y, train_seq_len = generate_batchs(input_type='train', batch_size=1000)
+		for epoch in range(10000):
+#			write_log('epoch : {} - start'.format(epoch))
+			train_x, train_y, train_seq_len, train_timestamps = generate_batchs(input_type='train', batch_size=500)
 
 			sess.run(train_step, feed_dict={
 					_xs: train_x,
@@ -144,31 +207,54 @@ def main():
 					_seqlens: train_seq_len,
 				})
 
-			test_x, test_y, test_seq_len = generate_batchs(input_type='train', batch_size=100)
 
-			test_loss, test_top_all = sess.run([loss, top_all], feed_dict={
-					_xs: test_x,
-					_ys: test_y,
-					_seqlens: test_seq_len,
-				})
+			if epoch % 200 == 0:
+				write_log('epoch : {} - metric start'.format(epoch))
 
-			answers = tf.reshape(test_y, (-1, 1)).eval().tolist()
-			rank_infos = tf.reshape(test_top_all, (-1, url_count)).eval().tolist()
+				test_x, test_y, test_seq_len, test_timestamps = generate_batchs(input_type='test', batch_size=100)
+				test_loss, test_top_all = sess.run([loss, top_all], feed_dict={
+						_xs: test_x,
+						_ys: test_y,
+						_seqlens: test_seq_len,
+					})
 
-			predict_total = 0
-			predict_mrr = 0.0
-			for batch_idx in range(len(test_seq_len)):
-				for seq_idx in range(test_seq_len[batch_idx]):
-					valid_idx = batch_idx * (max_seq_len-1) + seq_idx
+				answers = tf.reshape(test_y, (-1, 1)).eval().tolist()
+				rank_infos = tf.reshape(test_top_all, (-1, url_count)).eval().tolist()
 
-					predict_total += 1
-					hit_rank = rank_infos[valid_idx].index(answers[valid_idx][0]) + 1
-					if hit_rank > 0:
-						predict_mrr += 1.0/float(hit_rank)
+				# Very slow!!
+				predict_total = 0
+				predict_mrr = 0.0
+				for batch_idx in range(len(test_seq_len)):
+					cand_start_time = test_timestamps[batch_idx][0]
+					cand_end_time = test_timestamps[batch_idx][1]
 
-			mrr_metric = predict_mrr / float(predict_total)
+					cand_indices = get_candidates(start_time=cand_start_time,
+							end_time=cand_end_time, idx_count=100)
 
-			write_log('epoch : {} - test loss:{} - mrr:{}'.format(epoch, test_loss, mrr_metric))
+					for seq_idx in range(test_seq_len[batch_idx]):
+						valid_idx = batch_idx * (max_seq_len-1) + seq_idx
+
+						predict_total += 1
+						hit_rank = 0
+						for i in range(len(rank_infos[valid_idx])):
+							if rank_infos[valid_idx][i] == answers[valid_idx][0]:
+								hit_rank += 1
+								break
+							if rank_infos[valid_idx][i] in cand_indices:
+								hit_rank += 1
+
+							# MRR@20
+							if hit_rank > 20:
+								hit_rank = 0
+								break
+
+	#					hit_rank = rank_infos[valid_idx].index(answers[valid_idx][0]) + 1
+						if hit_rank > 0:
+							predict_mrr += 1.0/float(hit_rank)
+
+				mrr_metric = predict_mrr / float(predict_total)
+
+				write_log('epoch : {} - test loss:{} - mrr:{}'.format(epoch, test_loss, mrr_metric))
 
 if __name__ == '__main__':
 	main()

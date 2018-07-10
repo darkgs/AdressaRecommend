@@ -13,8 +13,8 @@ endef
 
 # mode in [simple, one_week, three_month]
 MODE=simple
-#MODE=one_week
-#MODE=three_month
+MODE=one_week
+MODE=three_month
 
 BASE_PATH=cache/$(MODE)
 DATA_SET=data/simple data/one_week data/three_month
@@ -47,10 +47,10 @@ cache/article_to_vec.json: data/article_info.json src/article_w2v.py
 	$(info [Makefile] $@)
 	@python src/article_w2v.py -i data/article_info.json -o $@
 
-$(BASE_PATH)/rnn_input: $(DATA_SET) cache/article_to_vec.json $(BASE_PATH)/data_for_all src/rnn_input_preprocess.py
+$(BASE_PATH)/rnn_input: $(DATA_SET) $(BASE_PATH)/data_for_all src/rnn_input_preprocess.py
 	$(info [Makefile] $@)
 	$(call asked_delete, $@)
-	@python3 src/rnn_input_preprocess.py -d $(BASE_PATH)/data_for_all -w cache/article_to_vec.json -o $@
+	@python3 src/rnn_input_preprocess.py -d $(BASE_PATH)/data_for_all -o $@
 
 simple_rnn: $(BASE_PATH)/rnn_input src/simple_rnn.py
 	$(info [Makefile] $@)

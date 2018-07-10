@@ -11,10 +11,8 @@ from ad_util import write_log
 
 parser = OptionParser()
 parser.add_option('-d', '--data_path', dest='data_path', type='string', default=None)
-parser.add_option('-w', '--w2v_path', dest='w2v_path', type='string', default=None)
 parser.add_option('-o', '--output_file_path', dest='output_file_path', type='string', default=None)
 
-dict_w2v = None
 dict_per_user = None
 dict_per_time = None
 dict_url_idx = None
@@ -111,7 +109,7 @@ def generate_rnn_input(seperated_input_path=None, output_path=None):
 	merged_sequences.sort(key=lambda x:x[0])
 	write_log('Sort by time : end')
 
-	timestamp = list(map(lambda x:tuple((x[0], x[1])), merged_sequences))
+	timestamp_tuple = list(map(lambda x:tuple((x[0], x[1])), merged_sequences))
 	seq_len = list(map(lambda x:len(x[2]), merged_sequences))
 	sequence = list(map(lambda x:x[2], merged_sequences))
 
@@ -143,7 +141,7 @@ def generate_rnn_input(seperated_input_path=None, output_path=None):
 
 	write_log('Save rnn_inputs : start')
 	dict_rnn_input = {
-		'timestamp': timestamp,
+		'timestamp': timestamp_tuple,
 		'seq_len': seq_len,
 		'sequence': sequence,
 		'idx2url': dict_idx2url,
@@ -156,13 +154,12 @@ def generate_rnn_input(seperated_input_path=None, output_path=None):
 
 
 def main():
-	global dict_w2v, dict_per_user, dict_per_time, dict_url_idx, seperated_output_path
+	global dict_per_user, dict_per_time, dict_url_idx, seperated_output_path
 
 	options, args = parser.parse_args()
-	if (options.w2v_path == None) or (options.data_path == None) or (options.output_file_path == None):
+	if (options.data_path == None) or (options.output_file_path == None):
 		return
 
-	w2v_path = options.w2v_path
 	per_time_path = options.data_path + '/per_time.json'
 	per_user_path = options.data_path + '/per_user.json'
 
@@ -176,9 +173,6 @@ def main():
 		os.system('mkdir -p ' + seperated_output_path)
 
 	write_log('Preprocessing ...')
-	with open(w2v_path, 'r') as f_w2v:
-		dict_w2v = json.load(f_w2v)
-
 	with open(per_user_path, 'r') as f_user:
 		dict_per_user = json.load(f_user)
 
