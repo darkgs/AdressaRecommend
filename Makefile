@@ -64,9 +64,9 @@ d2v_rnn: cache/article_to_vec.json $(BASE_PATH)/rnn_input src/d2v_rnn.py
 	$(info [Makefile] $@)
 	@python src/d2v_rnn.py -u cache/article_to_vec.json -i $(BASE_PATH)/rnn_input
 
-pop: src/pop.py
+pop: $(BASE_PATH)/rnn_input src/pop.py
 	$(info [Makefile] $@)
-	@python src/pop.py
+	@python src/pop.py -i $(BASE_PATH)/rnn_input
 
 run: d2v_rnn
 	$(info run)
