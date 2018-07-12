@@ -86,10 +86,15 @@ def main():
 		rank_scores = tf.matmul(embeddings, tf.transpose(tf.reshape(outputs, [-1, embedding_dimension])))
 		_, top_all = tf.nn.top_k(tf.transpose(rank_scores), embeddings.shape[0])
 
+	saver = tf.train.Saver()
+
 
 	with tf.Session() as sess:
 		sess.run(tf.global_variables_initializer())
 		sess.run(tf.local_variables_initializer())
+
+#write_log('Restore model!')
+#saver.restore(sess, 'cache/dim_1000_three_weeks.ckpt')
 
 		for epoch in range(10000):
 #			write_log('epoch : {} - start'.format(epoch))
@@ -149,6 +154,9 @@ def main():
 				mrr_metric = predict_mrr / float(predict_total)
 
 				write_log('epoch : {} - test loss:{} - mrr:{}'.format(epoch, test_loss, mrr_metric))
+
+#save_path = saver.save(sess, 'cache/dim_1000_three_weeks.ckpt')
+#write_log('Model saved : {}'.format(save_path))
 
 if __name__ == '__main__':
 	main()

@@ -16,6 +16,9 @@ MODE=simple
 MODE=one_week
 #MODE=three_month
 
+D2V_EMBED=default
+D2V_EMBED=1000
+
 BASE_PATH=cache/$(MODE)
 DATA_SET=data/simple data/one_week data/three_month
 
@@ -62,7 +65,7 @@ cnn_rnn: src/cnn_rnn.py
 
 d2v_rnn: cache/article_to_vec.json $(BASE_PATH)/rnn_input src/d2v_rnn.py
 	$(info [Makefile] $@)
-	@python src/d2v_rnn.py -u cache/article_to_vec.json -i $(BASE_PATH)/rnn_input
+	@python src/d2v_rnn.py -u cache/article_to_vec.json -i $(BASE_PATH)/rnn_input -m $(MODE) -e $(D2V_EMBED)
 
 pop: $(BASE_PATH)/rnn_input src/pop.py
 	$(info [Makefile] $@)
