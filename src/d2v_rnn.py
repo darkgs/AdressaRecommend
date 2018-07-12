@@ -14,6 +14,8 @@ from ad_util import RNN_Input
 parser = OptionParser()
 parser.add_option('-i', '--input', dest='input', type='string', default=None)
 parser.add_option('-u', '--u2v_path', dest='u2v_path', type='string', default=None)
+parser.add_option('-m', '--mode', dest='mode', type='string', default='one_week')
+parser.add_option('-e', '--d2v_embed', dest='d2v_embed', type='string', default='1000')
 
 def main():
 
@@ -25,8 +27,29 @@ def main():
 	if (options.input == None) or (options.u2v_path == None):
 		return
 
+	# Pre-processed RNN input
 	rnn_input_path = options.input + '/rnn_input.json'
 	url2vec_path = options.u2v_path
+
+	# Intermediate saved model
+	mode = options.mode
+	d2v_embed = options.d2v_embed
+	saved_model_path = 'cache/{}/model/d2v_rnn/embed-{}/model.ckpt'.format(mode, d2v_embed)
+
+	if not os.path.exists(os.path.dirname(saved_model_path)):
+		os.system('mkdir -p ' + os.path.dirname(saved_model_path))
+
+	# Statics to report
+	report_path = 'report/{}/d2v_rnn/embed-{}.csv'.format(mode, d2v_embed)
+	if not os.path.exists(os.path.dirname(report_path)):
+		os.system('mkdir -p ' + os.path.dirname(report_path))
+	
+	# Change d2v file
+	target_path = url2vec_path + '_' + d2v_embed
+	if not os.path.exists(target_path):
+		print('Can not find d2v file : {}'.format(target_path))
+		return
+	os.system('cp -f {} {}'.format(target_path, url2vec_path))
 
 	write_log('Loading start')
 	rnn_input = RNN_Input(rnn_input_path)
@@ -43,7 +66,6 @@ def main():
 	dict_url2vec['url_pad'] = [0.0]*embedding_dimension
 
 	with tf.name_scope('embeddings'):
-#		embeddings = tf.Variable(
 		embeddings = tf.constant(
 					[dict_url2vec[rnn_input.idx2url(i)] for i in range(url_count)],
 					dtype=tf.float32,
@@ -51,9 +73,6 @@ def main():
 				)
 	write_log('Generate embeddings : end')
 
-
-#	_inputs = tf.placeholder(tf.int32, shape=[None, max_seq_len-1])
-#	_ys = tf.placeholder(tf.int32, shape=[None, max_seq_len-1])
 	_xs = tf.placeholder(tf.int32, shape=[None, max_seq_len-1])
 	_ys = tf.placeholder(tf.int32, shape=[None, max_seq_len-1])
 	_seqlens = tf.placeholder(tf.int32, shape=[None])
@@ -88,29 +107,26 @@ def main():
 
 	saver = tf.train.Saver()
 
-
 	with tf.Session() as sess:
 		sess.run(tf.global_variables_initializer())
 		sess.run(tf.local_variables_initializer())
 
-#write_log('Restore model!')
-#saver.restore(sess, 'cache/dim_1000_three_weeks.ckpt')
-
-		for epoch in range(10000):
-#			write_log('epoch : {} - start'.format(epoch))
-			train_x, train_y, train_seq_len, train_timestamps = rnn_input.generate_batchs(input_type='train', batch_size=500)
-
-			sess.run(train_step, feed_dict={
-					_xs: train_x,
-					_ys: train_y,
-					_seqlens: train_seq_len,
-				})
-
-
-			if epoch % 200 == 0:
-				write_log('epoch : {} - metric start'.format(epoch))
-
-				test_x, test_y, test_seq_len, test_timestamps = rnn_input.generate_batchs(input_type='test', batch_size=100)
+		restored_step = 0
+#		try:
+#			saver.restore(sess, tf.train.latest_checkpoint(os.path.dirname(saved_model_path)))
+#			ckpt = tf.train.get_checkpoint_state(os.path.dirname(saved_model_path))
+#			restored_step =  int(os.path.basename(ckpt.model_checkpoint_path).split('-')[1])
+#			write_log('Restore model : {}, restored_step : {}'.format(saved_model_path, restored_step))
+#		except tf.errors.NotFoundError as e:
+#			write_log('Failed to restore model : {}'.format(saved_model_path))
+#		except ValueError as e:
+#			write_log('Failed to restore model : {}'.format(saved_model_path))
+			
+		def test_mrr_metric(input_type='test', sampling=50, repeat=1):
+			ret_loss = []
+			ret_mrr = []
+			for i in range(repeat):
+				test_x, test_y, test_seq_len, test_timestamps = rnn_input.generate_batchs(input_type=input_type, batch_size=sampling)
 				test_loss, test_top_all = sess.run([loss, top_all], feed_dict={
 						_xs: test_x,
 						_ys: test_y,
@@ -147,16 +163,55 @@ def main():
 								hit_rank = 0
 								break
 
-	#					hit_rank = rank_infos[valid_idx].index(answers[valid_idx][0]) + 1
 						if hit_rank > 0:
 							predict_mrr += 1.0/float(hit_rank)
 
 				mrr_metric = predict_mrr / float(predict_total)
 
-				write_log('epoch : {} - test loss:{} - mrr:{}'.format(epoch, test_loss, mrr_metric))
+				ret_loss.append(test_loss)
+				ret_mrr.append(mrr_metric)
 
-#save_path = saver.save(sess, 'cache/dim_1000_three_weeks.ckpt')
-#write_log('Model saved : {}'.format(save_path))
+			loss_avg = reduce((lambda x, y: x + y), ret_loss)/float(repeat)
+			mrr_avg = reduce((lambda x, y: x + y), ret_mrr)/float(repeat)
+
+			return loss_avg, mrr_avg
+
+		_, prev_top_valid_mrr = test_mrr_metric('valid', 1)
+		_, prev_top_test_mrr = test_mrr_metric('test', 10)
+
+		write_log('Before train : valid mrr({}), test mrr({})'.format(prev_top_valid_mrr, prev_top_test_mrr))
+		for epoch in range(30000):
+			global_step=restored_step+epoch
+
+			# Train
+			train_x, train_y, train_seq_len, train_timestamps = rnn_input.generate_batchs(input_type='train', batch_size=200)
+
+			sess.run(train_step, feed_dict={
+					_xs: train_x,
+					_ys: train_y,
+					_seqlens: train_seq_len,
+				})
+
+			if (global_step > restored_step) and (global_step % 10 == 0):
+				write_log('global_step : {} - metric start'.format(global_step))
+				valid_loss, valid_mrr = test_mrr_metric('valid', 50, 3)
+				write_log('global_step : {} - valid loss:{} - mrr:{}'.format(global_step, valid_loss, valid_mrr))
+
+				if True:
+					_, test_mrr = test_mrr_metric('test', 50, 10)
+					with open(report_path, 'a') as report_f:
+						report_f.write('{},{}\n'.format(global_step,test_mrr))
+
+#				if valid_mrr > prev_top_valid_mrr:
+#					_, test_mrr = test_mrr_metric('test', 50, 10)
+#					prev_top_valid_mrr = valid_mrr
+					
+#					if (global_step > 99) and (test_mrr > prev_top_test_mrr):
+#						write_log('global_step : {} - New Record {} -> {}'.format(global_step, prev_top_test_mrr, test_mrr))
+#						prev_top_test_mrr = test_mrr;
+#						save_path = saver.save(sess, saved_model_path, global_step=global_step )
+#						write_log('Model saved : {}'.format(save_path))
+
 
 if __name__ == '__main__':
 	main()

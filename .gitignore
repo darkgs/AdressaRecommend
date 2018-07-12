@@ -3,3 +3,4 @@ data
 *.pyc
 log.txt
 cache/
+report/
