@@ -37,10 +37,17 @@ class RNN_Input:
 		self._url_count = len(self._dict_rnn_input['idx2url'])
 		self._max_seq_len = max(self._dict_rnn_input['seq_len'])
 
-		# Padding, Is there better way?
+		# Padding, Any better ?
 		self.padding()
+		self.generate_tf_records(os.path.dirname(rnn_input_path) + \
+				'/tf_records')
 
 		write_log('Initializing RNN_Input instance : end')
+
+
+	def __del__(self):
+		self._dict_rnn_input = None
+		write_log('Terminate RNN_Input instance : end')
 
 
 	def padding(self):
@@ -50,8 +57,20 @@ class RNN_Input:
 				seq_entry += [0] * pad_count
 
 
+	def generate_tf_records(self, tf_records_dir):
+
+		if os.path.exists(tf_records_dir):
+			os.system('rm -rf {}'.format(tf_records_dir))
+
+		os.system('mkdir -p {}'.format(tf_records_dir))
+
+		self._dict_rnn_input['sequence']
+		print(tf_records_dir)
+
+
 	def idx2url(self, idx):
 		return self._dict_rnn_input['idx2url'][str(idx)]
+
 
 	def max_seq_len(self):
 		return self._max_seq_len
@@ -154,10 +173,4 @@ class RNN_Input:
 		input_y = sequence[:,1:]
 
 		return input_x, input_y, seq_len-1, timestamps
-
-
-	def __del__(self):
-		self._dict_rnn_input = None
-		write_log('Terminate RNN_Input instance : end')
-
 

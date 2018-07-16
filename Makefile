@@ -65,12 +65,17 @@ cnn_rnn: src/cnn_rnn.py
 
 d2v_rnn: cache/article_to_vec.json $(BASE_PATH)/rnn_input src/d2v_rnn.py
 	$(info [Makefile] $@)
-	@python src/d2v_rnn.py -u cache/article_to_vec.json -i $(BASE_PATH)/rnn_input -m $(MODE) -e $(D2V_EMBED)
+	@python3 src/d2v_rnn.py -u cache/article_to_vec.json -i $(BASE_PATH)/rnn_input -m $(MODE) -e $(D2V_EMBED)
 
 pop: $(BASE_PATH)/rnn_input src/pop.py
 	$(info [Makefile] $@)
 	@python src/pop.py -i $(BASE_PATH)/rnn_input
 
-run: d2v_rnn
+$(BASE_PATH)/tf_record: $(BASE_PATH)/data_for_all cache/article_to_vec.json src/generate_tf_record.py
+	$(info [Makefile] $@)
+	$(call asked_delete, $@)
+	@python3 src/generate_tf_record.py -u cache/article_to_vec.json -d $(BASE_PATH)/data_for_all -o $@
+
+run: $(BASE_PATH)/tf_record
 	$(info run)
 

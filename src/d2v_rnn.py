@@ -61,10 +61,9 @@ def main():
 	write_log('Generate embeddings : start')
 	url_count = rnn_input.url_count()
 	max_seq_len = rnn_input.max_seq_len()
-	embedding_dimension = len(dict_url2vec.items()[0][1])
+	embedding_dimension = len(dict_url2vec[next(iter(dict_url2vec))])
 
 	dict_url2vec['url_pad'] = [0.0]*embedding_dimension
-
 	with tf.name_scope('embeddings'):
 		embeddings = tf.constant(
 					[dict_url2vec[rnn_input.idx2url(i)] for i in range(url_count)],
@@ -84,8 +83,7 @@ def main():
 	with tf.variable_scope('lstm'):
 		lstm_cell = tf.contrib.rnn.MultiRNNCell(
 #			[tf.contrib.rnn.BasicLSTMCell(hidden_layer_size) \
-			[tf.contrib.rnn.GRUCell(hidden_layer_size) \
-				for _ in range(rnn_layer_count)])
+			[tf.contrib.rnn.GRUCell(hidden_layer_size) for _ in range(rnn_layer_count)])
 
 		rnn_outputs, states = tf.nn.dynamic_rnn(lstm_cell,
 				embed_x, sequence_length=_seqlens, dtype=tf.float32)
@@ -105,9 +103,17 @@ def main():
 		rank_scores = tf.matmul(embeddings, tf.transpose(tf.reshape(outputs, [-1, embedding_dimension])))
 		_, top_all = tf.nn.top_k(tf.transpose(rank_scores), embeddings.shape[0])
 
-	saver = tf.train.Saver()
 
-	with tf.Session() as sess:
+	config = tf.ConfigProto()
+	config.gpu_options.allow_growth = True
+	config.gpu_options.per_process_gpu_memory_fraction = 0.7
+
+#	saver_config = tf.ConfigProto()
+#	saver_config.gpu_options.allow_growth = True
+#	saver_config.gpu_options.per_process_gpu_memory_fraction = 0.2
+#	saver = tf.train.Saver(config=saver_config)
+
+	with tf.Session(config=config) as sess:
 		sess.run(tf.global_variables_initializer())
 		sess.run(tf.local_variables_initializer())
 
@@ -171,13 +177,13 @@ def main():
 				ret_loss.append(test_loss)
 				ret_mrr.append(mrr_metric)
 
-			loss_avg = reduce((lambda x, y: x + y), ret_loss)/float(repeat)
-			mrr_avg = reduce((lambda x, y: x + y), ret_mrr)/float(repeat)
+			loss_avg = sum(ret_loss)/float(repeat)
+			mrr_avg = sum(ret_mrr)/float(repeat)
 
 			return loss_avg, mrr_avg
 
-		_, prev_top_valid_mrr = test_mrr_metric('valid', 1)
-		_, prev_top_test_mrr = test_mrr_metric('test', 10)
+		_, prev_top_valid_mrr = test_mrr_metric('valid', 50, 10)
+		_, prev_top_test_mrr = test_mrr_metric('test', 50, 10)
 
 		write_log('Before train : valid mrr({}), test mrr({})'.format(prev_top_valid_mrr, prev_top_test_mrr))
 		for epoch in range(30000):
@@ -194,23 +200,19 @@ def main():
 
 			if (global_step > restored_step) and (global_step % 10 == 0):
 				write_log('global_step : {} - metric start'.format(global_step))
-				valid_loss, valid_mrr = test_mrr_metric('valid', 50, 3)
+				valid_loss, valid_mrr = test_mrr_metric('valid', 50, 10)
 				write_log('global_step : {} - valid loss:{} - mrr:{}'.format(global_step, valid_loss, valid_mrr))
 
+				_, test_mrr = test_mrr_metric('test', 50, 10)
 				if True:
-					_, test_mrr = test_mrr_metric('test', 50, 10)
 					with open(report_path, 'a') as report_f:
-						report_f.write('{},{}\n'.format(global_step,test_mrr))
+						report_f.write('{},{},{}\n'.format(global_step, valid_mrr, test_mrr))
 
-#				if valid_mrr > prev_top_valid_mrr:
-#					_, test_mrr = test_mrr_metric('test', 50, 10)
-#					prev_top_valid_mrr = valid_mrr
-					
-#					if (global_step > 99) and (test_mrr > prev_top_test_mrr):
-#						write_log('global_step : {} - New Record {} -> {}'.format(global_step, prev_top_test_mrr, test_mrr))
-#						prev_top_test_mrr = test_mrr;
-#						save_path = saver.save(sess, saved_model_path, global_step=global_step )
-#						write_log('Model saved : {}'.format(save_path))
+#				if (global_step > 49) and (test_mrr > prev_top_test_mrr):
+#					write_log('global_step : {} - New Record {} -> {}'.format(global_step, prev_top_test_mrr, test_mrr))
+#					prev_top_test_mrr = test_mrr;
+#					save_path = saver.save(sess, saved_model_path, global_step=global_step )
+#					write_log('Model saved : {}'.format(save_path))
 
 
 if __name__ == '__main__':
