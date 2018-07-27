@@ -149,8 +149,9 @@ def generate_tf_records():
 			example = tf.train.Example(features=tf.train.Features(feature={
 				'start_time': _int64_feature(timestamp_start),
 				'end_time': _int64_feature(timestamp_end),
-				'sequence': _int64_list_feature(sequence),
-				'seq_len': _int64_feature(len(sequence)),
+				'sequence_x': _int64_list_feature(sequence[:-1]),
+				'sequence_y': _int64_list_feature(sequence[1:]),
+				'seq_len': _int64_feature(len(sequence)-1),
 			}))
 			writer.write(example.SerializeToString())
 

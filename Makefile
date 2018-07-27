@@ -14,13 +14,15 @@ endef
 # mode in [simple, one_week, three_month]
 MODE=simple
 MODE=one_week
-MODE=three_month
+#MODE=three_month
 
 D2V_EMBED=default
-D2V_EMBED=1000
+D2V_EMBED=100
 
 BASE_PATH=cache/$(MODE)
 DATA_SET=data/simple data/one_week data/three_month
+
+all: run
 
 data/simple: data/one_week src/generate_simple_dataset.py
 	$(info [Makefile] $@)
@@ -76,6 +78,10 @@ $(BASE_PATH)/tf_record: $(BASE_PATH)/data_for_all cache/article_to_vec.json src/
 	$(call asked_delete, $@)
 	@python3 src/generate_tf_record.py -u cache/article_to_vec.json -d $(BASE_PATH)/data_for_all -o $@
 
-run: $(BASE_PATH)/tf_record
+d2v_rnn_v2: $(BASE_PATH)/tf_record src/d2v_rnn_v2.py
+	$(info [Makefile] $@)
+	@python3 src/d2v_rnn_v2.py -i $(BASE_PATH)/tf_record
+
+run: d2v_rnn
 	$(info run)
 

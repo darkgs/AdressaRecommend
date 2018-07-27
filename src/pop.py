@@ -18,7 +18,7 @@ def main():
 	rnn_input = RNN_Input(rnn_input_path)
 
 	max_seq_len = rnn_input.max_seq_len()
-	for epoch in range(10):
+	for epoch in range(100):
 		test_x, test_y, test_seq_len, test_timestamps = rnn_input.generate_batchs(input_type='test', batch_size=100)
 
 		predict_total = 0

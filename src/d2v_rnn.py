@@ -182,15 +182,15 @@ def main():
 
 			return loss_avg, mrr_avg
 
-		_, prev_top_valid_mrr = test_mrr_metric('valid', 50, 10)
-		_, prev_top_test_mrr = test_mrr_metric('test', 50, 10)
+#		_, prev_top_valid_mrr = test_mrr_metric('valid', 50, 10)
+#		_, prev_top_test_mrr = test_mrr_metric('test', 50, 10)
 
-		write_log('Before train : valid mrr({}), test mrr({})'.format(prev_top_valid_mrr, prev_top_test_mrr))
-		for epoch in range(30000):
+#		write_log('Before train : valid mrr({}), test mrr({})'.format(prev_top_valid_mrr, prev_top_test_mrr))
+		for epoch in range(500):
 			global_step=restored_step+epoch
 
 			# Train
-			train_x, train_y, train_seq_len, train_timestamps = rnn_input.generate_batchs(input_type='train', batch_size=200)
+			train_x, train_y, train_seq_len, train_timestamps = rnn_input.generate_batchs(input_type='train', batch_size=500)
 
 			sess.run(train_step, feed_dict={
 					_xs: train_x,
@@ -198,15 +198,19 @@ def main():
 					_seqlens: train_seq_len,
 				})
 
-			if (global_step > restored_step) and (global_step % 10 == 0):
-				write_log('global_step : {} - metric start'.format(global_step))
-				valid_loss, valid_mrr = test_mrr_metric('valid', 50, 10)
-				write_log('global_step : {} - valid loss:{} - mrr:{}'.format(global_step, valid_loss, valid_mrr))
+		for i in range(20):
+			_, test_mrr = test_mrr_metric('test', 100, 1)
+			print('{},{}'.format(i, test_mrr))
 
-				_, test_mrr = test_mrr_metric('test', 50, 10)
-				if True:
-					with open(report_path, 'a') as report_f:
-						report_f.write('{},{},{}\n'.format(global_step, valid_mrr, test_mrr))
+#			if (global_step > restored_step) and (global_step % 10 == 0):
+#				write_log('global_step : {} - metric start'.format(global_step))
+#				valid_loss, valid_mrr = test_mrr_metric('valid', 50, 10)
+#				write_log('global_step : {} - valid loss:{} - mrr:{}'.format(global_step, valid_loss, valid_mrr))
+
+#				_, test_mrr = test_mrr_metric('test', 50, 10)
+#				if True:
+#					with open(report_path, 'a') as report_f:
+#						report_f.write('{},{},{}\n'.format(global_step, valid_mrr, test_mrr))
 
 #				if (global_step > 49) and (test_mrr > prev_top_test_mrr):
 #					write_log('global_step : {} - New Record {} -> {}'.format(global_step, prev_top_test_mrr, test_mrr))

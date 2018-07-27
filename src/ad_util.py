@@ -39,8 +39,6 @@ class RNN_Input:
 
 		# Padding, Any better ?
 		self.padding()
-		self.generate_tf_records(os.path.dirname(rnn_input_path) + \
-				'/tf_records')
 
 		write_log('Initializing RNN_Input instance : end')
 
@@ -55,17 +53,6 @@ class RNN_Input:
 			pad_count = self._max_seq_len - len(seq_entry)
 			if pad_count > 0:
 				seq_entry += [0] * pad_count
-
-
-	def generate_tf_records(self, tf_records_dir):
-
-		if os.path.exists(tf_records_dir):
-			os.system('rm -rf {}'.format(tf_records_dir))
-
-		os.system('mkdir -p {}'.format(tf_records_dir))
-
-		self._dict_rnn_input['sequence']
-		print(tf_records_dir)
 
 
 	def idx2url(self, idx):
