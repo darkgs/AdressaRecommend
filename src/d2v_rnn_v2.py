@@ -161,15 +161,18 @@ def main():
 	_seqlens = tf.placeholder(tf.int32, shape=[None])
 
 	with tf.name_scope('embeddings'):
-		embed_x = tf.nn.embedding_lookup(embeddings, xs)
-		embed_y = tf.nn.embedding_lookup(embeddings, ys)
+#		embed_x = tf.nn.embedding_lookup(embeddings, _xs)
+#		embed_y = tf.nn.embedding_lookup(embeddings, _ys)
+		embed_x = tf.nn.embedding_lookup_sparse(embeddings, xs, None)
+		embed_y = tf.nn.embedding_lookup_sparse(embeddings, ys, None)
 
+	"""
 	with tf.variable_scope('lstm'):
 		lstm_cell = tf.contrib.rnn.MultiRNNCell(
 				[tf.contrib.rnn.GRUCell(hidden_layer_size) for _ in range(rnn_layer_count)])
 
 		rnn_outputs, states = tf.nn.dynamic_rnn(lstm_cell,
-				embed_x, sequence_length=seqlens, dtype=tf.float32)
+				embed_x, sequence_length=seq_lens, dtype=tf.float32)
 
 		rnn_outputs_stratch = tf.reshape(rnn_outputs, [-1, hidden_layer_size])
 		outputs = tf.layers.dense(rnn_outputs_stratch, embedding_dimension)
@@ -187,14 +190,24 @@ def main():
 	with tf.variable_scope('metric'):
 		rank_scores = tf.matmul(embeddings, tf.transpose(tf.reshape(outputs, [-1, embedding_dimension])))
 		_, top_all = tf.nn.top_k(tf.transpose(rank_scores), embeddings.shape[0])
+	"""
 
 	config = tf.ConfigProto()
 	config.gpu_options.allow_growth = True
 	config.gpu_options.per_process_gpu_memory_fraction = 0.7
 
+	print('{}/{}.tfrecord'.format(tf_record_dir, 'test'))
+
 	with tf.Session(config=config) as sess:
 		sess.run(tf.global_variables_initializer())
 		sess.run(tf.local_variables_initializer())
+
+		sess.run(_initializer)
+		ret = sess.run(embed_x, feed_dict={
+					_tf_record_path: ['{}/{}.tfrecord'.format(tf_record_dir, 'test')],
+				})
+
+		print(ret.shape)
 
 
 if __name__ == '__main__':

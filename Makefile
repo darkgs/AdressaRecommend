@@ -82,6 +82,6 @@ d2v_rnn_v2: $(BASE_PATH)/tf_record src/d2v_rnn_v2.py
 	$(info [Makefile] $@)
 	@python3 src/d2v_rnn_v2.py -i $(BASE_PATH)/tf_record
 
-run: d2v_rnn
+run: d2v_rnn_v2
 	$(info run)
 
