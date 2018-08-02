@@ -143,8 +143,8 @@ def main():
 
 		return record['sequence_x'], record['sequence_y'], record['start_time'], record['end_time'], record['seq_len']
 
-	_tf_record_path = tf.placeholder(tf.string, [None], name='filenames')
-	dataset = tf.data.TFRecordDataset(_tf_record_path) \
+#	_tf_record_path = tf.placeholder(tf.string, [None], name='filenames')
+	dataset = tf.data.TFRecordDataset('{}/{}.tfrecord'.format(tf_record_dir, 'test')) \
 			  .map(parse_tf_records, num_parallel_calls=10) \
 			  .batch(batch_size)
 
@@ -203,9 +203,8 @@ def main():
 		sess.run(tf.local_variables_initializer())
 
 		sess.run(_initializer)
-		ret = sess.run(embed_x, feed_dict={
-					_tf_record_path: ['{}/{}.tfrecord'.format(tf_record_dir, 'test')],
-				})
+
+		ret = sess.run(embed_x)
 
 		print(ret.shape)
 

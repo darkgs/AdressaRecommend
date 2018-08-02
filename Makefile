@@ -82,6 +82,15 @@ d2v_rnn_v2: $(BASE_PATH)/tf_record src/d2v_rnn_v2.py
 	$(info [Makefile] $@)
 	@python3 src/d2v_rnn_v2.py -i $(BASE_PATH)/tf_record
 
-run: d2v_rnn_v2
+$(BASE_PATH)/torch_input: $(BASE_PATH)/data_for_all cache/article_to_vec.json src/generate_torch_rnn_input.py
+	$(info [Makefile] $@)
+	$(call asked_delete, $@)
+	@python3 src/generate_torch_rnn_input.py -u cache/article_to_vec.json -d $(BASE_PATH)/data_for_all -o $@
+
+d2v_rnn_torch: $(BASE_PATH)/torch_input src/d2v_rnn_torch.py
+	$(info [Makefile] $@)
+	@python3 src/d2v_rnn_torch.py -i $(BASE_PATH)/torch_input
+
+run: d2v_rnn_torch
 	$(info run)
 
