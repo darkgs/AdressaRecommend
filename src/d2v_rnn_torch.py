@@ -4,6 +4,8 @@ import json
 import itertools
 import time
 
+import random
+
 import numpy as np
 from sklearn import preprocessing
 
@@ -18,6 +20,8 @@ from optparse import OptionParser
 
 parser = OptionParser()
 parser.add_option('-i', '--input', dest='input', type='string', default=None)
+
+from ad_util import write_log
 
 class AdressaDataset(Dataset):
 	def __init__(self, dict_dataset):
@@ -44,7 +48,6 @@ class RNNInputTorch(object):
 
 		max_seq = 20
 		if self._dataset.get(data_type, None) == None:
-			print('get_dataset : {}'.format(data_type))
 			def pad_sequence(sequence):
 				len_diff = (max_seq+1) - len(sequence)
 
@@ -199,7 +202,7 @@ def main():
 			idx_x_b, idx_y_b
 
 	trainloader = torch.utils.data.DataLoader(rnn_input.get_dataset(data_type='train'),
-			batch_size=1024, shuffle=True, num_workers=4,
+			batch_size=512, shuffle=True, num_workers=16,
 			collate_fn=adressa_collate)
 
 	testloader = torch.utils.data.DataLoader(rnn_input.get_dataset(data_type='test'),
@@ -212,12 +215,20 @@ def main():
 
 	model = RNNRecommender(embed_size, hidden_size, num_layers).to(device)
 
+	def weights_init(m):
+		if isinstance(m, nn.Conv2d):
+			torch.nn.init.xavier_uniform(m.weight)
+			torch.nn.init.constant(m.bias, 0.1)
+		elif isinstance(m, nn.Linear):
+			torch.nn.init.xavier_normal_(m.weight)
+	model.apply(weights_init)
+
 	criterion = nn.MSELoss()
-	optimizer = optim.Adam(model.parameters(), lr=0.001)
+#	optimizer = optim.Adam(model.parameters(), lr=0.001)
+	optimizer = optim.SGD(model.parameters(), lr=0.01)
 
 	def train():
 		model.train()
-		optimizer.zero_grad()
 		for i, data in enumerate(trainloader, 0):
 			time_check = time.time()
 			input_x_s, input_y_s, seq_lens, _, _, _, _ = data
@@ -227,13 +238,14 @@ def main():
 			packed_x_s = pack_padded_sequence(input_x_s, seq_lens, batch_first=True)
 			packed_y_s = pack_padded_sequence(input_y_s, seq_lens, batch_first=True)
 
-			normalized_y_s = torch.Tensor(preprocessing.normalize(packed_y_s[0], norm='l2')).to(device)
+#			normalized_y_s = torch.Tensor(preprocessing.normalize(packed_y_s[0], norm='l2')).to(device)
+			model.zero_grad()
+			optimizer.zero_grad()
 
 			outputs = model(packed_x_s)
 
-			loss = criterion(outputs, normalized_y_s)
+			loss = criterion(outputs, packed_y_s[0])
 
-			model.zero_grad()
 			loss.backward()
 			optimizer.step()
 
@@ -242,7 +254,6 @@ def main():
 
 		predict_count = 0
 		predict_mrr = 0.0
-		total_iter = len(testloader)
 		for i, data in enumerate(testloader, 0):
 			input_x_s, input_y_s, seq_lens, timestamp_starts, timestamp_ends, indices_x, indices_y = data
 			input_x_s = input_x_s.to(device)
@@ -257,23 +268,24 @@ def main():
 			batch_size = seq_lens.size(0)
 			seq_lens = seq_lens.cpu().numpy()
 
-			packed_idx = 0
+			packed_idx = -1
 			for batch in range(batch_size):
 				cand_indices = rnn_input.get_candidates(start_time=timestamp_starts[batch],
 						end_time=timestamp_ends[batch], idx_count=100)
 				cand_embed = [rnn_input.idx2vec(idx) for idx in cand_indices]
-
 				cand_matrix = np.matrix(cand_embed)
+
 				for seq_idx in range(seq_lens[batch]):
+					packed_idx += 1
+
 					next_idx = indices_y[batch][seq_idx]
 					if next_idx not in cand_indices:
-						packed_idx += 1
 						continue
 
 					pred_vector = outputs[packed_idx]
-					cand_eval = np.asarray(np.dot(cand_matrix, pred_vector).T)
+					cand_eval = np.asarray(np.dot(cand_matrix, pred_vector).T).tolist()
 
-					infered_values = [(cand_indices[i], evaluated) for i, evaluated in enumerate(cand_eval)]
+					infered_values = [(cand_indices[i], evaluated[0]) for i, evaluated in enumerate(cand_eval)]
 					infered_values.sort(key=lambda x:x[1])
 					# MRR@20
 					rank = -1
@@ -285,17 +297,17 @@ def main():
 						predict_mrr += 1.0/float(rank)
 					predict_count += 1
 
-					packed_idx += 1
-
-		return predict_mrr / float(predict_count)
+		return predict_mrr / float(predict_count) if predict_count > 0 else 0.0
 
 
-	for epoch in range(100):
+	for epoch in range(1000):
 		start_time = time.time()
-		print('train epoch {} start'.format(epoch))
+		write_log('train epoch {} start'.format(epoch))
 		train()
-		print('train epoch {} tooks {}'.format(epoch, time.time()-start_time))
-#		print('train epoch {} mrr({}) tooks {}'.format(epoch, test_mrr_20(), time.time()-start_time))
+		if epoch % 10 == 0:
+			write_log('train epoch {} mrr({}) tooks {}'.format(epoch, test_mrr_20(), time.time()-start_time))
+		else:
+			write_log('train epoch {} tooks {}'.format(epoch, time.time()-start_time))
 
 
 if __name__ == '__main__':
