@@ -31,39 +31,6 @@ class AdressaDataset(Dataset):
 	def __len__(self):
 		return self._data_len
 
-"""
-		max_seq = 20
-		def pad_sequence(sequence):
-			len_diff = (max_seq+1) - len(sequence)
-
-			if len_diff < 0:
-				return sequence[:(max_seq+1)]
-			elif len_diff == 0:
-				return sequence
-
-			padded_sequence = sequence.copy()
-			padded_sequence += [dict_url_idx['url_pad']] * len_diff
-
-			return padded_sequence
-
-		dict_seq_datas[dataset_name] = []
-
-		for timestamp_start, timestamp_end, sequence in itertools.islice(merged_sequences, idx_st, idx_ed):
-			pad_indices = [idx for idx in pad_sequence(sequence)]
-			pad_seq = [dict_idx_vec[idx] for idx in pad_indices]
-
-			seq_len = min(len(sequence), max_seq)
-			seq_x = pad_seq[:-1]
-			seq_y = pad_seq[1:]
-
-			idx_x = pad_indices[:-1]
-			idx_y = pad_indices[1:]
-			
-			dict_seq_datas[dataset_name].append(
-				(seq_x, seq_y, seq_len, idx_x, idx_y, timestamp_start, timestamp_end)
-			)
-"""
-
 class RNNInputTorch(object):
 	def __init__(self, rnn_input_json_path):
 		with open(rnn_input_json_path, 'r') as f_rnn_input:
@@ -75,8 +42,40 @@ class RNNInputTorch(object):
 		if data_type not in ['train', 'valid', 'test']:
 			data_type = 'test'
 
+		max_seq = 20
 		if self._dataset.get(data_type, None) == None:
-			self._dataset[data_type] = AdressaDataset(self._dict_rnn_input['dataset'][data_type])
+			print('get_dataset : {}'.format(data_type))
+			def pad_sequence(sequence):
+				len_diff = (max_seq+1) - len(sequence)
+
+				if len_diff < 0:
+					return sequence[:(max_seq+1)]
+				elif len_diff == 0:
+					return sequence
+
+				padded_sequence = sequence.copy()
+				padded_sequence += [self.get_pad_idx()] * len_diff
+
+				return padded_sequence
+
+			datas = []
+			for timestamp_start, timestamp_end, sequence in self._dict_rnn_input['dataset'][data_type]:
+				pad_indices = [idx for idx in pad_sequence(sequence)]
+				pad_seq = [self.idx2vec(idx) for idx in pad_indices]
+
+				seq_len = min(len(sequence), max_seq)
+				seq_x = pad_seq[:-1]
+				seq_y = pad_seq[1:]
+
+				idx_x = pad_indices[:-1]
+				idx_y = pad_indices[1:]
+			
+				datas.append(
+					(seq_x, seq_y, seq_len, idx_x, idx_y, timestamp_start, timestamp_end)
+				)
+
+
+			self._dataset[data_type] = AdressaDataset(datas)
 
 		return self._dataset[data_type]
 
@@ -176,7 +175,7 @@ def main():
 
 	rnn_input = RNNInputTorch(rnn_input_json_path)
 	def adressa_collate(batch):
-		batch.sort(key=lambda x: len(x[2]), reverse=True)
+		batch.sort(key=lambda x: x[2], reverse=True)
 
 		seq_x_b = []	# batch_size * max_seq * embedding_d
 		seq_y_b = []	# batch_size * max_seq * embedding_d
@@ -200,7 +199,7 @@ def main():
 			idx_x_b, idx_y_b
 
 	trainloader = torch.utils.data.DataLoader(rnn_input.get_dataset(data_type='train'),
-			batch_size=512, shuffle=True, num_workers=16,
+			batch_size=1024, shuffle=True, num_workers=4,
 			collate_fn=adressa_collate)
 
 	testloader = torch.utils.data.DataLoader(rnn_input.get_dataset(data_type='test'),
@@ -295,7 +294,8 @@ def main():
 		start_time = time.time()
 		print('train epoch {} start'.format(epoch))
 		train()
-		print('train epoch {} mrr({}) tooks {}'.format(epoch, test_mrr_20(), time.time()-start_time))
+		print('train epoch {} tooks {}'.format(epoch, time.time()-start_time))
+#		print('train epoch {} mrr({}) tooks {}'.format(epoch, test_mrr_20(), time.time()-start_time))
 
 
 if __name__ == '__main__':
