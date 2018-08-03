@@ -3,6 +3,8 @@ import os
 import json
 import itertools
 
+import torch
+
 from optparse import OptionParser
 from multiprocessing import Pool
 
@@ -148,27 +150,14 @@ def generate_torch_rnn_input():
 		('test', int(total_seq_count * 9 / 10), total_seq_count),
 	]
 
-	def pad_sequence(sequence):
-		max_seq = 20
-
-		len_diff = max_seq - len(sequence)
-
-		if len_diff < 0:
-			return sequence[:max_seq]
-		elif len_diff == 0:
-			return sequence
-
-		sequence += [dict_url_idx['url_pad']] * len_diff
-
-		return sequence
-
 	dict_seq_datas = {}
 	for dataset_name, idx_st, idx_ed in division_infos:
-		dict_seq_datas[dataset_name] = [
-			(pad_sequence(sequence), len(sequence), timestamp_start, timestamp_end) \
-				for (timestamp_start, timestamp_end, sequence) \
-				in itertools.islice(merged_sequences, idx_st, idx_ed)
-		]
+		dict_seq_datas[dataset_name] = merged_sequences[idx_st:idx_ed]
+#		dict_seq_datas[dataset_name] = [
+#			(pad_sequence(sequence), len(sequence), timestamp_start, timestamp_end) \
+#				for (timestamp_start, timestamp_end, sequence) \
+#				in itertools.islice(merged_sequences, idx_st, idx_ed)
+#		]
 
 	# idx2vec
 	embeding_dimension = len(next(iter(dict_url_vec.items()))[1])
@@ -200,6 +189,7 @@ def generate_torch_rnn_input():
 		'dataset': dict_seq_datas,
 		'idx2vec': dict_idx_vec,
 		'time_idx': dict_time_idx,
+		'pad_idx': dict_url_idx['url_pad'],
 	}
 
 	with open('{}/torch_rnn_input.dict'.format(output_dir_path), 'w') as f_extra:
