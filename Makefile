@@ -14,10 +14,10 @@ endef
 # mode in [simple, one_week, three_month]
 MODE=simple
 MODE=one_week
-MODE=three_month
+#MODE=three_month
 
 D2V_EMBED=default
-D2V_EMBED=100
+D2V_EMBED=1000
 
 BASE_PATH=cache/$(MODE)
 DATA_SET=data/simple data/one_week data/three_month

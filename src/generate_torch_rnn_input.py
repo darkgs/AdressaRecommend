@@ -140,6 +140,12 @@ def load_url2vec(url2vec_path=None):
 
 def generate_torch_rnn_input():
 	global merged_sequences, dict_url_idx, dict_url_vec, list_per_time, output_dir_path
+
+	# idx2vec
+	embeding_dimension = len(next(iter(dict_url_vec.items()))[1])
+	dict_url_vec['url_pad'] = [float(0)] * embeding_dimension
+
+	dict_idx_vec = {idx:dict_url_vec[url] for url, idx in dict_url_idx.items()}
 	
 	# sequence_datas
 	total_seq_count = len(merged_sequences)
@@ -147,23 +153,18 @@ def generate_torch_rnn_input():
 	division_infos = [
 		('train', 0, int(total_seq_count * 8 / 10)),
 		('valid', int(total_seq_count * 8 / 10), int(total_seq_count * 9 / 10)),
-		('test', int(total_seq_count * 9 / 10), total_seq_count),
+#		('test', int(total_seq_count * 9 / 10), total_seq_count),
+		('test', total_seq_count - 1000, total_seq_count),
 	]
 
 	dict_seq_datas = {}
 	for dataset_name, idx_st, idx_ed in division_infos:
 		dict_seq_datas[dataset_name] = merged_sequences[idx_st:idx_ed]
-#		dict_seq_datas[dataset_name] = [
-#			(pad_sequence(sequence), len(sequence), timestamp_start, timestamp_end) \
+#		dict_seq_datas[dataset_name]['vec'] = [
+#			[dict_idx_vec[idx] for idx in sequence] \
 #				for (timestamp_start, timestamp_end, sequence) \
 #				in itertools.islice(merged_sequences, idx_st, idx_ed)
 #		]
-
-	# idx2vec
-	embeding_dimension = len(next(iter(dict_url_vec.items()))[1])
-	dict_url_vec['url_pad'] = [float(0)] * embeding_dimension
-
-	dict_idx_vec = {idx:dict_url_vec[url] for url, idx in dict_url_idx.items()}
 
 	# candidates
 	dict_time_idx = {}
@@ -190,6 +191,7 @@ def generate_torch_rnn_input():
 		'idx2vec': dict_idx_vec,
 		'time_idx': dict_time_idx,
 		'pad_idx': dict_url_idx['url_pad'],
+		'embedding_dimension': embeding_dimension,
 	}
 
 	with open('{}/torch_rnn_input.dict'.format(output_dir_path), 'w') as f_extra:

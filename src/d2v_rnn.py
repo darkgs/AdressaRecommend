@@ -198,6 +198,8 @@ def main():
 					_seqlens: train_seq_len,
 				})
 
+			print('epoch : {}'.format(epoch))
+
 		for i in range(20):
 			_, test_mrr = test_mrr_metric('test', 100, 1)
 			print('{},{}'.format(i, test_mrr))
