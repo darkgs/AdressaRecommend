@@ -7,12 +7,13 @@ import time
 import random
 
 import numpy as np
-from sklearn import preprocessing
+from sklearn.preprocessing import normalize
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.nn.utils.rnn import pack_padded_sequence
+from torch.nn.utils.rnn import pack_padded_sequence as pack
+from torch.nn.utils.rnn import pad_packed_sequence as unpack
 
 from torch.utils.data.dataset import Dataset  # For custom datasets
 
@@ -49,10 +50,10 @@ class RNNInputTorch(object):
 		max_seq = 20
 		if self._dataset.get(data_type, None) == None:
 			def pad_sequence(sequence):
-				len_diff = (max_seq+1) - len(sequence)
+				len_diff = max_seq - len(sequence)
 
 				if len_diff < 0:
-					return sequence[:(max_seq+1)]
+					return sequence[:max_seq]
 				elif len_diff == 0:
 					return sequence
 
@@ -62,11 +63,13 @@ class RNNInputTorch(object):
 				return padded_sequence
 
 			datas = []
+
 			for timestamp_start, timestamp_end, sequence in self._dict_rnn_input['dataset'][data_type]:
 				pad_indices = [idx for idx in pad_sequence(sequence)]
+#				pad_seq = [normalize([self.idx2vec(idx)], norm='l2')[0] for idx in pad_indices]
 				pad_seq = [self.idx2vec(idx) for idx in pad_indices]
 
-				seq_len = min(len(sequence), max_seq)
+				seq_len = min(len(sequence), max_seq) - 1
 				seq_x = pad_seq[:-1]
 				seq_y = pad_seq[1:]
 
@@ -154,15 +157,25 @@ class RNNRecommender(nn.Module):
 	def __init__(self, embed_size, hidden_size, num_layers):
 		super(RNNRecommender, self).__init__()
 
-		self.lstm = nn.LSTM(embed_size, hidden_size, num_layers, batch_first=True)
-		self.linear = nn.Sequential(
-			nn.Linear(hidden_size, embed_size),
-			nn.BatchNorm1d(embed_size, momentum=0.01),
-		)
+#		self.rnn = nn.LSTM(embed_size, hidden_size, num_layers, batch_first=True)
+		self.rnn = nn.GRU(embed_size, hidden_size, num_layers, batch_first=True)
+		self.linear = nn.Linear(hidden_size, embed_size)
+		self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
 
-	def forward(self, x):
-		outputs, _ = self.lstm(x)
-		outputs = self.linear(outputs[0])
+		self._embed_size = embed_size
+		self._hidden_size = hidden_size
+
+	def forward(self, x, seq_lens):
+		batch_size = x.size(0)
+
+		x = pack(x, seq_lens, batch_first=True)
+		outputs, _ = self.rnn(x)
+		outputs, _ = unpack(outputs, batch_first=True)
+		outputs = self.linear(outputs)
+
+		outputs = outputs.view(-1, self._embed_size)
+		outputs = self.bn(outputs)
+		outputs = outputs.view(batch_size, -1, self._embed_size)
 
 		return outputs
 
@@ -202,7 +215,7 @@ def main():
 			idx_x_b, idx_y_b
 
 	trainloader = torch.utils.data.DataLoader(rnn_input.get_dataset(data_type='train'),
-			batch_size=512, shuffle=True, num_workers=16,
+			batch_size=128, shuffle=True, num_workers=16,
 			collate_fn=adressa_collate)
 
 	testloader = torch.utils.data.DataLoader(rnn_input.get_dataset(data_type='test'),
@@ -210,22 +223,74 @@ def main():
 			collate_fn=adressa_collate)
 
 	embed_size = rnn_input.get_embed_dimension()
-	hidden_size = 1024
+	hidden_size = 512
 	num_layers = 3
+
+	print('embed_size : {}'.format(embed_size))
 
 	model = RNNRecommender(embed_size, hidden_size, num_layers).to(device)
 
 	def weights_init(m):
-		if isinstance(m, nn.Conv2d):
-			torch.nn.init.xavier_uniform(m.weight)
-			torch.nn.init.constant(m.bias, 0.1)
+		if isinstance(m, nn.Conv1d):
+			torch.nn.init.normal_(m.weight.data)
+			torch.nn.init.normal_(m.bias.data)
+		elif isinstance(m, nn.Conv2d):
+			torch.nn.init.xavier_normal_(m.weight.data)
+			torch.nn.init.normal_(m.bias.data)
+		elif isinstance(m, nn.Conv3d):
+			torch.nn.init.xavier_normal_(m.weight.data)
+			torch.nn.init.normal_(m.bias.data)
+		elif isinstance(m, nn.ConvTranspose1d):
+			torch.nn.init.normal_(m.weight.data)
+			torch.nn.init.normal_(m.bias.data)
+		elif isinstance(m, nn.ConvTranspose2d):
+			torch.nn.init.xavier_normal_(m.weight.data)
+			torch.nn.init.normal_(m.bias.data)
+		elif isinstance(m, nn.ConvTranspose3d):
+			torch.nn.init.xavier_normal_(m.weight.data)
+			torch.nn.init.normal_(m.bias.data)
+		elif isinstance(m, nn.BatchNorm1d):
+			torch.nn.init.normal_(m.weight.data, mean=1, std=0.02)
+			torch.nn.init.constant_(m.bias.data, 0)
+		elif isinstance(m, nn.BatchNorm2d):
+			torch.nn.init.normal_(m.weight.data, mean=1, std=0.02)
+			torch.nn.init.constant_(m.bias.data, 0)
+		elif isinstance(m, nn.BatchNorm3d):
+			torch.nn.init.normal_(m.weight.data, mean=1, std=0.02)
+			torch.nn.init.constant_(m.bias.data, 0)
 		elif isinstance(m, nn.Linear):
-			torch.nn.init.xavier_normal_(m.weight)
+			torch.nn.init.xavier_normal_(m.weight.data)
+			torch.nn.init.normal_(m.bias.data)
+		elif isinstance(m, nn.LSTM):
+			for param in m.parameters():
+				if len(param.shape) >= 2:
+					torch.nn.init.orthogonal_(param.data)
+				else:
+					torch.nn.init.normal_(param.data)
+		elif isinstance(m, nn.LSTMCell):
+			for param in m.parameters():
+				if len(param.shape) >= 2:
+					torch.nn.init.orthogonal_(param.data)
+				else:
+					torch.nn.init.normal_(param.data)
+		elif isinstance(m, nn.GRU):
+			for param in m.parameters():
+				if len(param.shape) >= 2:
+					torch.nn.init.orthogonal_(param.data)
+				else:
+					torch.nn.init.normal_(param.data)
+		elif isinstance(m, nn.GRUCell):
+			for param in m.parameters():
+				if len(param.shape) >= 2:
+					torch.nn.init.orthogonal_(param.data)
+				else:
+					torch.nn.init.normal_(param.data)
+
 	model.apply(weights_init)
 
 	criterion = nn.MSELoss()
-#	optimizer = optim.Adam(model.parameters(), lr=0.001)
-	optimizer = optim.SGD(model.parameters(), lr=0.01)
+	optimizer = optim.Adam(model.parameters(), lr=0.001)
+#	optimizer = optim.SGD(model.parameters(), lr=0.01)
 
 	def train():
 		model.train()
@@ -235,16 +300,17 @@ def main():
 			input_x_s = input_x_s.to(device)
 			input_y_s = input_y_s.to(device)
 
-			packed_x_s = pack_padded_sequence(input_x_s, seq_lens, batch_first=True)
-			packed_y_s = pack_padded_sequence(input_y_s, seq_lens, batch_first=True)
+#			packed_x_s = pack_padded_sequence(input_x_s, seq_lens, batch_first=True)
+#			packed_y_s = pack_padded_sequence(input_y_s, seq_lens, batch_first=True)
 
 #			normalized_y_s = torch.Tensor(preprocessing.normalize(packed_y_s[0], norm='l2')).to(device)
 			model.zero_grad()
 			optimizer.zero_grad()
 
-			outputs = model(packed_x_s)
-
-			loss = criterion(outputs, packed_y_s[0])
+			outputs = model(input_x_s, seq_lens)
+			unpacked_y_s, _ = unpack(pack(input_y_s, seq_lens, batch_first=True), batch_first=True)
+#			outputs = outputs.reshape(unpacked_y_s.shape)
+			loss = criterion(outputs, unpacked_y_s)
 
 			loss.backward()
 			optimizer.step()
@@ -255,20 +321,21 @@ def main():
 		predict_count = 0
 		predict_mrr = 0.0
 		for i, data in enumerate(testloader, 0):
+#			if random.randrange(0,10) != 0:
+#				continue
 			input_x_s, input_y_s, seq_lens, timestamp_starts, timestamp_ends, indices_x, indices_y = data
 			input_x_s = input_x_s.to(device)
 			input_y_s = input_y_s.to(device)
-
-			packed_x_s = pack_padded_sequence(input_x_s, seq_lens, batch_first=True)
-			packed_y_s = pack_padded_sequence(input_y_s, seq_lens, batch_first=True)
+			input_y_s = input_y_s.cpu().numpy()
 
 			with torch.no_grad():
-				outputs = model(packed_x_s).cpu().numpy()
+				outputs = model(input_x_s, seq_lens)
+				
+			outputs = outputs.cpu().numpy()
 
 			batch_size = seq_lens.size(0)
 			seq_lens = seq_lens.cpu().numpy()
 
-			packed_idx = -1
 			for batch in range(batch_size):
 				cand_indices = rnn_input.get_candidates(start_time=timestamp_starts[batch],
 						end_time=timestamp_ends[batch], idx_count=100)
@@ -276,17 +343,17 @@ def main():
 				cand_matrix = np.matrix(cand_embed)
 
 				for seq_idx in range(seq_lens[batch]):
-					packed_idx += 1
 
 					next_idx = indices_y[batch][seq_idx]
 					if next_idx not in cand_indices:
 						continue
 
-					pred_vector = outputs[packed_idx]
+					pred_vector = outputs[batch][seq_idx]
+#					pred_vector = np.array(input_y_s[batch][seq_idx])
 					cand_eval = np.asarray(np.dot(cand_matrix, pred_vector).T).tolist()
 
 					infered_values = [(cand_indices[i], evaluated[0]) for i, evaluated in enumerate(cand_eval)]
-					infered_values.sort(key=lambda x:x[1])
+					infered_values.sort(key=lambda x:x[1], reverse=True)
 					# MRR@20
 					rank = -1
 					for infered_idx in range(20):
@@ -302,12 +369,14 @@ def main():
 
 	for epoch in range(1000):
 		start_time = time.time()
-		write_log('train epoch {} start'.format(epoch))
+#		write_log('train epoch {} start'.format(epoch))
+		print('train epoch {} start'.format(epoch))
 		train()
-		if epoch % 10 == 0:
-			write_log('train epoch {} mrr({}) tooks {}'.format(epoch, test_mrr_20(), time.time()-start_time))
-		else:
-			write_log('train epoch {} tooks {}'.format(epoch, time.time()-start_time))
+		print('train epoch {} mrr({}) tooks {}'.format(epoch, test_mrr_20(), time.time()-start_time))
+#		if epoch % 10 == 0:
+#			write_log('train epoch {} mrr({}) tooks {}'.format(epoch, test_mrr_20(), time.time()-start_time))
+#		else:
+#			write_log('train epoch {} tooks {}'.format(epoch, time.time()-start_time))
 
 
 if __name__ == '__main__':
