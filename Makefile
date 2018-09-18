@@ -17,7 +17,7 @@ MODE=one_week
 #MODE=three_month
 
 D2V_EMBED=default
-D2V_EMBED=1000
+D2V_EMBED=100
 
 BASE_PATH=cache/$(MODE)
 DATA_SET=data/simple data/one_week data/three_month
@@ -48,9 +48,9 @@ $(BASE_PATH)/data_for_all: $(DATA_SET) data/article_info.json $(BASE_PATH)/data_
 	$(call asked_delete, $@)
 	@python3 src/merge_days.py -i $(BASE_PATH)/data_per_day -o $@ -m $(MODE) -w data/article_info.json
 
-cache/article_to_vec.json: data/article_info.json src/article_w2v.py
+cache/article_to_vec.json_$(D2V_EMBED): data/article_info.json src/article_w2v.py
 	$(info [Makefile] $@)
-	@python src/article_w2v.py -i data/article_info.json -o $@
+	@python src/article_w2v.py -i data/article_info.json -o $@ -e $(D2V_EMBED)
 
 $(BASE_PATH)/rnn_input: $(DATA_SET) $(BASE_PATH)/data_for_all src/rnn_input_preprocess.py
 	$(info [Makefile] $@)
@@ -82,15 +82,15 @@ d2v_rnn_v2: $(BASE_PATH)/tf_record src/d2v_rnn_v2.py
 	$(info [Makefile] $@)
 	@python3 src/d2v_rnn_v2.py -i $(BASE_PATH)/tf_record
 
-$(BASE_PATH)/torch_input: $(BASE_PATH)/data_for_all cache/article_to_vec.json src/generate_torch_rnn_input.py
+$(BASE_PATH)/torch_input: $(BASE_PATH)/data_for_all src/generate_torch_rnn_input.py
 	$(info [Makefile] $@)
 	$(call asked_delete, $@)
-	@python3 src/generate_torch_rnn_input.py -u cache/article_to_vec.json -d $(BASE_PATH)/data_for_all -o $@
+	@python3 src/generate_torch_rnn_input.py -d $(BASE_PATH)/data_for_all -o $@
 
-d2v_rnn_torch: $(BASE_PATH)/torch_input src/d2v_rnn_torch.py
+d2v_rnn_torch: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) src/d2v_rnn_torch.py
 	$(info [Makefile] $@)
-	@python3 src/d2v_rnn_torch.py -i $(BASE_PATH)/torch_input
+	@python3 src/d2v_rnn_torch.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json_$(D2V_EMBED)
 
-run: d2v_rnn_torch
+run: cache/article_to_vec.json_$(D2V_EMBED)
 	$(info run)
 

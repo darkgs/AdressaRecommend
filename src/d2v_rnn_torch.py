@@ -19,10 +19,25 @@ from torch.utils.data.dataset import Dataset  # For custom datasets
 
 from optparse import OptionParser
 
+from ad_util import weights_init
+
 parser = OptionParser()
 parser.add_option('-i', '--input', dest='input', type='string', default=None)
+parser.add_option('-e', '--d2v_embed', dest='d2v_embed', type='string', default='1000')
+parser.add_option('-u', '--u2v_path', dest='u2v_path', type='string', default=None)
 
 from ad_util import write_log
+
+dict_url_vec = {}
+def load_url2vec(url2vec_path=None):
+	global dict_url_vec
+
+	dict_url_vec = {}
+	if url2vec_path == None:
+		return
+
+	with open(url2vec_path, 'r') as f_u2v:
+		dict_url_vec = json.load(f_u2v)
 
 class AdressaDataset(Dataset):
 	def __init__(self, dict_dataset):
@@ -86,13 +101,15 @@ class RNNInputTorch(object):
 		return self._dataset[data_type]
 
 	def idx2vec(self, idx):
-		return self._dict_rnn_input['idx2vec'][str(idx)]
+		global dict_url_vec
+#		return self._dict_rnn_input['idx2vec'][str(idx)]
+		return dict_url_vec[self._dict_rnn_input['idx2url'][str(idx)]]
 
 	def get_pad_idx(self):
 		return self._dict_rnn_input['pad_idx']
 
-	def get_embed_dimension(self):
-		return self._dict_rnn_input['embedding_dimension']
+#	def get_embed_dimension(self):
+#		return self._dict_rnn_input['embedding_dimension']
 
 	def get_candidates(self, start_time=-1, end_time=-1, idx_count=0):
 		if (start_time < 0) or (end_time < 0) or (idx_count <= 0):
@@ -182,12 +199,19 @@ class RNNRecommender(nn.Module):
 
 def main():
 	options, args = parser.parse_args()
-	if (options.input == None):
+	if (options.input == None) or (options.d2v_embed == None) or (options.u2v_path == None):
 		return
 
-	device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+	torch_input_path = options.input
+	embedding_dimension = int(options.d2v_embed)
+	url2vec_path = options.u2v_path
 
-	rnn_input_json_path = '{}/torch_rnn_input.dict'.format(options.input)
+	print('Loading url2vec : start')
+	load_url2vec(url2vec_path=url2vec_path)
+	print('Loading url2vec : end')
+
+	device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+	rnn_input_json_path = '{}/torch_rnn_input.dict'.format(torch_input_path)
 
 	rnn_input = RNNInputTorch(rnn_input_json_path)
 	def adressa_collate(batch):
@@ -222,70 +246,11 @@ def main():
 			batch_size=32, shuffle=True, num_workers=4,
 			collate_fn=adressa_collate)
 
-	embed_size = rnn_input.get_embed_dimension()
+	embed_size = embedding_dimension
 	hidden_size = 512
 	num_layers = 3
 
-	print('embed_size : {}'.format(embed_size))
-
 	model = RNNRecommender(embed_size, hidden_size, num_layers).to(device)
-
-	def weights_init(m):
-		if isinstance(m, nn.Conv1d):
-			torch.nn.init.normal_(m.weight.data)
-			torch.nn.init.normal_(m.bias.data)
-		elif isinstance(m, nn.Conv2d):
-			torch.nn.init.xavier_normal_(m.weight.data)
-			torch.nn.init.normal_(m.bias.data)
-		elif isinstance(m, nn.Conv3d):
-			torch.nn.init.xavier_normal_(m.weight.data)
-			torch.nn.init.normal_(m.bias.data)
-		elif isinstance(m, nn.ConvTranspose1d):
-			torch.nn.init.normal_(m.weight.data)
-			torch.nn.init.normal_(m.bias.data)
-		elif isinstance(m, nn.ConvTranspose2d):
-			torch.nn.init.xavier_normal_(m.weight.data)
-			torch.nn.init.normal_(m.bias.data)
-		elif isinstance(m, nn.ConvTranspose3d):
-			torch.nn.init.xavier_normal_(m.weight.data)
-			torch.nn.init.normal_(m.bias.data)
-		elif isinstance(m, nn.BatchNorm1d):
-			torch.nn.init.normal_(m.weight.data, mean=1, std=0.02)
-			torch.nn.init.constant_(m.bias.data, 0)
-		elif isinstance(m, nn.BatchNorm2d):
-			torch.nn.init.normal_(m.weight.data, mean=1, std=0.02)
-			torch.nn.init.constant_(m.bias.data, 0)
-		elif isinstance(m, nn.BatchNorm3d):
-			torch.nn.init.normal_(m.weight.data, mean=1, std=0.02)
-			torch.nn.init.constant_(m.bias.data, 0)
-		elif isinstance(m, nn.Linear):
-			torch.nn.init.xavier_normal_(m.weight.data)
-			torch.nn.init.normal_(m.bias.data)
-		elif isinstance(m, nn.LSTM):
-			for param in m.parameters():
-				if len(param.shape) >= 2:
-					torch.nn.init.orthogonal_(param.data)
-				else:
-					torch.nn.init.normal_(param.data)
-		elif isinstance(m, nn.LSTMCell):
-			for param in m.parameters():
-				if len(param.shape) >= 2:
-					torch.nn.init.orthogonal_(param.data)
-				else:
-					torch.nn.init.normal_(param.data)
-		elif isinstance(m, nn.GRU):
-			for param in m.parameters():
-				if len(param.shape) >= 2:
-					torch.nn.init.orthogonal_(param.data)
-				else:
-					torch.nn.init.normal_(param.data)
-		elif isinstance(m, nn.GRUCell):
-			for param in m.parameters():
-				if len(param.shape) >= 2:
-					torch.nn.init.orthogonal_(param.data)
-				else:
-					torch.nn.init.normal_(param.data)
-
 	model.apply(weights_init)
 
 	criterion = nn.MSELoss()

@@ -13,14 +13,13 @@ from ad_util import write_log
 
 parser = OptionParser()
 parser.add_option('-d', '--data_path', dest='data_path', type='string', default=None)
-parser.add_option('-u', '--u2v_path', dest='u2v_path', type='string', default=None)
 parser.add_option('-o', '--output_dir_path', dest='output_dir_path', type='string', default=None)
 
 dict_per_user = {}
 list_per_time = []
 
 dict_url_idx = {}
-dict_url_vec = {}
+#dict_url_vec = {}
 
 output_dir_path = None
 separated_output_dir_path = None
@@ -55,9 +54,9 @@ def generate_unique_url_idxs():
 
 	cur_idx = 0
 	for url, _ in dict_url_idx.items():
-		cur_idx += 1
 		dict_url_idx[url] = cur_idx
-	dict_url_idx['url_pad'] = 0
+		cur_idx += 1
+#	dict_url_idx['url_pad'] = 0
 
 
 def separated_process(args=(-1, [])):
@@ -127,32 +126,35 @@ def generate_merged_sequences():
 	merged_sequences.sort(key=lambda x:x[0])
 
 
-def load_url2vec(url2vec_path=None):
-	global dict_url_vec
-
-	dict_url_vec = {}
-	if url2vec_path == None:
-		return
-
-	with open(url2vec_path, 'r') as f_u2v:
-		dict_url_vec = json.load(f_u2v)
-
+#def load_url2vec(url2vec_path=None):
+#	global dict_url_vec
+#
+#	dict_url_vec = {}
+#	if url2vec_path == None:
+#		return
+#
+#	with open(url2vec_path, 'r') as f_u2v:
+#		dict_url_vec = json.load(f_u2v)
+#
 
 def generate_torch_rnn_input():
-	global merged_sequences, dict_url_idx, dict_url_vec, list_per_time, output_dir_path
+	global merged_sequences, dict_url_idx, list_per_time, output_dir_path
 
 	# idx2vec
-	embeding_dimension = len(next(iter(dict_url_vec.items()))[1])
-	dict_url_vec['url_pad'] = [float(0)] * embeding_dimension
+#	embeding_dimension = len(next(iter(dict_url_vec.items()))[1])
+#	dict_url_vec['url_pad'] = [float(0)] * embeding_dimension
+#
+#	dict_idx_vec = {idx:dict_url_vec[url] for url, idx in dict_url_idx.items()}
 
-	dict_idx_vec = {idx:dict_url_vec[url] for url, idx in dict_url_idx.items()}
-	
+	# idx2url
+	dict_idx2url = {idx:url for url, idx in dict_url_idx.items()}
+
 	# sequence_datas
 	total_seq_count = len(merged_sequences)
 
 	division_infos = [
 		('train', 0, int(total_seq_count * 8 / 10)),
-		('valid', int(total_seq_count * 8 / 10), int(total_seq_count * 9 / 10)),
+		('valid', int(total_seq_count * 8 / 10), int(total_seq_count - 1000)),
 #		('test', int(total_seq_count * 9 / 10), total_seq_count),
 		('test', total_seq_count - 1000, total_seq_count),
 	]
@@ -188,10 +190,11 @@ def generate_torch_rnn_input():
 	# save
 	dict_torch_rnn_input = {
 		'dataset': dict_seq_datas,
-		'idx2vec': dict_idx_vec,
+#		'idx2vec': dict_idx_vec,
+		'url2idx': dict_idx2url,
 		'time_idx': dict_time_idx,
 		'pad_idx': dict_url_idx['url_pad'],
-		'embedding_dimension': embeding_dimension,
+#		'embedding_dimension': embeding_dimension,
 	}
 
 	with open('{}/torch_rnn_input.dict'.format(output_dir_path), 'w') as f_extra:
@@ -203,13 +206,12 @@ def main():
 
 	options, args = parser.parse_args()
 
-	if (options.data_path == None) or (options.u2v_path == None) or (options.output_dir_path == None):
+	if (options.data_path == None) or (options.output_dir_path == None):
 		return
 
 	per_time_path = options.data_path + '/per_time.json'
 	per_user_path = options.data_path + '/per_user.json'
 
-	url2vec_path = options.u2v_path
 	output_dir_path = options.output_dir_path
 
 	if not os.path.exists(output_dir_path):
@@ -242,9 +244,9 @@ def main():
 	generate_merged_sequences()
 	print('Merging separated infos... Done')
 
-	print('Loading url2vec : start')
-	load_url2vec(url2vec_path=url2vec_path)
-	print('Loading url2vec : end')
+#	print('Loading url2vec : start')
+#	load_url2vec(url2vec_path=url2vec_path)
+#	print('Loading url2vec : end')
 
 	print('Generate torch_rnn_input : start')
 	generate_torch_rnn_input()

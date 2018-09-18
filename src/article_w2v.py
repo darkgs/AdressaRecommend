@@ -11,12 +11,14 @@ from ad_util import write_log
 parser = OptionParser()
 parser.add_option('-i', '--input', dest='input', type='string', default=None)
 parser.add_option('-o', '--output', dest='output', type='string', default=None)
+parser.add_option('-e', '--d2v_embed', dest='d2v_embed', type='string', default='1000')
 
 article_info_path = None
 output_path = None
+embedding_dimension = None
 
 def generate_w2v_map():
-	global article_info_path, output_path
+	global article_info_path, output_path, embedding_dimension
 
 	write_log('W2V Load article info : Start')
 	with open(article_info_path, 'r') as f_art:
@@ -42,7 +44,7 @@ def generate_w2v_map():
 	write_log('W2V Generate labeled_sentences : End')
 
 	w2v_model = gensim.models.Doc2Vec(alpha=.025, min_alpha=.001, min_count=1,
-					vector_size=200, window=10, dm=0, dbow_words=1, workers=16, epochs=10)
+					vector_size=embedding_dimension, window=10, dm=0, dbow_words=1, workers=16, epochs=10)
 
 	w2v_model.build_vocab(labeled_sentences)
 
@@ -62,6 +64,7 @@ def generate_w2v_map():
 	dict_w2v = {}
 	for url in  article_info.keys():
 		dict_w2v[url] = w2v_model[url].tolist()
+	dict_w2v['url_pad'] = [float(0)] * embeddim
 
 	write_log('W2V json dump : start')
 	with open(output_path, 'w') as out_f:
@@ -69,7 +72,7 @@ def generate_w2v_map():
 	write_log('W2V json dump : end')
 
 def main():
-	global article_info_path, output_path
+	global article_info_path, output_path, embedding_dimension
 
 	options, args = parser.parse_args()
 	if (options.output == None) or (options.input == None):
@@ -77,6 +80,7 @@ def main():
 
 	article_info_path = options.input
 	output_path = options.output
+	embedding_dimension = int(options.d2v_embed)
 
 	generate_w2v_map()
 
