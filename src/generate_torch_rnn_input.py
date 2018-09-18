@@ -52,11 +52,13 @@ def generate_unique_url_idxs():
 		for timestamp, url in sequence:
 			dict_url_idx[url] = 0
 
-	cur_idx = 0
+	dict_url_idx['url_pad'] = 0
+	cur_idx = 1
 	for url, _ in dict_url_idx.items():
+		if url == 'url_pad':
+			continue
 		dict_url_idx[url] = cur_idx
 		cur_idx += 1
-#	dict_url_idx['url_pad'] = 0
 
 
 def separated_process(args=(-1, [])):
@@ -191,7 +193,7 @@ def generate_torch_rnn_input():
 	dict_torch_rnn_input = {
 		'dataset': dict_seq_datas,
 #		'idx2vec': dict_idx_vec,
-		'url2idx': dict_idx2url,
+		'idx2url': dict_idx2url,
 		'time_idx': dict_time_idx,
 		'pad_idx': dict_url_idx['url_pad'],
 #		'embedding_dimension': embeding_dimension,

@@ -5,6 +5,9 @@ import datetime
 
 import numpy as np
 
+import torch
+import torch.nn as nn
+
 def write_log(log):
 	with open('log.txt', 'a') as log_f:
 		time_stamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')

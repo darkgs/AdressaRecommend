@@ -17,7 +17,7 @@ MODE=one_week
 #MODE=three_month
 
 D2V_EMBED=default
-D2V_EMBED=100
+D2V_EMBED=1000
 
 BASE_PATH=cache/$(MODE)
 DATA_SET=data/simple data/one_week data/three_month
@@ -91,6 +91,6 @@ d2v_rnn_torch: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) s
 	$(info [Makefile] $@)
 	@python3 src/d2v_rnn_torch.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json_$(D2V_EMBED)
 
-run: cache/article_to_vec.json_$(D2V_EMBED)
+run: d2v_rnn_torch
 	$(info run)
 
