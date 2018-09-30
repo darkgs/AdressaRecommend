@@ -142,12 +142,6 @@ def generate_merged_sequences():
 def generate_torch_rnn_input():
 	global merged_sequences, dict_url_idx, list_per_time, output_dir_path
 
-	# idx2vec
-#	embeding_dimension = len(next(iter(dict_url_vec.items()))[1])
-#	dict_url_vec['url_pad'] = [float(0)] * embeding_dimension
-#
-#	dict_idx_vec = {idx:dict_url_vec[url] for url, idx in dict_url_idx.items()}
-
 	# idx2url
 	dict_idx2url = {idx:url for url, idx in dict_url_idx.items()}
 
