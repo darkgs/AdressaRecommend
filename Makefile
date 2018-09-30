@@ -50,7 +50,7 @@ $(BASE_PATH)/data_for_all: $(DATA_SET) data/article_info.json $(BASE_PATH)/data_
 
 cache/article_to_vec.json_$(D2V_EMBED): data/article_info.json src/article_w2v.py
 	$(info [Makefile] $@)
-	@python src/article_w2v.py -i data/article_info.json -o $@ -e $(D2V_EMBED)
+	@python src/article_w2v.py -i data/article_info.json -o $@ -e $(D2V_EMBED) -m cache/d2v_model/d2v_model_$(D2V_EMBED).model
 
 $(BASE_PATH)/rnn_input: $(DATA_SET) $(BASE_PATH)/data_for_all src/rnn_input_preprocess.py
 	$(info [Makefile] $@)
