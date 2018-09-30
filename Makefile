@@ -91,10 +91,10 @@ d2v_rnn_torch: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) s
 	$(info [Makefile] $@)
 	@python3 src/d2v_rnn_torch.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json_$(D2V_EMBED)
 
-$(BASE_PATH)/sequence_similarity.json: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) src/sequence_similarity.py
+$(BASE_PATH)/sequence_difference/$(D2V_EMBED): $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) src/sequence_difference.py
 	$(info [Makefile] $@)
-	@python3 src/sequence_similarity.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json_$(D2V_EMBED) -o $@
+	@python3 src/sequence_difference.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json_$(D2V_EMBED) -o $@
 
-run: $(BASE_PATH)/sequence_similarity.json
+run: $(BASE_PATH)/sequence_difference/$(D2V_EMBED)
 	$(info run)
 
