@@ -7,6 +7,8 @@ import json
 import numpy as np
 
 import torch
+import torch.nn as nn
+import torch.optim as optim
 
 from torch.utils.data.dataset import Dataset  # For custom datasets
 
@@ -23,9 +25,12 @@ parser.add_option('-o', '--output_dir_path', dest='output_dir_path', type='strin
 class SequenceGraph(object):
 
 	def __init__(self, rnn_input_json_path, url2vec_path,
-			embedding_dimension):
+			embedding_dimension, raw_dataset_path):
 
 		self._embedding_dimension = embedding_dimension
+
+		if os.path.exists(raw_dataset_path):
+			return
 
 		with open(rnn_input_json_path, 'r') as f_rnn_input:
 		    self._dict_rnn_input = json.load(f_rnn_input)
@@ -116,6 +121,9 @@ class SequenceGraph(object):
 		return prev_diff + next_diff
 
 	def generate_dataset(self, raw_dataset_path):
+		if os.path.exists(raw_dataset_path):
+			return
+
 		diff_of_docs = []
 		raw_dataset_path_tmp = raw_dataset_path + '_tmp'
 		if os.path.exists(raw_dataset_path_tmp):
@@ -146,7 +154,8 @@ class SequenceGraph(object):
 #			os.system('rm {}'.format(raw_dataset_path_tmp))
 
 		dict_dataset = {
-			'idx2vec': self._dict_rnn_input['idx2url'],
+			'idx2vec': {idx:self.idx2vec(idx) \
+				for idx, _ in self._dict_rnn_input['idx2url'].items()},
 			'diff_of_docs': diff_of_docs,
 		}
 
@@ -202,6 +211,105 @@ class ArticleInputTorch(object):
 		return torch.FloatTensor(vec_0s), torch.FloatTensor(vec_1s), \
 			torch.FloatTensor(diffs)
 
+class ArticleEncoderModel(nn.Module):
+	def __init__(self, embed_size):
+		super(ArticleEncoderModel, self).__init__()
+
+		hidden_size = int(embed_size * 3 / 2)
+
+		self.bn = nn.BatchNorm1d(embed_size)
+		self.linear = nn.Sequential(
+			nn.Linear(embed_size, hidden_size),
+			nn.Linear(hidden_size, hidden_size),
+			nn.Linear(hidden_size, embed_size),
+		)
+		self.drop = nn.Dropout(0.5)
+
+	def forward(self, x, y):
+		x = self.bn(x)
+		x = self.linear(x)
+
+		y = self.bn(y)
+		y = self.linear(y)
+
+		if self.training:
+			x = self.drop(x)
+			y = self.drop(y)
+
+		return x, y
+
+
+class ArticleEncoder(object):
+	def __init__(self, torch_input, embed_size):
+		# generate DataLoaders
+		self._trainloader = torch.utils.data.DataLoader(torch_input.get_dataset(data_type='train'),
+				batch_size=512, shuffle=True, num_workers=16,
+				collate_fn=ArticleInputTorch.collate)
+
+		self._validloader = torch.utils.data.DataLoader(torch_input.get_dataset(data_type='valid'),
+				batch_size=512, shuffle=True, num_workers=16,
+				collate_fn=ArticleInputTorch.collate)
+
+		self._testloader = torch.utils.data.DataLoader(torch_input.get_dataset(data_type='test'),
+				batch_size=128, shuffle=True, num_workers=4,
+				collate_fn=ArticleInputTorch.collate)
+
+		self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+		self._model = ArticleEncoderModel(embed_size).to(self._device)
+		self._model.apply(weights_init)
+
+		self._criterion = nn.MSELoss()
+		self._optimizer = optim.Adam(self._model.parameters(), lr=0.001)
+
+	def train(self):
+		model = self._model
+		device = self._device
+		dataloader = self._trainloader
+		criterion = self._criterion
+		optimizer = self._optimizer
+
+		model.train()
+		for i, data in enumerate(dataloader, 0):
+			model.zero_grad()
+			optimizer.zero_grad()
+
+			vec_0s, vec_1s, diff = data
+			vec_0s = vec_0s.to(device)
+			vec_1s = vec_1s.to(device)
+			diff = diff.to(device)
+
+			vec_0s_embed, vec_1s_embed = model(vec_0s, vec_1s)
+
+			mse = torch.sqrt(torch.sub(vec_0s_embed, vec_1s_embed)).mean(dim=1)
+
+			loss = criterion(mse, diff)
+
+			loss.backward()
+			optimizer.step()
+
+	def valid(self):
+		model = self._model
+		device = self._device
+		dataloader = self._validloader
+		criterion = self._criterion
+
+		model.eval()
+		loss_sum = 0.0
+		for i, data in enumerate(dataloader, 0):
+			vec_0s, vec_1s, diff = data
+			vec_0s = vec_0s.to(device)
+			vec_1s = vec_1s.to(device)
+			diff = diff.to(device)
+
+			vec_0s_embed, vec_1s_embed = model(vec_0s, vec_1s)
+			mse = torch.sqrt(torch.sub(vec_0s_embed, vec_1s_embed)).mean(dim=1)
+
+			loss = criterion(mse, diff)
+
+			loss_sum += loss
+		return loss_sum / float(len(dataloader))
+
 def main():
 	options, args = parser.parse_args()
 	if (options.input == None) or (options.d2v_embed == None) or \
@@ -221,18 +329,15 @@ def main():
 
 	raw_dataset_path = '{}/raw_dataset.json'.format(output_dir_path)
 
-	sg = SequenceGraph(rnn_input_json_path, url2vec_path, embedding_dimension)
+	sg = SequenceGraph(rnn_input_json_path, url2vec_path,
+			embedding_dimension, raw_dataset_path)
 	sg.generate_dataset(raw_dataset_path)
 
 	torch_input = ArticleInputTorch(raw_dataset_path)
+	
+	ae = ArticleEncoder(torch_input, embedding_dimension)
 
-	trainloader = torch.utils.data.DataLoader(torch_input.get_dataset(data_type='train'),
-			batch_size=128, shuffle=True, num_workers=16,
-			collate_fn=ArticleInputTorch.collate)
-
-	testloader = torch.utils.data.DataLoader(torch_input.get_dataset(data_type='test'),
-			batch_size=32, shuffle=True, num_workers=4,
-			collate_fn=ArticleInputTorch.collate)
+	ae.train()
 
 
 if __name__ == '__main__':
