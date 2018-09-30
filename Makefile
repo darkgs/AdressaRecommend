@@ -17,7 +17,7 @@ MODE=one_week
 #MODE=three_month
 
 D2V_EMBED=default
-D2V_EMBED=100
+D2V_EMBED=1000
 
 BASE_PATH=cache/$(MODE)
 DATA_SET=data/simple data/one_week data/three_month
@@ -50,7 +50,7 @@ $(BASE_PATH)/data_for_all: $(DATA_SET) data/article_info.json $(BASE_PATH)/data_
 
 cache/article_to_vec.json_$(D2V_EMBED): data/article_info.json src/article_w2v.py
 	$(info [Makefile] $@)
-	@python src/article_w2v.py -i data/article_info.json -o $@ -e $(D2V_EMBED)
+	@python src/article_w2v.py -i data/article_info.json -o $@ -e $(D2V_EMBED) -m cache/d2v_model/d2v_model_$(D2V_EMBED).model
 
 $(BASE_PATH)/rnn_input: $(DATA_SET) $(BASE_PATH)/data_for_all src/rnn_input_preprocess.py
 	$(info [Makefile] $@)
