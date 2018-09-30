@@ -15,6 +15,7 @@ from torch.utils.data.dataset import Dataset  # For custom datasets
 from optparse import OptionParser
 
 from ad_util import weights_init
+from ad_util import write_log
 
 parser = OptionParser()
 parser.add_option('-i', '--input', dest='input', type='string', default=None)
@@ -243,15 +244,15 @@ class ArticleEncoder(object):
 	def __init__(self, torch_input, embed_size):
 		# generate DataLoaders
 		self._trainloader = torch.utils.data.DataLoader(torch_input.get_dataset(data_type='train'),
-				batch_size=512, shuffle=True, num_workers=16,
+				batch_size=128, shuffle=True, num_workers=16,
 				collate_fn=ArticleInputTorch.collate)
 
 		self._validloader = torch.utils.data.DataLoader(torch_input.get_dataset(data_type='valid'),
-				batch_size=512, shuffle=True, num_workers=16,
+				batch_size=128, shuffle=True, num_workers=16,
 				collate_fn=ArticleInputTorch.collate)
 
 		self._testloader = torch.utils.data.DataLoader(torch_input.get_dataset(data_type='test'),
-				batch_size=128, shuffle=True, num_workers=4,
+				batch_size=64, shuffle=True, num_workers=4,
 				collate_fn=ArticleInputTorch.collate)
 
 		self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -310,6 +311,32 @@ class ArticleEncoder(object):
 			loss_sum += loss
 		return loss_sum / float(len(dataloader))
 
+	def save(self, epoch=0, model_path=None):
+		if model_path == None:
+			return
+
+		states = {
+			'epoch': epoch,
+			'model': self._model.state_dict(),
+			'optimizer': self._optimizer.state_dict(),
+		}
+		
+		torch.save(states, model_path)
+		write_log('Model saved! - {}'.format(model_path))
+
+	def load(self, epoch=None, model_path=None):
+		if model_path == None:
+			return 0
+
+		states = torch.load(model_path)
+
+		self._model.load_state_dict(states['model'])
+		self._optimizer.load_state_dict(states['optimizer'])	
+
+		write_log('Model loaded!! - {}'.format(model_path))
+
+		return states['epoch']
+
 def main():
 	options, args = parser.parse_args()
 	if (options.input == None) or (options.d2v_embed == None) or \
@@ -328,6 +355,7 @@ def main():
 		os.system('mkdir -p {}'.format(output_dir_path))
 
 	raw_dataset_path = '{}/raw_dataset.json'.format(output_dir_path)
+	model_path = '{}/article_encoder.pth.tar'.format(output_dir_path)
 
 	sg = SequenceGraph(rnn_input_json_path, url2vec_path,
 			embedding_dimension, raw_dataset_path)
@@ -337,7 +365,14 @@ def main():
 	
 	ae = ArticleEncoder(torch_input, embedding_dimension)
 
-	ae.train()
+	start_epoch = ae.load(model_path)
+	for epoch in range(start_epoch, 100):
+		ae.train()
+		valid_loss = ae.valid()
+		write_log('epoch {} : valid loss({})'.format(epoch, valid_loss))
+
+		if epoch > 0 and epoch % 10 == 0:
+			ae.save(epoch, model_path)
 
 
 if __name__ == '__main__':
