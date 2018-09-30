@@ -28,9 +28,13 @@ parser.add_option('-u', '--u2v_path', dest='u2v_path', type='string', default=No
 
 from ad_util import write_log
 
+# [TODO] to be removed
+embedding_dimension = None
 dict_url_vec = {}
 def load_url2vec(url2vec_path=None):
 	global dict_url_vec
+	# [TODO] to be removed
+	global embedding_dimension
 
 	dict_url_vec = {}
 	if url2vec_path == None:
@@ -38,6 +42,9 @@ def load_url2vec(url2vec_path=None):
 
 	with open(url2vec_path, 'r') as f_u2v:
 		dict_url_vec = json.load(f_u2v)
+
+	# [TODO] to be removed
+	dict_url_vec['url_pad'] = [float(0)] * embedding_dimension
 
 class AdressaDataset(Dataset):
 	def __init__(self, dict_dataset):
@@ -198,6 +205,9 @@ class RNNRecommender(nn.Module):
 
 
 def main():
+	# [TODO] to be removed
+	global embedding_dimension
+
 	options, args = parser.parse_args()
 	if (options.input == None) or (options.d2v_embed == None) or (options.u2v_path == None):
 		return
