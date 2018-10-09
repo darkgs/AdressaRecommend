@@ -2,6 +2,7 @@
 import os
 import random
 import time
+import math
 
 import json
 import numpy as np
@@ -9,6 +10,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.nn.functional as F
 
 from torch.utils.data.dataset import Dataset  # For custom datasets
 
@@ -26,11 +28,11 @@ parser.add_option('-o', '--output_dir_path', dest='output_dir_path', type='strin
 class SequenceGraph(object):
 
 	def __init__(self, rnn_input_json_path, url2vec_path,
-			embedding_dimension, raw_dataset_path):
+			embedding_dimension, raw_dataset_path, do_stat=False):
 
 		self._embedding_dimension = embedding_dimension
 
-		if os.path.exists(raw_dataset_path):
+		if not do_stat and os.path.exists(raw_dataset_path):
 			return
 
 		with open(rnn_input_json_path, 'r') as f_rnn_input:
@@ -65,6 +67,46 @@ class SequenceGraph(object):
 
 				key_prev_idx = key_idx
 
+		def do_stat_for_graph(graph):
+			prev_sum = 0
+			prev_pow2_sum = 0
+			prev_max = 0
+			next_sum = 0
+			next_pow2_sum = 0
+			next_max = 0
+			total_count = 0
+			for idx, data in graph.items():
+				total_count += 1
+				prev_count = 0
+				for _, w in data['prev'].items():
+					prev_count += w
+				prev_sum += prev_count
+				prev_pow2_sum += prev_count ** 2
+				prev_max = max(prev_max, prev_count)
+
+				next_count = 0
+				for _, w in data['next'].items():
+					next_count += w
+				next_sum += next_count
+				next_pow2_sum += next_count ** 2
+				next_max = max(next_max, next_count)
+
+			prev_avg = float(prev_sum)/float(total_count)
+			prev_pow2_avg = float(prev_pow2_sum)/float(total_count)
+			prev_var = prev_pow2_avg - (prev_avg ** 2)
+
+			next_avg = float(next_sum)/float(total_count)
+			next_pow2_avg = float(next_pow2_sum)/float(total_count)
+			next_var = next_pow2_avg - (next_avg ** 2)
+
+			print('Total count : {}'.format(total_count))
+			print('Prev : avg({}) var({}) std({}) max({})'.format(prev_avg, prev_var, math.sqrt(prev_var), prev_max))
+			print('Next : avg({}) var({}) std({}) max({})'.format(next_avg, next_var, math.sqrt(next_var), next_max))
+
+		if do_stat:
+			print('== Full Graph ===')
+			do_stat_for_graph(self._graph)
+
 		def extract_top_k(dict_data, k):
 			sorted_list = sorted([(n_id, n_count) for n_id, n_count in dict_data.items()], key=lambda x: int(x[1]))
 			count_sum = 0
@@ -77,13 +119,31 @@ class SequenceGraph(object):
 			
 			return sorted_list
 
-		topk = 3
+		topk = 10
 		self._graph_topk = {}
 		# Top n of adjacent nodes and normalization
 		for node_id, dict_adjacent in self._graph.items():
 			self._graph_topk[node_id] = {}
 			self._graph_topk[node_id]['prev'] = extract_top_k(self._graph[node_id]['prev'], topk)
 			self._graph_topk[node_id]['next'] = extract_top_k(self._graph[node_id]['next'], topk)
+
+		def do_stat_for_topk(graph):
+			prev_sum = 0.0
+			next_sum = 0.0
+			total_count = 0
+			for idx, data in graph.items():
+				total_count += 1
+				for _, w in data['prev']:
+					prev_sum += w
+				for _, w in data['next']:
+					next_sum += w
+
+			print('Prev cover({})'.format(prev_sum/float(total_count)))
+			print('Next cover({})'.format(next_sum/float(total_count)))
+
+		if do_stat:
+			print('== TOP{} Graph ==='.format(topk))
+			do_stat_for_topk(self._graph_topk)
 
 	def idx2vec(self, idx):
 		key_idx = idx if type(idx) is str else str(idx)
@@ -179,7 +239,7 @@ class ArticleDataset(Dataset):
 class ArticleInputTorch(object):
 	def __init__(self, raw_dataset_path):
 		with open(raw_dataset_path, 'r') as f_data:
-			raw_dataset =  json.load(f_data)
+			raw_dataset = json.load(f_data)
 			diff_of_docs = [ (raw_dataset['idx2vec'][str(idx_0)], 
 					raw_dataset['idx2vec'][str(idx_1)], diff) \
 				for idx_0, idx_1, diff in raw_dataset['diff_of_docs'] ]
@@ -213,24 +273,27 @@ class ArticleInputTorch(object):
 			torch.FloatTensor(diffs)
 
 class ArticleEncoderModel(nn.Module):
-	def __init__(self, embed_size):
+	def __init__(self, embed_size, output_size):
 		super(ArticleEncoderModel, self).__init__()
 
 		hidden_size = int(embed_size * 3 / 2)
 
-		self.bn = nn.BatchNorm1d(embed_size)
 		self.linear = nn.Sequential(
 			nn.Linear(embed_size, hidden_size),
-			nn.Linear(hidden_size, hidden_size),
+#			nn.BatchNorm1d(hidden_size),
+#			nn.ReLU(),
 			nn.Linear(hidden_size, embed_size),
+			nn.BatchNorm1d(embed_size),
+			nn.ReLU(),
+			nn.Linear(embed_size, output_size),
+			nn.BatchNorm1d(output_size),
+			nn.ReLU(),
 		)
 		self.drop = nn.Dropout(0.5)
 
 	def forward(self, x, y):
-		x = self.bn(x)
 		x = self.linear(x)
 
-		y = self.bn(y)
 		y = self.linear(y)
 
 		if self.training:
@@ -241,23 +304,23 @@ class ArticleEncoderModel(nn.Module):
 
 
 class ArticleEncoder(object):
-	def __init__(self, torch_input, embed_size):
+	def __init__(self, torch_input, embed_size, output_size):
 		# generate DataLoaders
 		self._trainloader = torch.utils.data.DataLoader(torch_input.get_dataset(data_type='train'),
-				batch_size=128, shuffle=True, num_workers=16,
+				batch_size=256, shuffle=True, num_workers=16,
 				collate_fn=ArticleInputTorch.collate)
 
 		self._validloader = torch.utils.data.DataLoader(torch_input.get_dataset(data_type='valid'),
-				batch_size=128, shuffle=True, num_workers=16,
+				batch_size=256, shuffle=False, num_workers=16,
 				collate_fn=ArticleInputTorch.collate)
 
 		self._testloader = torch.utils.data.DataLoader(torch_input.get_dataset(data_type='test'),
-				batch_size=64, shuffle=True, num_workers=4,
+				batch_size=128, shuffle=False, num_workers=4,
 				collate_fn=ArticleInputTorch.collate)
 
 		self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-		self._model = ArticleEncoderModel(embed_size).to(self._device)
+		self._model = ArticleEncoderModel(embed_size, output_size).to(self._device)
 		self._model.apply(weights_init)
 
 		self._criterion = nn.MSELoss()
@@ -271,6 +334,7 @@ class ArticleEncoder(object):
 		optimizer = self._optimizer
 
 		model.train()
+		loss_sum = 0.0
 		for i, data in enumerate(dataloader, 0):
 			model.zero_grad()
 			optimizer.zero_grad()
@@ -281,13 +345,14 @@ class ArticleEncoder(object):
 			diff = diff.to(device)
 
 			vec_0s_embed, vec_1s_embed = model(vec_0s, vec_1s)
-
-			mse = torch.sqrt(torch.sub(vec_0s_embed, vec_1s_embed)).mean(dim=1)
-
-			loss = criterion(mse, diff)
+			mse = torch.pow(torch.sub(vec_0s_embed, vec_1s_embed), 2).mean(dim=1)
+			loss = criterion(torch.norm(mse, dim=0), torch.norm(diff, dim=0))
+			loss_sum += loss.item()
 
 			loss.backward()
 			optimizer.step()
+
+		return loss_sum / float(len(dataloader.dataset))
 
 	def valid(self):
 		model = self._model
@@ -298,18 +363,20 @@ class ArticleEncoder(object):
 		model.eval()
 		loss_sum = 0.0
 		for i, data in enumerate(dataloader, 0):
+			model.zero_grad()
 			vec_0s, vec_1s, diff = data
 			vec_0s = vec_0s.to(device)
 			vec_1s = vec_1s.to(device)
 			diff = diff.to(device)
 
 			vec_0s_embed, vec_1s_embed = model(vec_0s, vec_1s)
-			mse = torch.sqrt(torch.sub(vec_0s_embed, vec_1s_embed)).mean(dim=1)
+			mse = torch.pow(torch.sub(vec_0s_embed, vec_1s_embed), 2).mean(dim=1)
 
-			loss = criterion(mse, diff)
+			loss = criterion(torch.norm(mse, dim=0), torch.norm(diff, dim=0))
 
-			loss_sum += loss
-		return loss_sum / float(len(dataloader))
+			loss_sum += loss.item()
+
+		return loss_sum / float(len(dataloader.dataset))
 
 	def save(self, epoch=0, model_path=None):
 		if model_path == None:
@@ -325,7 +392,7 @@ class ArticleEncoder(object):
 		write_log('Model saved! - {}'.format(model_path))
 
 	def load(self, epoch=None, model_path=None):
-		if model_path == None:
+		if model_path == None or not os.path.exists(model_path):
 			return 0
 
 		states = torch.load(model_path)
@@ -363,16 +430,18 @@ def main():
 
 	torch_input = ArticleInputTorch(raw_dataset_path)
 	
-	ae = ArticleEncoder(torch_input, embedding_dimension)
+	new_article_dimension = 256
+	ae = ArticleEncoder(torch_input, embedding_dimension, new_article_dimension)
 
 	start_epoch = ae.load(model_path)
 	for epoch in range(start_epoch, 100):
-		ae.train()
+		train_loss = ae.train()
 		valid_loss = ae.valid()
-		write_log('epoch {} : valid loss({})'.format(epoch, valid_loss))
+#		write_log('epoch {} : train loss({}), valid loss({})'.format(epoch, train_loss, valid_loss))
+		print('epoch {} : train loss({}), valid loss({})'.format(epoch, train_loss, valid_loss))
 
 		if epoch > 0 and epoch % 10 == 0:
-			ae.save(epoch, model_path)
+			ae.save(epoch, '{}_e{}'.format(model_path, epoch))
 
 
 if __name__ == '__main__':
