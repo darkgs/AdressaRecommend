@@ -53,7 +53,9 @@ class AdressaDataset(Dataset):
 		return self._data_len
 
 class RNNInputTorch(object):
-	def __init__(self, rnn_input_json_path):
+	def __init__(self, rnn_input_json_path, dict_url2vec):
+		self._dict_url2vec = dict_url2vec
+
 		with open(rnn_input_json_path, 'r') as f_rnn_input:
 			self._dict_rnn_input = json.load(f_rnn_input)
 
@@ -102,8 +104,7 @@ class RNNInputTorch(object):
 		return self._dataset[data_type]
 
 	def idx2vec(self, idx):
-		global dict_url_vec
-		return dict_url_vec[self._dict_rnn_input['idx2url'][str(idx)]]
+		return self._dict_url2vec[self._dict_rnn_input['idx2url'][str(idx)]]
 
 	def get_pad_idx(self):
 		return self._dict_rnn_input['pad_idx']
@@ -195,6 +196,7 @@ class RNNRecommender(nn.Module):
 
 
 def main():
+	global dict_url_vec
 
 	options, args = parser.parse_args()
 	if (options.input == None) or (options.d2v_embed == None) or (options.u2v_path == None):
@@ -211,7 +213,7 @@ def main():
 	device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 	rnn_input_json_path = '{}/torch_rnn_input.dict'.format(torch_input_path)
 
-	rnn_input = RNNInputTorch(rnn_input_json_path)
+	rnn_input = RNNInputTorch(rnn_input_json_path, dict_url_vec)
 	def adressa_collate(batch):
 		batch.sort(key=lambda x: x[2], reverse=True)
 
@@ -312,7 +314,6 @@ def main():
 						continue
 
 					pred_vector = outputs[batch][seq_idx]
-#					pred_vector = np.array(input_y_s[batch][seq_idx])
 					cand_eval = np.asarray(np.dot(cand_matrix, pred_vector).T).tolist()
 
 					infered_values = [(cand_indices[i], evaluated[0]) for i, evaluated in enumerate(cand_eval)]

@@ -220,3 +220,15 @@ class RNN_Input:
 
 		return input_x, input_y, seq_len-1, timestamps
 
+
+def load_json(dict_path=None):
+	dict_ret = {}
+
+	if dict_path == None:
+		return
+
+	with open(dict_path, 'r') as f_dict:
+		dict_ret = json.load(f_dict)
+
+	return dict_ret
+

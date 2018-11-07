@@ -1,5 +1,5 @@
 
-import os
+import os, sys
 import json
 import random
 
@@ -13,24 +13,15 @@ from torch.utils.data.dataset import Dataset  # For custom datasets
 
 from optparse import OptionParser
 
+from ad_util import weights_init
+from ad_util import load_json
+
 parser = OptionParser()
 parser.add_option('-i', '--input', dest='input', type='string', default=None)
 parser.add_option('-e', '--d2v_embed', dest='d2v_embed', type='string', default='1000')
 parser.add_option('-u', '--u2v_path', dest='u2v_path', type='string', default=None)
 parser.add_option('-a', '--u2i_path', dest='u2i_path', type='string', default=None)
 parser.add_option('-w', '--ws_path', dest='ws_path', type='string', default=None)
-
-def load_json(dict_path=None):
-	dict_ret = {}
-
-	if dict_path == None:
-		return
-
-	with open(dict_path, 'r') as f_dict:
-		dict_ret = json.load(f_dict)
-
-	return dict_ret
-
 
 class ArticleModel(nn.Module):
 	def __init__(self, dim_article, dim_h, corruption_rate=0.3):
@@ -78,6 +69,9 @@ class ArticleModel(nn.Module):
 		y2 = torch.sigmoid(self._decode(h2))
 		return [h0, h1, h2], [y0, y1, y2]
 
+	def inference(self, batch):
+		return batch
+
 
 class ArticleRepresentationDataset(Dataset):
 	def __init__(self, dataset):
@@ -90,7 +84,7 @@ class ArticleRepresentationDataset(Dataset):
 		return len(self._dataset)
 
 
-class ArticleRepresentation():
+class ArticleRepresentation(object):
 	def __init__(self, dict_url2vec, dict_url2info, ws_path):
 		self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 		self._dict_url2vec = dict_url2vec
@@ -106,8 +100,10 @@ class ArticleRepresentation():
 		
 		# Model
 		self._vae = ArticleModel(self._dim_article, self._dim_h).to(self._device)
-
+		self._vae.apply(weights_init)
 		self._optimizer = torch.optim.SGD(self._vae.parameters(), lr=learning_rate, momentum=0.9)
+
+		self._saved_model_path = self._ws_path + '/article_representation_vae.pth.tar'
 
 	def get_dataloader(self):
 		saved_rnn_input_path = self._ws_path + '/rnn_input_article.json'
@@ -130,16 +126,16 @@ class ArticleRepresentation():
 		train_dataset = ArticleRepresentationDataset(dict_rnn_input['train'])
 		test_dataset = ArticleRepresentationDataset(dict_rnn_input['test'])
 
-		self._trainloader = torch.utils.data.DataLoader(train_dataset,
+		train_dataloader = torch.utils.data.DataLoader(train_dataset,
 						batch_size=128, shuffle=True, num_workers=16,
 						collate_fn=article_collate)
 
-		self._testloader = torch.utils.data.DataLoader(test_dataset,
+		test_dataloader = torch.utils.data.DataLoader(test_dataset,
 						batch_size=32, shuffle=True, num_workers=4,
 						collate_fn=article_collate)
 
 
-		return dict_rnn_input['train'], dict_rnn_input['test']
+		return train_dataloader, test_dataloader
 
 	def generate_rnn_input(self):
 		stat = False
@@ -207,7 +203,7 @@ class ArticleRepresentation():
 
 				for i in range(len(urls)):
 					for j in range(i, len(urls)):
-						for _ in range(10):
+						for _ in range(100):
 							url_triples.append((urls[i], urls[j], another_urls[random.randrange(len(another_urls))]))
 
 			return url_triples
@@ -235,15 +231,17 @@ class ArticleRepresentation():
 	def train(self):
 		self._vae.train()
 		train_loss = 0.0
-		batch_count = len(self._trainloader)
+		batch_count = len(self._train_dataloader)
 		
-		for batch_idx, train_input in enumerate(self._trainloader):
+		for batch_idx, train_input in enumerate(self._train_dataloader):
 			train_input = train_input.to(self._device)
 			x = [train_input[:,0,:], train_input[:,1,:], train_input[:,2,:]]
 
 			h, y = self._vae(*x)
 
 			self._optimizer.zero_grad()
+			self._vae.zero_grad()
+
 			loss = self.loss_f(x, h, y)
 			loss.backward()
 			self._optimizer.step()
@@ -256,9 +254,9 @@ class ArticleRepresentation():
 		self._vae.eval()
 
 		test_loss = 0.0
-		batch_count = len(self._testloader)
+		batch_count = len(self._test_dataloader)
 		
-		for batch_idx, test_input in enumerate(self._testloader):
+		for batch_idx, test_input in enumerate(self._test_dataloader):
 			test_input = test_input.to(self._device)
 			x = [test_input[:,0,:], test_input[:,1,:], test_input[:,2,:]]
 
@@ -268,6 +266,35 @@ class ArticleRepresentation():
 
 			test_loss += loss.item()
 		return test_loss / batch_count
+
+	def generate_article_vector(self, batch):
+		self._vae.eval()
+
+		return self._vae.inference(batch)
+
+	def save_model(self, epoch, test_loss):
+		dict_states = {
+			'epoch': epoch,
+			'test_loss': test_loss,
+			'vae': self._vae.state_dict(),
+			'optimizer': self._optimizer.state_dict(),
+		}
+
+		torch.save(dict_states, self._saved_model_path)
+
+	def load_model(self):
+		if not os.path.exists(self._saved_model_path):
+			return 0, sys.float_info.max
+		dict_states = torch.load(self._saved_model_path)
+		self._vae.load_state_dict(dict_states['vae'])
+		self._optimizer.load_state_dict(dict_states['optimizer'])
+
+		return dict_states['epoch'], dict_states['test_loss']
+
+
+class UserRepresentation(object):
+	def __init__(self, ws_path, torch_input_path):
+		pass
 
 
 def main():
@@ -294,14 +321,34 @@ def main():
 	dict_url2info = load_json(url2info_path)
 	print('Loading url2info : end')
 
+	# Generate article_representation model
 	article_representation = ArticleRepresentation(dict_url2vec, dict_url2info, ws_path)
 
-	for epoch in range(100):
-		train_loss = article_representation.train()
-		test_loss = article_representation.test()
+	start_epoch, best_test_loss = article_representation.load_model()
+	total_epoch = 1000
+	if start_epoch < total_epoch:
+#if start_epoch < 1:
+		endure = 0
+		for epoch in range(start_epoch, total_epoch):
+			if endure > 10:
+				print('Early stop!')
+				break
 
-		print('epoch {} - train loss({}) test loss({})'.format(epoch, train_loss, test_loss))
+			train_loss = article_representation.train()
+			test_loss = article_representation.test()
 
+			print('epoch {} - train loss({}) test loss({})'.format(epoch, train_loss, test_loss))
+
+			if epoch % 5 == 0:
+				if test_loss < best_test_loss:
+					best_test_loss = test_loss
+					endure = 0
+					article_representation.save_model(epoch, test_loss)
+					print('Model saved! - test loss({})'.format(test_loss))
+				else:
+					endure += 1
+
+	# Generate user_representation model
 
 if __name__ == '__main__':
 	main()
