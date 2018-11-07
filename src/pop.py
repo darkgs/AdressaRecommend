@@ -18,7 +18,8 @@ def main():
 	rnn_input = RNN_Input(rnn_input_path)
 
 	max_seq_len = rnn_input.max_seq_len()
-	for epoch in range(100):
+	mrr_sum = 0.0
+	for epoch in range(20):
 		test_x, test_y, test_seq_len, test_timestamps = rnn_input.generate_batchs(input_type='test', batch_size=100)
 
 		predict_total = 0
@@ -46,6 +47,9 @@ def main():
 
 		mrr_metric = predict_mrr / float(predict_total)
 		print('epoch : {} - mrr:{}'.format(epoch, mrr_metric))
+
+		mrr_sum += mrr_metric
+	print('mrr avg : {}'.format(mrr_sum/20))
 
 
 if __name__ == '__main__':

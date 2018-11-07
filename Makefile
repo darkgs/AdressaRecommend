@@ -13,7 +13,7 @@ endef
 
 # mode in [simple, one_week, three_month]
 MODE=simple
-#MODE=one_week
+MODE=one_week
 #MODE=three_month
 
 D2V_EMBED=default
@@ -80,7 +80,7 @@ d2v_rnn: cache/article_to_vec.json $(BASE_PATH)/rnn_input src/d2v_rnn.py
 
 pop: $(BASE_PATH)/rnn_input src/pop.py
 	$(info [Makefile] $@)
-	@python src/pop.py -i $(BASE_PATH)/rnn_input
+	@python3 src/pop.py -i $(BASE_PATH)/rnn_input
 
 $(BASE_PATH)/tf_record: $(BASE_PATH)/data_for_all cache/article_to_vec.json src/generate_tf_record.py
 	$(info [Makefile] $@)
@@ -106,12 +106,15 @@ $(BASE_PATH)/sequence_difference/$(D2V_EMBED): $(BASE_PATH)/torch_input cache/ar
 
 comp_yahoo: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) $(BASE_PATH)/article_info.json src/comp_yahoo.py
 	$(info [Makefile] $@)
-	@python3 src/comp_yahoo.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json_$(D2V_EMBED) -a $(BASE_PATH)/article_info.json -w $(BASE_PATH)/yahoo
+	python3 src/comp_yahoo.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json_$(D2V_EMBED) -a $(BASE_PATH)/article_info.json -w $(BASE_PATH)/yahoo
 
-comp_rnn4rec: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) src/comp_rnn4rec.py
+comp_gru4rec: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) src/comp_gru4rec.py
 	$(info [Makefile] $@)
-	@python3 src/comp_rnn4rec.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json_$(D2V_EMBED) -w $(BASE_PATH)/yahoo
+	@python3 src/comp_gru4rec.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json_$(D2V_EMBED) -w $(BASE_PATH)/gru4rec
 
+#run: d2v_rnn_torch
+#run: comp_gru4rec
+#run: pop
 run: comp_yahoo
 	$(info run)
 
