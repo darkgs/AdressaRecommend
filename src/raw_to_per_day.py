@@ -5,7 +5,8 @@ import json
 
 from optparse import OptionParser
 
-from multi_worker import MultiWorker
+from multiprocessing.pool import ThreadPool
+
 from ad_util import write_log
 from ad_util import get_files_under_path
 
@@ -16,6 +17,8 @@ parser.add_option('-o', '--output', dest='output', type='string', default=None)
 data_mode = None
 out_dir = None
 data_path = None
+
+dict_url2id = {}
 
 def find_best_url(event_dict=None):
 	if event_dict == None:
@@ -47,7 +50,7 @@ def find_best_url(event_dict=None):
 	return best_url
 
 def raw_to_per_day(raw_path):
-	global out_dir
+	global out_dir, dict_url2id
 
 	write_log('Processing : {}'.format(raw_path))
 
@@ -71,8 +74,9 @@ def raw_to_per_day(raw_path):
 		user_id = line_json.get('userId', None)
 		url = find_best_url(event_dict=line_json)
 		time = line_json.get('time', -1)
+		article_id = line_json.get('id', None)
 
-		if (user_id == None) or (url == None) or (time < 0):
+		if (user_id == None) or (url == None) or (time < 0) or (article_id == None):
 			continue
 
 		if dict_per_user.get(user_id, None) == None:
@@ -80,6 +84,8 @@ def raw_to_per_day(raw_path):
 
 		dict_per_user[user_id].append(tuple((time, url)))
 		list_per_time.append(tuple((time, user_id, url)))
+
+		dict_url2id[url] = article_id
 
 	lines = None
 
@@ -97,8 +103,9 @@ def raw_to_per_day(raw_path):
 
 	write_log('Done : {}'.format(raw_path))
 
+
 def main():
-	global data_mode, out_dir, data_path
+	global data_mode, out_dir, data_path, dict_url2id
 	options, args = parser.parse_args()
 
 	if (options.mode == None) or (options.output == None):
@@ -107,16 +114,20 @@ def main():
 	data_mode = options.mode
 	out_dir = options.output
 
-	pathlib.Path(out_dir + '/per_user').mkdir(parents=True, exist_ok=True)
-	pathlib.Path(out_dir + '/per_time').mkdir(parents=True, exist_ok=True)
+	os.system('mkdir -p {}'.format(out_dir + '/per_user'))
+	os.system('mkdir -p {}'.format(out_dir + '/per_time'))
 
 	data_path = 'data/' + data_mode
+	works = get_files_under_path(data_path)
 
-	multi_worker = MultiWorker(worker_count=5)
-	works = list(map(lambda x:tuple([x]), get_files_under_path(data_path)))
-	multi_worker.work(works=works, work_function=raw_to_per_day)
+	dict_url2id = {}
+	with ThreadPool(8) as pool:
+		pool.map(raw_to_per_day, works)
 
-	multi_worker = None
+	with open(out_dir + '/url2id.json', 'w') as f_dict:
+		json.dump(dict_url2id, f_dict)
+
 
 if __name__ == '__main__':
 	main()
+

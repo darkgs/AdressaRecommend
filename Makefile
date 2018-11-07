@@ -20,7 +20,7 @@ D2V_EMBED=default
 D2V_EMBED=500
 
 BASE_PATH=cache/$(MODE)
-DATA_SET=data/simple data/one_week data/three_month
+DATA_SET=data/simple data/one_week data/three_month data/contentdata
 
 all: run
 
@@ -34,23 +34,32 @@ data/one_week:
 data/three_month:
 	$(info [Makefile] $@)
 
-data/article_info.json:
+data/contentdata:
 	$(info [Makefile] $@)
-	@python src/extract_article_info.py -o $@
+
+data/article_content.json: src/extract_article_content.py
+	$(info [Makefile] $@)
+	@python src/extract_article_content.py -o $@
 
 $(BASE_PATH)/data_per_day: $(DATA_SET) src/raw_to_per_day.py
 	$(info [Makefile] $@)
 	$(call asked_delete, $@)
 	@python3 src/raw_to_per_day.py -o $@ -m $(MODE)
 
-$(BASE_PATH)/data_for_all: $(DATA_SET) data/article_info.json $(BASE_PATH)/data_per_day src/merge_days.py
+$(BASE_PATH)/data_for_all: $(DATA_SET) data/article_content.json $(BASE_PATH)/data_per_day src/merge_days.py
 	$(info [Makefile] $@)
 	$(call asked_delete, $@)
-	@python3 src/merge_days.py -i $(BASE_PATH)/data_per_day -o $@ -m $(MODE) -w data/article_info.json
+	@python3 src/merge_days.py -i $(BASE_PATH)/data_per_day -o $@ -m $(MODE) -w data/article_content.json
 
-cache/article_to_vec.json_$(D2V_EMBED): data/article_info.json src/article_w2v.py
+$(BASE_PATH)/article_info.json: data/contentdata $(BASE_PATH)/data_per_day src/extract_article_info.py
 	$(info [Makefile] $@)
-	@python src/article_w2v.py -i data/article_info.json -o $@ -e $(D2V_EMBED) -m cache/d2v_model/d2v_model_$(D2V_EMBED).model
+	$(call asked_delete, $@)
+	@python3 src/extract_article_info.py -d $(BASE_PATH)/data_per_day/url2id.json -o $@ -i data/contentdata
+
+cache/article_to_vec.json_$(D2V_EMBED): data/article_content.json src/article_w2v.py
+	$(info [Makefile] $@)
+	$(call asked_delete, $@)
+	@python src/article_w2v.py -i data/article_content.json -o $@ -e $(D2V_EMBED) -m cache/d2v_model/d2v_model_$(D2V_EMBED).model
 
 $(BASE_PATH)/rnn_input: $(DATA_SET) $(BASE_PATH)/data_for_all src/rnn_input_preprocess.py
 	$(info [Makefile] $@)
@@ -95,6 +104,10 @@ $(BASE_PATH)/sequence_difference/$(D2V_EMBED): $(BASE_PATH)/torch_input cache/ar
 	$(info [Makefile] $@)
 	@python3 src/sequence_difference.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json_$(D2V_EMBED) -o $@
 
-run: $(BASE_PATH)/sequence_difference/$(D2V_EMBED)
+comp_yahoo: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) $(BASE_PATH)/article_info.json src/comp_yahoo.py
+	$(info [Makefile] $@)
+	@python3 src/comp_yahoo.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json_$(D2V_EMBED) -a $(BASE_PATH)/article_info.json -w $(BASE_PATH)/yahoo
+
+run: comp_yahoo
 	$(info run)
 
