@@ -17,6 +17,7 @@ MODE=one_week
 #MODE=three_month
 
 D2V_EMBED=default
+#D2V_EMBED=1000
 D2V_EMBED=500
 
 BASE_PATH=cache/$(MODE)
@@ -112,9 +113,14 @@ comp_gru4rec: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) sr
 	$(info [Makefile] $@)
 	@python3 src/comp_gru4rec.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json_$(D2V_EMBED) -w $(BASE_PATH)/gru4rec
 
+comp_multicell: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) src/comp_multicell.py
+	$(info [Makefile] $@)
+	@python3 src/comp_multicell.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json_$(D2V_EMBED) -w $(BASE_PATH)/multicell
+
 #run: d2v_rnn_torch
 #run: comp_gru4rec
 #run: pop
-run: comp_yahoo
+#run: comp_yahoo
+run: comp_multicell
 	$(info run)
 

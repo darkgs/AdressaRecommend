@@ -67,7 +67,7 @@ class RNNInputTorch(object):
 
 		max_seq = 20
 		if self._dataset.get(data_type, None) == None:
-			def pad_sequence(sequence):
+			def pad_sequence(sequence, padding):
 				len_diff = max_seq - len(sequence)
 
 				if len_diff < 0:
@@ -76,14 +76,16 @@ class RNNInputTorch(object):
 					return sequence
 
 				padded_sequence = sequence.copy()
-				padded_sequence += [self.get_pad_idx()] * len_diff
+				padded_sequence += [padding] * len_diff
 
 				return padded_sequence
 
 			datas = []
 
-			for timestamp_start, timestamp_end, sequence in self._dict_rnn_input['dataset'][data_type]:
-				pad_indices = [idx for idx in pad_sequence(sequence)]
+			for timestamp_start, timestamp_end, sequence, time_sequence in \
+					self._dict_rnn_input['dataset'][data_type]:
+				pad_indices = [idx for idx in pad_sequence(sequence, self.get_pad_idx())]
+				pad_time_indices = [idx for idx in pad_sequence(time_sequence, -1)]
 #				pad_seq = [normalize([self.idx2vec(idx)], norm='l2')[0] for idx in pad_indices]
 				pad_seq = [self.idx2vec(idx) for idx in pad_indices]
 
@@ -93,9 +95,15 @@ class RNNInputTorch(object):
 
 				idx_x = pad_indices[:-1]
 				idx_y = pad_indices[1:]
+				
+				seq_trendy = [[self.idx2vec(idx) for idx, count in \
+						 self.get_trendy(timestamp, 5, self.get_pad_idx())] \
+						 for timestamp in pad_time_indices]
+				seq_trendy = seq_trendy[:-1]
 			
 				datas.append(
-					(seq_x, seq_y, seq_len, idx_x, idx_y, timestamp_start, timestamp_end)
+					(seq_x, seq_y, seq_len, idx_x, idx_y, seq_trendy, \
+					 timestamp_start, timestamp_end)
 				)
 
 
@@ -108,6 +116,16 @@ class RNNInputTorch(object):
 
 	def get_pad_idx(self):
 		return self._dict_rnn_input['pad_idx']
+
+	def get_trendy(self, cur_time=-1, topk=10, padding=0):
+		trendy_list = self._dict_rnn_input['trendy_idx'].get(str(cur_time), None)
+
+		if trendy_list == None:
+			return [[padding, 0]] * topk
+
+		assert(len(trendy_list) >= topk)
+
+		return trendy_list[:topk]
 
 	def get_candidates(self, start_time=-1, end_time=-1, idx_count=0):
 		if (start_time < 0) or (end_time < 0) or (idx_count <= 0):

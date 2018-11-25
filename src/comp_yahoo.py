@@ -150,7 +150,7 @@ class ArticleRepresentation(object):
 		return train_dataloader, test_dataloader
 
 	def generate_rnn_input(self):
-		stat = False
+		stat = True
 		# 38,155 items has category in the total 51,418
 		# 44 category variation
 		# dict_url2info contains only existing url in the sequence
@@ -215,7 +215,7 @@ class ArticleRepresentation(object):
 
 				for i in range(len(urls)):
 					for j in range(i, len(urls)):
-						for _ in range(10):
+						for _ in range(1):
 							url_triples.append((urls[i], urls[j], another_urls[random.randrange(len(another_urls))]))
 
 			return url_triples
@@ -349,9 +349,9 @@ class UserRepresentation(object):
 									hidden_size, num_layers).to(self._device)
 		self._model.apply(weights_init)
 
-		self._optimizer = torch.optim.SGD(self._model.parameters(), lr=learning_rate, momentum=0.9)
-#		self._criterion = nn.MSELoss()
-#		self._optimizer = torch.optim.Adam(self._model.parameters(), lr=0.001)
+#self._optimizer = torch.optim.SGD(self._model.parameters(), lr=learning_rate, momentum=0.9)
+		self._criterion = nn.MSELoss()
+		self._optimizer = torch.optim.Adam(self._model.parameters(), lr=0.001)
 
 		self._saved_model_path = self._ws_path + '/user_representation.pth.tar'
 
@@ -382,8 +382,8 @@ class UserRepresentation(object):
 			outputs = self._model(input_x_s, seq_lens)
 			unpacked_y_s, _ = unpack(pack(input_y_s, seq_lens, batch_first=True), batch_first=True)
 
-			loss = F.binary_cross_entropy(torch.sigmoid(outputs), torch.sigmoid(unpacked_y_s))
-#loss = self._criterion(outputs, unpacked_y_s)
+#loss = F.binary_cross_entropy(torch.sigmoid(outputs), torch.sigmoid(unpacked_y_s))
+			loss = self._criterion(outputs, unpacked_y_s)
 			loss.backward()
 			self._optimizer.step()
 
@@ -405,8 +405,8 @@ class UserRepresentation(object):
 			outputs = self._model(input_x_s, seq_lens)
 			unpacked_y_s, _ = unpack(pack(input_y_s, seq_lens, batch_first=True), batch_first=True)
 
-			loss = F.binary_cross_entropy(torch.sigmoid(outputs), torch.sigmoid(unpacked_y_s))
-#loss = self._criterion(outputs, unpacked_y_s)
+#loss = F.binary_cross_entropy(torch.sigmoid(outputs), torch.sigmoid(unpacked_y_s))
+			loss = self._criterion(outputs, unpacked_y_s)
 			test_loss += loss.item()
 
 		return test_loss / batch_count
@@ -447,8 +447,8 @@ class UserRepresentation(object):
 					if next_idx not in cand_indices:
 						continue
 
-#pred_vector = outputs[batch][seq_idx]
-					pred_vector = np_sigmoid(outputs[batch][seq_idx])
+					pred_vector = outputs[batch][seq_idx]
+#pred_vector = np_sigmoid(outputs[batch][seq_idx])
 					cand_eval = np.asarray(np.dot(cand_matrix, pred_vector).T).tolist()
 
 					infered_values = [(cand_indices[i], evaluated[0]) \

@@ -93,11 +93,13 @@ def separated_process(args=(-1, [])):
 			end_time = sequence[-1][0]
 
 			idx_sequence = [dict_url_idx[url] for timestamp, url in sequence]
+			time_sequence = [timestamp for timestamp, url in sequence]
 
 			dict_data[user_id] = {
 				'start_time': start_time,
 				'end_time': end_time,
 				'sequence': idx_sequence,
+				'time_sequence': time_sequence,
 			}
 
 	with open('{}/{}_data.json'.format(separated_output_dir_path, worker_id), 'w') as f_out:
@@ -122,7 +124,7 @@ def generate_merged_sequences():
 
 		for user_id, dict_data in separated_dict.items():
 			sequence_entry = (dict_data['start_time'], dict_data['end_time'],
-					dict_data['sequence'])
+					dict_data['sequence'], dict_data['time_sequence'])
 			merged_sequences.append(sequence_entry)
 
 	merged_sequences.sort(key=lambda x:x[0])
@@ -179,9 +181,65 @@ def generate_torch_rnn_input():
 			}
 
 		idx_of_url = dict_url_idx[url]
-		dict_time_idx[timestamp]['indices'][idx_of_url] = dict_time_idx[timestamp]['indices'].get(idx_of_url, 0) + 1
+		dict_time_idx[timestamp]['indices'][idx_of_url] = \
+			dict_time_idx[timestamp]['indices'].get(idx_of_url, 0) + 1
 
 		prev_timestamp = timestamp
+
+	# trendy
+	dict_trendy_idx = {}
+
+	window_size = 60*60
+	prev_timestamp = list_per_time[0][0]
+	cur_timestamp = prev_timestamp
+	dict_cur_trendy = {}
+
+	# Initialize setting
+	while cur_timestamp != None and (int(cur_timestamp) - int(prev_timestamp)) < window_size:
+		for idx, count in dict_time_idx[cur_timestamp]['indices'].items():
+			dict_cur_trendy[idx] = dict_cur_trendy.get(idx, 0) + count
+
+		cur_timestamp = dict_time_idx[cur_timestamp]['next_time']
+
+	copy_timestamp = prev_timestamp
+	while(copy_timestamp is not cur_timestamp):
+		dict_trendy_idx[copy_timestamp] = \
+			sorted(dict_cur_trendy.items(), key=lambda x: x[1], reverse=True)[:10]
+
+		copy_timestamp = dict_time_idx[copy_timestamp]['next_time']
+	dict_trendy_idx[cur_timestamp] = \
+		sorted(dict_cur_trendy.items(), key=lambda x: x[1], reverse=True)[:10]
+
+	# main step
+	while(True):
+		# move cur
+		cur_timestamp = dict_time_idx[cur_timestamp]['next_time']
+
+		if cur_timestamp == None:
+			break
+
+		for idx, count in dict_time_idx[cur_timestamp]['indices'].items():
+			dict_cur_trendy[idx] = dict_cur_trendy.get(idx, 0) + count
+
+		# move prev
+		to_be_removed = []
+		while prev_timestamp != None and (int(cur_timestamp) - int(prev_timestamp)) > window_size:
+
+			for idx, count in dict_time_idx[prev_timestamp]['indices'].items():
+				dict_cur_trendy[idx] = dict_cur_trendy.get(idx, 0) - count
+				if dict_cur_trendy[idx] <= 0:
+					to_be_removed.append(idx)
+
+			prev_timestamp = dict_time_idx[prev_timestamp]['next_time']
+
+		for idx in to_be_removed:
+			dict_cur_trendy.pop(idx, None)
+
+		# Update trendy data
+		dict_trendy_idx[cur_timestamp] = \
+			sorted(dict_cur_trendy.items(), key=lambda x: x[1], reverse=True)[:10]
+
+		assert(len(dict_trendy_idx[cur_timestamp]) == 10)
 
 	# save
 	dict_torch_rnn_input = {
@@ -191,6 +249,7 @@ def generate_torch_rnn_input():
 		'time_idx': dict_time_idx,
 		'pad_idx': dict_url_idx['url_pad'],
 #		'embedding_dimension': embeding_dimension,
+		'trendy_idx': dict_trendy_idx,
 	}
 
 	with open('{}/torch_rnn_input.dict'.format(output_dir_path), 'w') as f_extra:
