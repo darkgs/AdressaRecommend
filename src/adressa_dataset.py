@@ -221,8 +221,8 @@ class AdressaRec(object):
 
 		if start_epoch < total_epoch:
 			endure = 0
-			start_time = time.time()
 			for epoch in range(start_epoch, total_epoch):
+				start_time = time.time()
 				if endure > early_stop:
 					print('Early stop!')
 					break
@@ -231,7 +231,6 @@ class AdressaRec(object):
 				test_loss = self.test()
 				mrr_20 = self.test_mrr_20()
 				best_mrr = max(best_mrr, mrr_20)
-				best_test_loss = min(best_test_loss, test_loss)
 
 				print('epoch {} - train loss({:.8f}) test loss({:.8f}) test mrr_20({:.4f}) best mrr({:.4f}) tooks {:.2f}'.format(
 					epoch, train_loss, test_loss, mrr_20, best_mrr, time.time() - start_time))
@@ -240,7 +239,8 @@ class AdressaRec(object):
 					self.save_model(epoch, test_loss)
 					print('Model saved! - best mrr({})'.format(best_mrr))
 
-				if best_test_loss == test_loss:
+				if best_test_loss > test_loss:
+					best_test_loss = test_loss
 					endure = 0
 				else:
 					endure += 1
