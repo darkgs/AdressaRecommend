@@ -15,18 +15,18 @@ import torch.optim as optim
 from torch.nn.utils.rnn import pack_padded_sequence as pack
 from torch.nn.utils.rnn import pad_packed_sequence as unpack
 
-from torch.utils.data.dataset import Dataset  # For custom datasets
+from adressa_dataset import AdressaRNNInput
 
 from optparse import OptionParser
 
 from ad_util import weights_init
+from ad_util import write_log
 
 parser = OptionParser()
 parser.add_option('-i', '--input', dest='input', type='string', default=None)
 parser.add_option('-e', '--d2v_embed', dest='d2v_embed', type='string', default='1000')
 parser.add_option('-u', '--u2v_path', dest='u2v_path', type='string', default=None)
 
-from ad_util import write_log
 
 dict_url_vec = {}
 def load_url2vec(url2vec_path=None):
@@ -38,151 +38,6 @@ def load_url2vec(url2vec_path=None):
 
 	with open(url2vec_path, 'r') as f_u2v:
 		dict_url_vec = json.load(f_u2v)
-
-
-class AdressaDataset(Dataset):
-	def __init__(self, dict_dataset):
-
-		self._dict_dataset = dict_dataset
-		self._data_len = len(self._dict_dataset)
-
-	def __getitem__(self, index):
-		return self._dict_dataset[index]
-
-	def __len__(self):
-		return self._data_len
-
-class RNNInputTorch(object):
-	def __init__(self, rnn_input_json_path, dict_url2vec):
-		self._dict_url2vec = dict_url2vec
-
-		with open(rnn_input_json_path, 'r') as f_rnn_input:
-			self._dict_rnn_input = json.load(f_rnn_input)
-
-		self._dataset = {}
-
-	def get_dataset(self, data_type='test'):
-		if data_type not in ['train', 'valid', 'test']:
-			data_type = 'test'
-
-		max_seq = 20
-		if self._dataset.get(data_type, None) == None:
-			def pad_sequence(sequence, padding):
-				len_diff = max_seq - len(sequence)
-
-				if len_diff < 0:
-					return sequence[:max_seq]
-				elif len_diff == 0:
-					return sequence
-
-				padded_sequence = sequence.copy()
-				padded_sequence += [padding] * len_diff
-
-				return padded_sequence
-
-			datas = []
-
-			for timestamp_start, timestamp_end, sequence, time_sequence in \
-					self._dict_rnn_input['dataset'][data_type]:
-				pad_indices = [idx for idx in pad_sequence(sequence, self.get_pad_idx())]
-				pad_time_indices = [idx for idx in pad_sequence(time_sequence, -1)]
-#				pad_seq = [normalize([self.idx2vec(idx)], norm='l2')[0] for idx in pad_indices]
-				pad_seq = [self.idx2vec(idx) for idx in pad_indices]
-
-				seq_len = min(len(sequence), max_seq) - 1
-				seq_x = pad_seq[:-1]
-				seq_y = pad_seq[1:]
-
-				idx_x = pad_indices[:-1]
-				idx_y = pad_indices[1:]
-				
-				seq_trendy = [[self.idx2vec(idx) for idx, count in \
-						 self.get_trendy(timestamp, 5, self.get_pad_idx())] \
-						 for timestamp in pad_time_indices]
-				seq_trendy = seq_trendy[:-1]
-			
-				datas.append(
-					(seq_x, seq_y, seq_len, idx_x, idx_y, seq_trendy, \
-					 timestamp_start, timestamp_end)
-				)
-
-
-			self._dataset[data_type] = AdressaDataset(datas)
-
-		return self._dataset[data_type]
-
-	def idx2vec(self, idx):
-		return self._dict_url2vec[self._dict_rnn_input['idx2url'][str(idx)]]
-
-	def get_pad_idx(self):
-		return self._dict_rnn_input['pad_idx']
-
-	def get_trendy(self, cur_time=-1, topk=10, padding=0):
-		trendy_list = self._dict_rnn_input['trendy_idx'].get(str(cur_time), None)
-
-		if trendy_list == None:
-			return [[padding, 0]] * topk
-
-		assert(len(trendy_list) >= topk)
-
-		return trendy_list[:topk]
-
-	def get_candidates(self, start_time=-1, end_time=-1, idx_count=0):
-		if (start_time < 0) or (end_time < 0) or (idx_count <= 0):
-			return []
-
-		#	entry of : dict_rnn_input['time_idx']
-		#	(timestamp) :
-		#	{
-		#		prev_time: (timestamp)
-		#		next_time: (timestamp)
-		#		'indices': { idx:count, ... }
-		#	}
-
-		# swap if needed
-		if start_time > end_time:
-			tmp_time = start_time
-			start_time = end_time
-			end_time = tmp_time
-
-		cur_time = start_time
-
-		dict_merged = {}
-		while(cur_time < end_time):
-			cur_time = self._dict_rnn_input['time_idx'][str(cur_time)]['next_time']
-			for idx, count in self._dict_rnn_input['time_idx'][str(cur_time)]['indices'].items():
-				dict_merged[idx] = dict_merged.get(idx, 0) + count
-
-		steps = 0
-		time_from_start = start_time
-		time_from_end = end_time
-		while(len(dict_merged.keys()) < idx_count):
-			if time_from_start == None and time_from_end == None:
-				break
-
-			if steps % 3 == 0:
-				if time_from_end == None:
-					steps += 1
-					continue
-				cur_time = self._dict_rnn_input['time_idx'][str(time_from_end)]['next_time']
-				time_from_end = cur_time
-			else:
-				if time_from_start == None:
-					steps += 1
-					continue
-				cur_time = self._dict_rnn_input['time_idx'][str(time_from_start)]['prev_time']
-				time_from_start = cur_time
-
-			if cur_time == None:
-				continue
-
-			for idx, count in self._dict_rnn_input['time_idx'][str(cur_time)]['indices'].items():
-				dict_merged[idx] = dict_merged.get(idx, 0) + count
-
-		ret_sorted = sorted(dict_merged.items(), key=lambda x:x[1], reverse=True)
-		if len(ret_sorted) > idx_count:
-			ret_sorted = ret_sorted[:idx_count]
-		return list(map(lambda x: int(x[0]), ret_sorted))
 
 
 class RNNRecommender(nn.Module):
@@ -231,7 +86,7 @@ def main():
 	device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 	rnn_input_json_path = '{}/torch_rnn_input.dict'.format(torch_input_path)
 
-	rnn_input = RNNInputTorch(rnn_input_json_path, dict_url_vec)
+	rnn_input = AdressaRNNInput(rnn_input_json_path, dict_url_vec)
 	def adressa_collate(batch):
 		batch.sort(key=lambda x: x[2], reverse=True)
 
