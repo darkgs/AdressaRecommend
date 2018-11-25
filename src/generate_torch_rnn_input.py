@@ -151,10 +151,11 @@ def generate_torch_rnn_input():
 	total_seq_count = len(merged_sequences)
 
 	division_infos = [
-		('train', 0, int(total_seq_count * 8 / 10)),
+#('train', 0, int(total_seq_count * 8 / 10)),
+		('train', 0, int(total_seq_count - 2000)),
 		('valid', int(total_seq_count * 8 / 10), int(total_seq_count - 1000)),
 #		('test', int(total_seq_count * 9 / 10), total_seq_count),
-		('test', total_seq_count - 1000, total_seq_count),
+		('test', total_seq_count - 2000, total_seq_count),
 	]
 
 	dict_seq_datas = {}

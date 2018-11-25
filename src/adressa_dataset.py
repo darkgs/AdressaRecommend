@@ -3,6 +3,7 @@ import sys
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.nn.utils.rnn import pack_padded_sequence as pack
 from torch.nn.utils.rnn import pad_packed_sequence as unpack
 
@@ -194,18 +195,20 @@ class AdressaRec(object):
 		self._model.apply(weights_init)
 
 #self._optimizer = torch.optim.SGD(self._model.parameters(), lr=learning_rate, momentum=0.9)
-		self._criterion = nn.MSELoss()
+#self._criterion = nn.MSELoss()
+#self._criterion = nn.CrossEntropyLoss()
+		self._criterion = nn.BCELoss()
 		self._optimizer = torch.optim.Adam(self._model.parameters(), lr=learning_rate)
 
 		self._saved_model_path = self._ws_path + '/predictor.pth.tar'
 
 	def get_dataloader(self, dict_url2vec):
 		train_dataloader = torch.utils.data.DataLoader(self._rnn_input.get_dataset(data_type='train'),
-				batch_size=128, shuffle=True, num_workers=16,
+				batch_size=256, shuffle=True, num_workers=16,
 				collate_fn=adressa_collate)
 
 		test_dataloader = torch.utils.data.DataLoader(self._rnn_input.get_dataset(data_type='test'),
-				batch_size=32, shuffle=True, num_workers=4,
+				batch_size=128, shuffle=True, num_workers=16,
 				collate_fn=adressa_collate)
 
 		return train_dataloader, test_dataloader
@@ -225,11 +228,19 @@ class AdressaRec(object):
 			self._model.zero_grad()
 			self._optimizer.zero_grad()
 
-			outputs = self._model(input_x_s, input_trendy, seq_lens)
-			unpacked_y_s, _ = unpack(pack(input_y_s, seq_lens, batch_first=True), batch_first=True)
+#outputs = self._model(input_x_s, input_trendy, seq_lens)
+#unpacked_y_s, _ = unpack(pack(input_y_s, seq_lens, batch_first=True), batch_first=True)
 
-#loss = F.binary_cross_entropy(torch.sigmoid(outputs), torch.sigmoid(unpacked_y_s))
-			loss = self._criterion(outputs, unpacked_y_s)
+#loss = self._criterion(outputs, unpacked_y_s)
+
+			outputs = self._model(input_x_s, input_trendy, seq_lens)
+			packed_outputs = pack(outputs, seq_lens, batch_first=True).data
+			packed_y_s = pack(input_y_s, seq_lens, batch_first=True).data
+
+#loss = self._criterion(F.softmax(packed_outputs, dim=1), \
+#F.softmax(packed_y_s, dim=1).long())
+			loss = self._criterion(F.softmax(packed_outputs, dim=1), \
+					F.softmax(packed_y_s, dim=1))
 			loss.backward()
 			self._optimizer.step()
 
@@ -249,18 +260,21 @@ class AdressaRec(object):
 			input_y_s = input_y_s.to(self._device)
 			input_trendy = input_trendy.to(self._device)
 
-			outputs = self._model(input_x_s, input_trendy, seq_lens)
-			unpacked_y_s, _ = unpack(pack(input_y_s, seq_lens, batch_first=True), batch_first=True)
+#outputs = self._model(input_x_s, input_trendy, seq_lens)
+#unpacked_y_s, _ = unpack(pack(input_y_s, seq_lens, batch_first=True), batch_first=True)
+#loss = self._criterion(outputs, unpacked_y_s)
 
-#loss = F.binary_cross_entropy(torch.sigmoid(outputs), torch.sigmoid(unpacked_y_s))
-			loss = self._criterion(outputs, unpacked_y_s)
+			outputs = self._model(input_x_s, input_trendy, seq_lens)
+			packed_outputs = pack(outputs, seq_lens, batch_first=True).data
+			packed_y_s = pack(input_y_s, seq_lens, batch_first=True).data
+
+			loss = self._criterion(F.softmax(packed_outputs, dim=1), F.softmax(packed_y_s, dim=1))
+
 			test_loss += loss.item()
 
 		return test_loss / batch_count
 
 	def test_mrr_20(self):
-		def np_sigmoid(x):
-			return 1/(1+np.exp(-x))
 
 		self._model.eval()
 
@@ -277,6 +291,7 @@ class AdressaRec(object):
 			with torch.no_grad():
 				outputs = self._model(input_x_s, input_tendy, seq_lens)
 
+			outputs = torch.tanh(outputs)
 			outputs = outputs.cpu().numpy()
 
 			batch_size = seq_lens.size(0)
@@ -287,6 +302,7 @@ class AdressaRec(object):
 						end_time=timestamp_ends[batch], idx_count=100)
 				cand_embed = [self._rnn_input.idx2vec(idx) for idx in cand_indices]
 				cand_matrix = np.matrix(cand_embed)
+				cand_matrix = np.tanh(cand_matrix)
 #cand_matrix = np_sigmoid(np.matrix(cand_embed))
 
 				for seq_idx in range(seq_lens[batch]):

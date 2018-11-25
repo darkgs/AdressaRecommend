@@ -185,7 +185,7 @@ class MultiCellModel(nn.Module):
 	def __init__(self, embed_size):
 		super(MultiCellModel, self).__init__()
 
-		self._hidden_size = 256
+		self._hidden_size = 512
 
 		self.lstm = MultiCellLSTM(embed_size, self._hidden_size, 5)
 		self.linear = nn.Linear(self._hidden_size, embed_size)
@@ -253,7 +253,7 @@ def main():
 	url2vec_path = options.u2v_path
 	ws_path = options.ws_path
 
-#os.system('rm -rf {}'.format(ws_path))
+	os.system('rm -rf {}'.format(ws_path))
 	os.system('mkdir -p {}'.format(ws_path))
 
 	print('Loading url2vec : start')
