@@ -60,7 +60,7 @@ def main():
 	url2vec_path = options.u2v_path
 	ws_path = options.ws_path
 
-#os.system('rm -rf {}'.format(ws_path))
+	os.system('rm -rf {}'.format(ws_path))
 	os.system('mkdir -p {}'.format(ws_path))
 
 	print('Loading url2vec : start')
@@ -68,33 +68,10 @@ def main():
 	print('Loading url2vec : end')
 
 	predictor = AdressaRec(GRU4RecModel, ws_path, torch_input_path, dict_url2vec)
+	predictor.do_train()
 
-	start_epoch, best_test_loss = predictor.load_model()
-	total_epoch = 1000
-	if start_epoch < total_epoch:
-		endure = 0
-		for epoch in range(start_epoch, total_epoch):
-			if endure > 3:
-				print('Early stop!')
-				break
+	print('Fianl mrr 20 : {}'.format(predictor.test_mrr_20()))
 
-			train_loss = predictor.train()
-			test_loss = predictor.test()
-			mrr_20 = predictor.test_mrr_20()
-
-			print('epoch {} - train loss({}) test loss({}) test mrr_20({})'.format(
-						epoch, train_loss, test_loss, mrr_20))
-
-			if epoch % 5 == 0:
-				if test_loss < best_test_loss:
-					best_test_loss = test_loss
-					endure = 0
-					predictor.save_model(epoch, test_loss)
-					print('Model saved! - test loss({})'.format(test_loss))
-				else:
-					endure += 1
-
-	print('mrr 20 : {}'.format(predictor.test_mrr_20()))
 
 if __name__ == '__main__':
 	main()
