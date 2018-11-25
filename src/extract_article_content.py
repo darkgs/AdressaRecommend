@@ -1,8 +1,6 @@
 
 import sys
 import json
-reload(sys)
-sys.setdefaultencoding('utf-8')
 
 from optparse import OptionParser
 
