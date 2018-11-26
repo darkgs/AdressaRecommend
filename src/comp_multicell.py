@@ -114,7 +114,7 @@ class MultiCellLSTM(nn.Module):
 		o2_t = torch.sigmoid(torch.matmul(torch.cat([h_t, x2], 1), self._W2_o) + self._b2_o)
 		
 		# new hidden state
-		h_t = torch.tanh(o1_t * torch.tanh(c1_t) + o2_t * torch.tanh(c2_t))
+		h_t = (o1_t * torch.tanh(c1_t) + o2_t * torch.tanh(c2_t)) / (o1_t + o2_t)
 
 		return h_t, (h_t, c1_t, c2_t)
 
@@ -185,7 +185,7 @@ class MultiCellModel(nn.Module):
 	def __init__(self, embed_size):
 		super(MultiCellModel, self).__init__()
 
-		self._hidden_size = 512
+		self._hidden_size = 256
 
 		self.lstm = MultiCellLSTM(embed_size, self._hidden_size, 5)
 		self.linear = nn.Linear(self._hidden_size, embed_size)

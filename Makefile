@@ -125,12 +125,16 @@ comp_multicell: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) 
 	$(info [Makefile] $@)
 	python3 src/comp_multicell.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json_$(D2V_EMBED) -w $(BASE_PATH)/multicell
 
+comp_pop: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_pop.py
+	$(info [Makefile] $@)
+	python3 src/comp_pop.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json_$(D2V_EMBED) -w $(BASE_PATH)/pop
+
 #run: d2v_rnn_torch
-#run: pop
-#run: comp_yahoo
-run: comp_multicell
-#run: comp_lstm
+#run: comp_pop
+#run: comp_multicell
+run: comp_lstm
 #run: comp_multi_layer_lstm
 #run: comp_gru4rec
+#run: comp_yahoo
 	$(info run)
 

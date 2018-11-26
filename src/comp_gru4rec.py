@@ -25,7 +25,7 @@ class GRU4RecModel(nn.Module):
 	def __init__(self, embed_size):
 		super(GRU4RecModel, self).__init__()
 
-		hidden_size = 512
+		hidden_size = 128
 		num_layers = 3
 
 		self.rnn = nn.GRU(embed_size, hidden_size, num_layers, batch_first=True, dropout=0.5)

@@ -1,15 +1,10 @@
 
-import os, sys
-import time
+import os
 
 from optparse import OptionParser
 
-import numpy as np
-
 import torch
 import torch.nn as nn
-from torch.nn.utils.rnn import pack_padded_sequence as pack
-from torch.nn.utils.rnn import pad_packed_sequence as unpack
 
 from adressa_dataset import AdressaRec
 
@@ -21,12 +16,11 @@ parser.add_option('-e', '--d2v_embed', dest='d2v_embed', type='string', default=
 parser.add_option('-u', '--u2v_path', dest='u2v_path', type='string', default=None)
 parser.add_option('-w', '--ws_path', dest='ws_path', type='string', default=None)
 
-
 class SingleLSTMModel(nn.Module):
 	def __init__(self, embed_size):
 		super(SingleLSTMModel, self).__init__()
 
-		hidden_size = 384
+		hidden_size = 768
 		num_layers = 1
 
 		self.rnn = nn.LSTM(embed_size, hidden_size, num_layers, batch_first=True)
@@ -43,13 +37,6 @@ class SingleLSTMModel(nn.Module):
 		outputs = self.linear(outputs)
 
 		return outputs
-
-#		outputs = outputs.view(-1, embed_size)
-#		outputs = self.bn(outputs)
-#		outputs = outputs.view(batch_size, -1, embed_size)
-#
-#		return outputs
-
 
 def main():
 	options, args = parser.parse_args()
@@ -71,11 +58,15 @@ def main():
 	print('Loading url2vec : end')
 
 	predictor = AdressaRec(SingleLSTMModel, ws_path, torch_input_path, dict_url2vec)
-	predictor.do_train()
 
-	print('Fianl mrr 20 : {}'.format(predictor.test_mrr_20_trendy()))
+	total_mrr = 0.0
+	for i in range(10):
+		mrr = predictor.pop_20()
+		print('{}th : mrr({:.4f})'.format(i, mrr))
+		total_mrr += mrr
+
+	print('Final mrr : {:.4f}'.format(total_mrr/10))
 
 
 if __name__ == '__main__':
 	main()
-

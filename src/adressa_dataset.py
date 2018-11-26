@@ -197,7 +197,7 @@ class AdressaRec(object):
 		self._ws_path = ws_path
 
 		dim_article = len(next(iter(dict_url2vec.values())))
-		learning_rate = 1e-2
+		learning_rate = 0.005
 
 		dict_rnn_input_path = '{}/torch_rnn_input.dict'.format(torch_input_path)
 		self._rnn_input = AdressaRNNInput(dict_rnn_input_path, dict_url2vec)
@@ -358,16 +358,41 @@ class AdressaRec(object):
 
 		return predict_mrr / float(predict_count) if predict_count > 0 else 0.0
 
+	def pop_20(self):
+		predict_count = 0
+		predict_mrr = 0.0
+
+
+		for i, data in enumerate(self._test_dataloader, 0):
+			_, _, _, seq_lens, _, _, _, indices_y, indices_trendy = data
+
+			batch_size = seq_lens.size(0)
+			seq_lens = seq_lens.cpu().numpy()
+
+			for batch in range(batch_size):
+				for seq_idx in range(seq_lens[batch]):
+					next_idx = indices_y[batch][seq_idx]
+					candidates = indices_trendy[batch][seq_idx]
+
+					if next_idx not in candidates:
+						continue
+
+					#POP@20
+					top_indices = candidates[:20]
+					predict_count += 1
+					if next_idx in top_indices:
+						predict_mrr += 1.0 / float(top_indices.index(next_idx) + 1)
+
+		return predict_mrr / float(predict_count) if predict_count > 0 else 0.0
 
 	def test_mrr_20(self):
-
 		self._model.eval()
 
 		predict_count = 0
 		predict_mrr = 0.0
 		for i, data in enumerate(self._test_dataloader, 0):
 			input_x_s, input_y_s, input_tendy, seq_lens, \
-				timestamp_starts, timestamp_ends, _, indices_y = data
+				timestamp_starts, timestamp_ends, _, indices_y, _ = data
 			input_x_s = input_x_s.to(self._device)
 			input_y_s = input_y_s.to(self._device)
 			input_tendy = input_tendy.to(self._device)
