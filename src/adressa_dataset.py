@@ -41,7 +41,7 @@ class AdressaRNNInput(object):
 
 		trendy_count = 5
 		if data_type == 'test':
-			trendy_count = 80
+			trendy_count = 50
 
 		max_seq = 20
 		if self._dataset.get(data_type, None) == None:

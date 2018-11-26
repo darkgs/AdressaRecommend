@@ -14,7 +14,7 @@ endef
 # mode in [simple, one_week, three_month]
 MODE=simple
 MODE=one_week
-MODE=three_month
+#MODE=three_month
 
 D2V_EMBED=default
 D2V_EMBED=1000

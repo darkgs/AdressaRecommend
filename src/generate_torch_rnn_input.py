@@ -190,12 +190,13 @@ def generate_torch_rnn_input():
 	# trendy
 	dict_trendy_idx = {}
 	def generate_trendy_items(dict_target, padding):
+		trendy_count = 50
 		ret = sorted(dict_target.items(), key=lambda x: x[1], reverse=True)
-		assert(len(ret) > 50)
-		if len(ret) < 80:
-			ret += [(padding,0) * (80 - len(ret))]
+		assert(len(ret) > 10)
+		if len(ret) < trendy_count:
+			ret += [(padding,0) * (trendy_count - len(ret))]
 
-		return ret[:80]
+		return ret[:trendy_count]
 
 	window_size = 60*60*3
 	prev_timestamp = list_per_time[0][0]
