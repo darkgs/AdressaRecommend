@@ -31,7 +31,7 @@ class MultiLSTMModel(nn.Module):
 
 		self.rnn = nn.LSTM(embed_size, hidden_size, num_layers, batch_first=True, dropout=0.5)
 		self.linear = nn.Linear(hidden_size, embed_size)
-		self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
+#self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
 
 	def forward(self, x, _, seq_lens):
 		batch_size = x.size(0)
@@ -42,11 +42,13 @@ class MultiLSTMModel(nn.Module):
 		outputs, _ = unpack(outputs, batch_first=True)
 		outputs = self.linear(outputs)
 
-		outputs = outputs.view(-1, embed_size)
-		outputs = self.bn(outputs)
-		outputs = outputs.view(batch_size, -1, embed_size)
-
 		return outputs
+
+#		outputs = outputs.view(-1, embed_size)
+#		outputs = self.bn(outputs)
+#		outputs = outputs.view(batch_size, -1, embed_size)
+#
+#		return outputs
 
 
 def main():

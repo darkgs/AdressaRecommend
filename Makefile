@@ -17,7 +17,7 @@ MODE=one_week
 #MODE=three_month
 
 D2V_EMBED=default
-#D2V_EMBED=1000
+D2V_EMBED=1000
 D2V_EMBED=500
 
 BASE_PATH=cache/$(MODE)
@@ -60,7 +60,7 @@ $(BASE_PATH)/article_info.json: data/contentdata $(BASE_PATH)/data_per_day src/e
 cache/article_to_vec.json_$(D2V_EMBED): data/article_content.json src/article_w2v.py
 	$(info [Makefile] $@)
 	$(call asked_delete, $@)
-	@python3 src/article_w2v.py -i data/article_content.json -o $@ -e $(D2V_EMBED) -m cache/d2v_model/d2v_model_$(D2V_EMBED).model
+	python3 src/article_w2v.py -i data/article_content.json -o $@ -e $(D2V_EMBED) -m cache/d2v_model/d2v_model_$(D2V_EMBED).model
 
 $(BASE_PATH)/rnn_input: $(DATA_SET) $(BASE_PATH)/data_for_all src/rnn_input_preprocess.py
 	$(info [Makefile] $@)
@@ -128,9 +128,9 @@ comp_multicell: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) 
 #run: d2v_rnn_torch
 #run: pop
 #run: comp_yahoo
-#run: comp_multicell
+run: comp_multicell
 #run: comp_lstm
 #run: comp_multi_layer_lstm
-run: comp_gru4rec
+#run: comp_gru4rec
 	$(info run)
 

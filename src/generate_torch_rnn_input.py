@@ -189,8 +189,15 @@ def generate_torch_rnn_input():
 
 	# trendy
 	dict_trendy_idx = {}
+	def generate_trendy_items(dict_target, padding):
+		ret = sorted(dict_target.items(), key=lambda x: x[1], reverse=True)
+		assert(len(ret) > 50)
+		if len(ret)< 100:
+			ret += [(padding,0) * (100 - len(ret))]
 
-	window_size = 60*60
+		return ret
+
+	window_size = 60*60*3
 	prev_timestamp = list_per_time[0][0]
 	cur_timestamp = prev_timestamp
 	dict_cur_trendy = {}
@@ -204,12 +211,10 @@ def generate_torch_rnn_input():
 
 	copy_timestamp = prev_timestamp
 	while(copy_timestamp is not cur_timestamp):
-		dict_trendy_idx[copy_timestamp] = \
-			sorted(dict_cur_trendy.items(), key=lambda x: x[1], reverse=True)[:10]
+		dict_trendy_idx[copy_timestamp] = generate_trendy_items(dict_cur_trendy, dict_url_idx['url_pad'])
 
 		copy_timestamp = dict_time_idx[copy_timestamp]['next_time']
-	dict_trendy_idx[cur_timestamp] = \
-		sorted(dict_cur_trendy.items(), key=lambda x: x[1], reverse=True)[:10]
+	dict_trendy_idx[cur_timestamp] = generate_trendy_items(dict_cur_trendy, dict_url_idx['url_pad'])
 
 	# main step
 	while(True):
@@ -237,10 +242,7 @@ def generate_torch_rnn_input():
 			dict_cur_trendy.pop(idx, None)
 
 		# Update trendy data
-		dict_trendy_idx[cur_timestamp] = \
-			sorted(dict_cur_trendy.items(), key=lambda x: x[1], reverse=True)[:10]
-
-		assert(len(dict_trendy_idx[cur_timestamp]) == 10)
+		dict_trendy_idx[cur_timestamp] = generate_trendy_items(dict_cur_trendy, dict_url_idx['url_pad'])
 
 	# save
 	dict_torch_rnn_input = {

@@ -42,11 +42,13 @@ class SingleLSTMModel(nn.Module):
 		outputs, _ = unpack(outputs, batch_first=True)
 		outputs = self.linear(outputs)
 
-		outputs = outputs.view(-1, embed_size)
-		outputs = self.bn(outputs)
-		outputs = outputs.view(batch_size, -1, embed_size)
-
 		return outputs
+
+#		outputs = outputs.view(-1, embed_size)
+#		outputs = self.bn(outputs)
+#		outputs = outputs.view(batch_size, -1, embed_size)
+#
+#		return outputs
 
 
 def main():
@@ -71,7 +73,7 @@ def main():
 	predictor = AdressaRec(SingleLSTMModel, ws_path, torch_input_path, dict_url2vec)
 	predictor.do_train()
 
-	print('Fianl mrr 20 : {}'.format(predictor.test_mrr_20()))
+	print('Fianl mrr 20 : {}'.format(predictor.test_mrr_20_trendy()))
 
 
 if __name__ == '__main__':
