@@ -26,7 +26,7 @@ class MultiLSTMModel(nn.Module):
 	def __init__(self, embed_size):
 		super(MultiLSTMModel, self).__init__()
 
-		hidden_size = 192
+		hidden_size = 256
 		num_layers = 2
 
 		self.rnn = nn.LSTM(embed_size, hidden_size, num_layers, batch_first=True, dropout=0.5)
