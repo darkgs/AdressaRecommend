@@ -14,7 +14,7 @@ endef
 # mode in [simple, one_week, three_month]
 MODE=simple
 MODE=one_week
-#MODE=three_month
+MODE=three_month
 
 D2V_EMBED=default
 D2V_EMBED=1000
@@ -95,7 +95,7 @@ d2v_rnn_v2: $(BASE_PATH)/tf_record src/d2v_rnn_v2.py
 $(BASE_PATH)/torch_input: $(BASE_PATH)/data_for_all src/generate_torch_rnn_input.py
 	$(info [Makefile] $@)
 	$(call asked_delete, $@)
-	@python3 src/generate_torch_rnn_input.py -d $(BASE_PATH)/data_for_all -o $@
+	python3 src/generate_torch_rnn_input.py -d $(BASE_PATH)/data_for_all -o $@
 
 d2v_rnn_torch: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) src/d2v_rnn_torch.py
 	$(info [Makefile] $@)
