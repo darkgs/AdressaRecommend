@@ -202,7 +202,7 @@ class MultiCellModel(nn.Module):
 		self.lstm = MultiCellLSTM(embed_size, self._hidden_size, 10)
 		self.linear = nn.Linear(self._hidden_size, embed_size)
 		self.dropout = torch.nn.Dropout(0.6)
-#self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
+		self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
 
 	def to(self, device):
 		ret = super(MultiCellModel, self).to(device)
@@ -248,14 +248,12 @@ class MultiCellModel(nn.Module):
 		if self.training:
 			outputs = self.dropout(outputs)
 
-		return outputs
+		outputs = outputs.view(-1, embed_size)
+		outputs = self.bn(outputs)
+		outputs = outputs.view(batch_size, -1, embed_size)
 
-#		outputs = outputs.view(-1, embed_size)
-#		outputs = self.bn(outputs)
-#		outputs = outputs.view(batch_size, -1, embed_size)
-#
-#		outputs, _ = unpack(pack(outputs, seq_lens, batch_first=True), batch_first=True)
-#		return outputs
+		outputs, _ = unpack(pack(outputs, seq_lens, batch_first=True), batch_first=True)
+		return outputs
 
 
 def main():
