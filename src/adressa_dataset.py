@@ -32,6 +32,7 @@ class AdressaRNNInput(object):
 		self._dict_url2vec = dict_url2vec
 
 		self._dict_rnn_input = load_json(rnn_input_json_path)
+		self._trendy_count = 10
 
 		self._dataset = {}
 
@@ -39,7 +40,7 @@ class AdressaRNNInput(object):
 		if data_type not in ['train', 'valid', 'test']:
 			data_type = 'test'
 
-		trendy_count = 5
+		trendy_count = self._trendy_count
 		if data_type == 'test':
 			trendy_count = 50
 
@@ -77,14 +78,9 @@ class AdressaRNNInput(object):
 				trendy_infos = [self.get_trendy(timestamp, trendy_count, self.get_pad_idx()) \
 						 for timestamp in pad_time_indices]
 
-				seq_trendy = [[self.idx2vec(idx) for idx, count in trendy] for trendy in trendy_infos][:-1]
-				idx_trendy = [[idx for idx, count in trendy] for trendy in trendy_infos][:-1]
+				seq_trendy = [[self.idx2vec(idx) for idx, count in trendy] for trendy in trendy_infos][1:]
+				idx_trendy = [[idx for idx, count in trendy] for trendy in trendy_infos][1:]
 				
-#				seq_trendy = [[self.idx2vec(idx) for idx, count in \
-#						 self.get_trendy(timestamp, trendy_count, self.get_pad_idx())] \
-#						 for timestamp in pad_time_indices]
-#				seq_trendy = seq_trendy[:-1]
-			
 				datas.append(
 					(seq_x, seq_y, seq_len, idx_x, idx_y, seq_trendy, idx_trendy, \
 					 timestamp_start, timestamp_end)
@@ -197,7 +193,7 @@ class AdressaRec(object):
 		self._ws_path = ws_path
 
 		dim_article = len(next(iter(dict_url2vec.values())))
-		learning_rate = 0.005
+		learning_rate = 0.003
 
 		dict_rnn_input_path = '{}/torch_rnn_input.dict'.format(torch_input_path)
 		self._rnn_input = AdressaRNNInput(dict_rnn_input_path, dict_url2vec)
@@ -310,7 +306,7 @@ class AdressaRec(object):
 #unpacked_y_s, _ = unpack(pack(input_y_s, seq_lens, batch_first=True), batch_first=True)
 #loss = self._criterion(outputs, unpacked_y_s)
 
-			outputs = self._model(input_x_s, input_trendy[:,:,:5,:], seq_lens)
+			outputs = self._model(input_x_s, input_trendy[:,:,:self._rnn_input._trendy_count,:], seq_lens)
 			packed_outputs = pack(outputs, seq_lens, batch_first=True).data
 			packed_y_s = pack(input_y_s, seq_lens, batch_first=True).data
 
@@ -334,7 +330,7 @@ class AdressaRec(object):
 			input_trendy = input_trendy.to(self._device)
 
 			with torch.no_grad():
-				outputs = self._model(input_x_s, input_trendy[:,:,:5,:], seq_lens)
+				outputs = self._model(input_x_s, input_trendy[:,:,:self._rnn_input._trendy_count,:], seq_lens)
 
 			batch_size = seq_lens.size(0)
 			seq_lens = seq_lens.cpu().numpy()

@@ -110,23 +110,23 @@ class MultiCellLSTM(nn.Module):
 		c2_t = f2_t * c2_t + i2_t * c2_tilda
 
 		# out gate
-		o1_t = torch.sigmoid(torch.matmul(torch.cat([h_t, x1], 1), self._W1_o) + self._b1_o)
-		o2_t = torch.sigmoid(torch.matmul(torch.cat([h_t, x2], 1), self._W2_o) + self._b2_o)
+#		o1_t = torch.sigmoid(torch.matmul(torch.cat([h_t, x1], 1), self._W1_o) + self._b1_o)
+#		o2_t = torch.sigmoid(torch.matmul(torch.cat([h_t, x2], 1), self._W2_o) + self._b2_o)
 
-#		o1_t = torch.matmul(torch.cat([h_t, x1], 1), self._W1_o) + self._b1_o
-#		o2_t = torch.matmul(torch.cat([h_t, x2], 1), self._W2_o) + self._b2_o
-#
-#		softmax_sum = torch.exp(o1_t) + torch.exp(o2_t)
-#
-#		o1_t = torch.exp(o1_t) / softmax_sum
-#		o2_t = torch.exp(o2_t) / softmax_sum
+		o1_t = torch.matmul(torch.cat([h_t, x1], 1), self._W1_o) + self._b1_o
+		o2_t = torch.matmul(torch.cat([h_t, x2], 1), self._W2_o) + self._b2_o
+
+		softmax_sum = torch.exp(o1_t) + torch.exp(o2_t)
+
+		o1_t = torch.exp(o1_t) / softmax_sum
+		o2_t = torch.exp(o2_t) / softmax_sum
 		
 		# new hidden state
-		h_t = torch.tanh(o1_t * torch.tanh(c1_t) + o2_t * torch.tanh(c2_t))
+#		h_t = torch.tanh(o1_t * torch.tanh(c1_t) + o2_t * torch.tanh(c2_t))
 #h_t = (o1_t * torch.tanh(c1_t) + o2_t * torch.tanh(c2_t)) / (o1_t + o2_t)
 #		alpha = 0.2
-#		h_t = o1_t * torch.tanh(c1_t) * (1.0 - alpha) + o2_t * torch.tanh(c2_t) * alpha
-#h_t = o1_t * torch.tanh(c1_t) + o2_t * torch.tanh(c2_t)
+#	h_t = o1_t * torch.tanh(c1_t) * (1.0 - alpha) + o2_t * torch.tanh(c2_t) * alpha
+		h_t = o1_t * torch.tanh(c1_t) + o2_t * torch.tanh(c2_t)
 
 		return h_t, (h_t, c1_t, c2_t)
 
@@ -197,10 +197,11 @@ class MultiCellModel(nn.Module):
 	def __init__(self, embed_size):
 		super(MultiCellModel, self).__init__()
 
-		self._hidden_size = 486
+		self._hidden_size = 1422
 
-		self.lstm = MultiCellLSTM(embed_size, self._hidden_size, 5)
+		self.lstm = MultiCellLSTM(embed_size, self._hidden_size, 10)
 		self.linear = nn.Linear(self._hidden_size, embed_size)
+		self.dropout = torch.nn.Dropout(0.6)
 #self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
 
 	def to(self, device):
@@ -244,6 +245,8 @@ class MultiCellModel(nn.Module):
 		outputs = torch.transpose(outputs, 1, 0).to(self._device)
 
 		outputs = self.linear(outputs)
+		if self.training:
+			outputs = self.dropout(outputs)
 
 		return outputs
 
@@ -276,8 +279,6 @@ def main():
 
 	predictor = AdressaRec(MultiCellModel, ws_path, torch_input_path, dict_url2vec)
 	predictor.do_train()
-
-	print('Fianl mrr 20 : {}'.format(predictor.test_mrr_20()))
 
 
 if __name__ == '__main__':
