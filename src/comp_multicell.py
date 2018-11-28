@@ -197,11 +197,11 @@ class MultiCellModel(nn.Module):
 	def __init__(self, embed_size):
 		super(MultiCellModel, self).__init__()
 
-		self._hidden_size = 1422
+		self._hidden_size = 712
 
 		self.lstm = MultiCellLSTM(embed_size, self._hidden_size, 10)
 		self.linear = nn.Linear(self._hidden_size, embed_size)
-		self.dropout = torch.nn.Dropout(0.6)
+		self.dropout = torch.nn.Dropout(0.3)
 		self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
 
 	def to(self, device):
