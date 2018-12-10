@@ -61,11 +61,11 @@ def main():
 	global total_works
 
 	dict_params = {
-		'd2v_embed': [200, 500, 1000],
-		'learning_rate': [1e-3, 3e-3, 5e-3],
-		'trendy_count': [5, 7, 10],
-		'recency_count': [3, 5, 7],
-		'hidden_size': [721, 1024, 1208],
+		'd2v_embed': [500, 1000],
+		'learning_rate': [3e-3],
+		'trendy_count': [5, 10],
+		'recency_count': [3, 5],
+		'hidden_size': [1024, 1208],
 		'x2_dropout_rate': [0.3, 0.5, 0.7],
 	}
 	def generate_hyper_params(dict_params):
