@@ -41,10 +41,10 @@ def worker_function(args):
 	params = args[1]
 
 	command = ''
-#	command += 'source activate news;'
+	command += 'source activate news;'
 	command += 'export CUDA_VISIBLE_DEVICES={};'.format(my_gpu)
 	command += 'python3 src/{} {};'.format(model_file, params)
-#	command += 'source deactivate'
+	command += 'source deactivate'
 
 	os.system(command)
 
