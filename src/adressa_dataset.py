@@ -28,12 +28,12 @@ class AdressaDataset(Dataset):
 		return self._data_len
 
 class AdressaRNNInput(object):
-	def __init__(self, rnn_input_json_path, dict_url2vec, trendy_count, recency_count):
+	def __init__(self, rnn_input_json_path, dict_url2vec, args):
 		self._dict_url2vec = dict_url2vec
 
 		self._dict_rnn_input = load_json(rnn_input_json_path)
-		self._trendy_count = trendy_count
-		self._recency_count = recency_count
+		self._trendy_count = args.trendy_count
+		self._recency_count = args.recency_count
 
 		self._dataset = {}
 
@@ -190,24 +190,25 @@ def adressa_collate(batch):
 
 
 class AdressaRec(object):
-	def __init__(self, model_class, ws_path, torch_input_path, dict_url2vec, trendy_count, recency_count):
+	def __init__(self, model_class, ws_path, torch_input_path, dict_url2vec, args):
 		super(AdressaRec, self).__init__()
 
 		print("AdressaRec generating ...")
 
 		self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 		self._ws_path = ws_path
+		self._args = args
 
 		dim_article = len(next(iter(dict_url2vec.values())))
-		learning_rate = 3e-3
+		learning_rate = args.learning_rate
 
 		dict_rnn_input_path = '{}/torch_rnn_input.dict'.format(torch_input_path)
-		self._rnn_input = AdressaRNNInput(dict_rnn_input_path, dict_url2vec, trendy_count, recency_count)
+		self._rnn_input = AdressaRNNInput(dict_rnn_input_path, dict_url2vec, args)
 
 		self._train_dataloader, self._test_dataloader = \
 								self.get_dataloader(dict_url2vec)
 
-		self._model = model_class(dim_article, trendy_count, recency_count).to(self._device)
+		self._model = model_class(dim_article, args).to(self._device)
 		self._model.apply(weights_init)
 
 #self._optimizer = torch.optim.SGD(self._model.parameters(), lr=learning_rate, momentum=0.9)
@@ -251,7 +252,7 @@ class AdressaRec(object):
 				print('epoch {} - train loss({:.8f}) test loss({:.8f}) test mrr_20({:.4f}) best mrr({:.4f}) tooks {:.2f}'.format(
 					epoch, train_loss, test_loss, mrr_20, best_mrr, time.time() - start_time))
 
-				if best_mrr == mrr_20:
+				if self._args.save_model and best_mrr == mrr_20:
 					self.save_model(epoch, test_loss)
 					print('Model saved! - best mrr({})'.format(best_mrr))
 
@@ -260,6 +261,8 @@ class AdressaRec(object):
 					endure = 0
 				else:
 					endure += 1
+
+		return best_mrr
 
 	def train(self):
 		self._model.train()

@@ -232,3 +232,10 @@ def load_json(dict_path=None):
 
 	return dict_ret
 
+def option2str(options):
+	items = [(key, option) for key, option in options.__dict__.items() if '/' not in str(option) ]
+	items.sort(key=lambda x: x[0])
+	items = [key + '-' + str(option) for key, option in items]
+	return '__'.join(items)
+
+

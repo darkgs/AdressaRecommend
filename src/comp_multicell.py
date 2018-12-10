@@ -11,17 +11,28 @@ from optparse import OptionParser
 
 from adressa_dataset import AdressaRec
 from ad_util import load_json
+from ad_util import option2str
 
 parser = OptionParser()
 parser.add_option('-i', '--input', dest='input', type='string', default=None)
-parser.add_option('-e', '--d2v_embed', dest='d2v_embed', type='string', default='1000')
 parser.add_option('-u', '--u2v_path', dest='u2v_path', type='string', default=None)
 parser.add_option('-w', '--ws_path', dest='ws_path', type='string', default=None)
+parser.add_option('-s', action="store_true", dest='save_model', default=False)
+parser.add_option('-z', action="store_true", dest='search_mode', default=False)
+
+parser.add_option('-e', '--d2v_embed', dest='d2v_embed', type='string', default='500')
+parser.add_option('-l', '--learning_rate', dest='learning_rate', type='float', default=3e-3)
+parser.add_option('-t', '--trendy_count', dest='trendy_count', type='int', default=10)
+parser.add_option('-r', '--recency_count', dest='recency_count', type='int', default=5)
+parser.add_option('-a', '--hidden_size', dest='hidden_size', type='int', default=1024)
+parser.add_option('-d', '--x2_dropout_rate', dest='x2_dropout_rate', type='float', default=0.5)
 
 
 class MultiCellLSTM(nn.Module):
-	def __init__(self, embed_size, hidden_size, attn_count):
+	def __init__(self, embed_size, hidden_size, attn_count, x2_dropout_rate):
 		super(MultiCellLSTM, self).__init__()
+
+		self._x2_dropout_rate = x2_dropout_rate
 
 		self._W1_f = torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True)
 		self._b1_f = torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True)
@@ -123,10 +134,9 @@ class MultiCellLSTM(nn.Module):
 		o2_t = torch.matmul(torch.cat([h_t, x2], 1), self._W2_o) + self._b2_o
 
 		do_softmax = True
-		x2_drop = 0.5
 		if do_softmax:
 			softmax_sum = torch.exp(o1_t) + torch.exp(o2_t)
-			if self.training and random.random() < x2_drop:
+			if self.training and random.random() < self._x2_dropout_rate:
 				h_t = torch.sigmoid(o1_t) * torch.tanh(c1_t)
 			else:
 				h_t = torch.exp(o1_t) * torch.tanh(c1_t) / softmax_sum \
@@ -135,7 +145,7 @@ class MultiCellLSTM(nn.Module):
 			o1_t = torch.sigmoid(o1_t)
 			o2_t = torch.sigmoid(o2_t)
 
-			if self.training and random.random() < x2_drop:
+			if self.training and random.random() < self._x2_dropout_rate:
 				h_t = o1_t * torch.tanh(c1_t)
 			else:
 				h_t = torch.tanh(o1_t * torch.tanh(c1_t) + o2_t * torch.tanh(c2_t))
@@ -212,15 +222,16 @@ class MyLSTM(nn.Module):
 
 
 class MultiCellModel(nn.Module):
-	def __init__(self, embed_size, trendy_count, recency_count):
+	def __init__(self, embed_size, args):
 		super(MultiCellModel, self).__init__()
 
-		self._hidden_size = 1024
+		self._hidden_size = args.hidden_size
 # 712 0.2914
 # 384 0.2815
 # 1024 0.3060
+		attn = args.trendy_count + args.recency_count
 
-		self.lstm = MultiCellLSTM(embed_size, self._hidden_size, trendy_count + recency_count)
+		self.lstm = MultiCellLSTM(embed_size, self._hidden_size, attn)
 #self.dropout = nn.Dropout(0.3)
 		self.linear = nn.Linear(self._hidden_size, embed_size)
 		self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
@@ -296,22 +307,37 @@ def main():
 
 	torch_input_path = options.input
 	embedding_dimension = int(options.d2v_embed)
-	url2vec_path = options.u2v_path
+	url2vec_path = '{}_{}'.format(options.u2v_path, embedding_dimension)
 	ws_path = options.ws_path
+	search_mode = options.search_mode
+	model_ws_path = '{}/model/{}'.format(ws_path, option2str(options))
 
-	os.system('rm -rf {}'.format(ws_path))
-	os.system('mkdir -p {}'.format(ws_path))
+	if not os.path.exists(ws_path):
+		os.system('mkdir -p {}'.format(ws_path))
+
+	os.system('rm -rf {}'.format(model_ws_path))
+	os.system('mkdir -p {}'.format(model_ws_path))
+
+	# Save best result with param name
+	param_search_path = ws_path + '/param_search'
+	if not os.path.exists(param_search_path):
+		os.system('mkdir -p {}'.format(param_search_path))
+	param_search_file_path = '{}/{}'.format(param_search_path, option2str(options))
+
+	if search_mode and os.path.exists(param_search_file_path):
+		print('Param search mode already exist : {}'.format(param_search_file_path))
+		return
 
 	print('Loading url2vec : start')
 	dict_url2vec = load_json(url2vec_path)
 	print('Loading url2vec : end')
 
-	trendy_count = 10
-	recency_count = 5
+	predictor = AdressaRec(MultiCellModel, model_ws_path, torch_input_path, dict_url2vec, options)
+	best_mrr = predictor.do_train()
 
-	predictor = AdressaRec(MultiCellModel, ws_path, torch_input_path, dict_url2vec, trendy_count, recency_count)
-	predictor.do_train()
-
+	if search_mode:
+		with open(param_search_file_path, 'w') as f_out:
+			f_out.write(str(best_mrr))
 
 if __name__ == '__main__':
 	main()

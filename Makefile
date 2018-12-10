@@ -123,7 +123,7 @@ comp_multi_layer_lstm: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_
 
 comp_multicell: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_multicell.py
 	$(info [Makefile] $@)
-	python3 src/comp_multicell.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json_$(D2V_EMBED) -w $(BASE_PATH)/multicell
+	python3 src/comp_multicell.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json -w $(BASE_PATH)/multicell
 
 comp_pop: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_pop.py
 	$(info [Makefile] $@)
