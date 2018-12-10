@@ -1,6 +1,7 @@
 
 import os
 import time
+import subprocess
 
 from multiprocessing.pool import ThreadPool
 from threading import Semaphore
@@ -35,18 +36,21 @@ def worker_function(args):
 	my_count = worker_counter
 	worker_counter_sema.release()
 
-	print('Processing {}/{} on gpu {}'.format(my_count, total_works, my_gpu))
-
 	model_file = args[0]
 	params = args[1]
 
-	command = ''
+	print('Processing {}/{} on gpu {} - {}'.format(my_count, total_works, my_gpu, params))
+
+	command = 'bash -c \"'
 	command += 'source activate news;'
 	command += 'export CUDA_VISIBLE_DEVICES={};'.format(my_gpu)
 	command += 'python3 src/{} {};'.format(model_file, params)
 	command += 'source deactivate'
+	command += '\"'
 
-	os.system(command)
+	subprocess.check_output(command, shell=True)
+
+#os.system(command)
 
 	# Release GPU resource
 	visible_gpus_sema.acquire()

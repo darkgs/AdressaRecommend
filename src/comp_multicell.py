@@ -231,7 +231,7 @@ class MultiCellModel(nn.Module):
 # 1024 0.3060
 		attn = args.trendy_count + args.recency_count
 
-		self.lstm = MultiCellLSTM(embed_size, self._hidden_size, attn)
+		self.lstm = MultiCellLSTM(embed_size, self._hidden_size, attn, args.x2_dropout_rate)
 #self.dropout = nn.Dropout(0.3)
 		self.linear = nn.Linear(self._hidden_size, embed_size)
 		self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
