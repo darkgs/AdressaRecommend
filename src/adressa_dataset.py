@@ -28,11 +28,12 @@ class AdressaDataset(Dataset):
 		return self._data_len
 
 class AdressaRNNInput(object):
-	def __init__(self, rnn_input_json_path, dict_url2vec):
+	def __init__(self, rnn_input_json_path, dict_url2vec, trendy_count, recency_count):
 		self._dict_url2vec = dict_url2vec
 
 		self._dict_rnn_input = load_json(rnn_input_json_path)
-		self._trendy_count = 5
+		self._trendy_count = trendy_count
+		self._recency_count = recency_count
 
 		self._dataset = {}
 
@@ -41,8 +42,6 @@ class AdressaRNNInput(object):
 			data_type = 'test'
 
 		trendy_count = self._trendy_count
-		if data_type == 'test':
-			trendy_count = 50
 
 		max_seq = 20
 		if self._dataset.get(data_type, None) == None:
@@ -75,7 +74,7 @@ class AdressaRNNInput(object):
 				idx_x = pad_indices[:-1]
 				idx_y = pad_indices[1:]
 
-				trendy_infos = [self.get_trendy(timestamp, trendy_count, self.get_pad_idx()) \
+				trendy_infos = [self.get_trendy(timestamp, self.get_pad_idx()) \
 						 for timestamp in pad_time_indices]
 
 				seq_trendy = [[self.idx2vec(idx) for idx, count in trendy] \
@@ -97,15 +96,22 @@ class AdressaRNNInput(object):
 	def get_pad_idx(self):
 		return self._dict_rnn_input['pad_idx']
 
-	def get_trendy(self, cur_time=-1, topk=10, padding=0):
+	def get_trendy(self, cur_time=-1, padding=0):
 		trendy_list = self._dict_rnn_input['trendy_idx'].get(str(cur_time), None)
+		recency_list = self._dict_rnn_input['recency_idx'].get(str(cur_time), None)
+
+		x2_list = []
 
 		if trendy_list == None:
-			return [[padding, 0]] * topk
+			trendy_list = [[padding, 0]] * self._trendy_count
 
-		assert(len(trendy_list) >= topk)
+		if recency_list == None:
+			recency_list = [[padding, 0]] * self._recency_count
 
-		return trendy_list[:topk]
+		assert(len(trendy_list) >= self._trendy_count)
+		assert(len(recency_list) >= self._recency_count)
+
+		return trendy_list[:self._trendy_count] + recency_list[:self._recency_count]
 
 	def get_candidates(self, start_time=-1, end_time=-1, idx_count=0):
 		if (start_time < 0) or (end_time < 0) or (idx_count <= 0):
@@ -184,7 +190,7 @@ def adressa_collate(batch):
 
 
 class AdressaRec(object):
-	def __init__(self, model_class, ws_path, torch_input_path, dict_url2vec):
+	def __init__(self, model_class, ws_path, torch_input_path, dict_url2vec, trendy_count, recency_count):
 		super(AdressaRec, self).__init__()
 
 		print("AdressaRec generating ...")
@@ -196,12 +202,12 @@ class AdressaRec(object):
 		learning_rate = 3e-3
 
 		dict_rnn_input_path = '{}/torch_rnn_input.dict'.format(torch_input_path)
-		self._rnn_input = AdressaRNNInput(dict_rnn_input_path, dict_url2vec)
+		self._rnn_input = AdressaRNNInput(dict_rnn_input_path, dict_url2vec, trendy_count, recency_count)
 
 		self._train_dataloader, self._test_dataloader = \
 								self.get_dataloader(dict_url2vec)
 
-		self._model = model_class(dim_article).to(self._device)
+		self._model = model_class(dim_article, trendy_count, recency_count).to(self._device)
 		self._model.apply(weights_init)
 
 #self._optimizer = torch.optim.SGD(self._model.parameters(), lr=learning_rate, momentum=0.9)
@@ -304,7 +310,7 @@ class AdressaRec(object):
 #unpacked_y_s, _ = unpack(pack(input_y_s, seq_lens, batch_first=True), batch_first=True)
 #loss = self._criterion(outputs, unpacked_y_s)
 
-			outputs = self._model(input_x_s, input_trendy[:,:,:self._rnn_input._trendy_count,:], seq_lens)
+			outputs = self._model(input_x_s, input_trendy, seq_lens)
 			packed_outputs = pack(outputs, seq_lens, batch_first=True).data
 			packed_y_s = pack(input_y_s, seq_lens, batch_first=True).data
 
@@ -329,7 +335,7 @@ class AdressaRec(object):
 			input_trendy = input_trendy.to(self._device)
 
 			with torch.no_grad():
-				outputs = self._model(input_x_s, input_trendy[:,:,:self._rnn_input._trendy_count,:], seq_lens)
+				outputs = self._model(input_x_s, input_trendy, seq_lens)
 
 			batch_size = seq_lens.size(0)
 			seq_lens = seq_lens.cpu().numpy()

@@ -212,7 +212,7 @@ class MyLSTM(nn.Module):
 
 
 class MultiCellModel(nn.Module):
-	def __init__(self, embed_size):
+	def __init__(self, embed_size, trendy_count, recency_count):
 		super(MultiCellModel, self).__init__()
 
 		self._hidden_size = 1024
@@ -220,7 +220,7 @@ class MultiCellModel(nn.Module):
 # 384 0.2815
 # 1024 0.3060
 
-		self.lstm = MultiCellLSTM(embed_size, self._hidden_size, 5)
+		self.lstm = MultiCellLSTM(embed_size, self._hidden_size, trendy_count + recency_count)
 #self.dropout = nn.Dropout(0.3)
 		self.linear = nn.Linear(self._hidden_size, embed_size)
 		self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
@@ -306,7 +306,10 @@ def main():
 	dict_url2vec = load_json(url2vec_path)
 	print('Loading url2vec : end')
 
-	predictor = AdressaRec(MultiCellModel, ws_path, torch_input_path, dict_url2vec)
+	trendy_count = 10
+	recency_count = 5
+
+	predictor = AdressaRec(MultiCellModel, ws_path, torch_input_path, dict_url2vec, trendy_count, recency_count)
 	predictor.do_train()
 
 
