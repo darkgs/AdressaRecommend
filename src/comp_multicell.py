@@ -1,5 +1,6 @@
 
 import os
+import random
 
 import torch
 import torch.nn as nn
@@ -56,6 +57,14 @@ class MultiCellLSTM(nn.Module):
 
 		nn.init.xavier_normal_(self._W_attn.data)
 
+		self.training = True
+
+	def train(self, mode=True):
+		self.training = mode
+
+	def eval(self):
+		self.train(False)
+
 	def to(self, device):
 		ret = super(MultiCellLSTM, self).to(device)
 
@@ -109,24 +118,32 @@ class MultiCellLSTM(nn.Module):
 		c1_t = f1_t * c1_t + i1_t * c1_tilda
 		c2_t = f2_t * c2_t + i2_t * c2_tilda
 
-		# out gate
-#		o1_t = torch.sigmoid(torch.matmul(torch.cat([h_t, x1], 1), self._W1_o) + self._b1_o)
-#		o2_t = torch.sigmoid(torch.matmul(torch.cat([h_t, x2], 1), self._W2_o) + self._b2_o)
-
+		# out gate without sigmoid
 		o1_t = torch.matmul(torch.cat([h_t, x1], 1), self._W1_o) + self._b1_o
 		o2_t = torch.matmul(torch.cat([h_t, x2], 1), self._W2_o) + self._b2_o
 
-		softmax_sum = torch.exp(o1_t) + torch.exp(o2_t)
+		do_softmax = True
+		x2_drop = 0.5
+		if do_softmax:
+			softmax_sum = torch.exp(o1_t) + torch.exp(o2_t)
+			if self.training and random.random() < x2_drop:
+				h_t = torch.sigmoid(o1_t) * torch.tanh(c1_t)
+			else:
+				h_t = torch.exp(o1_t) * torch.tanh(c1_t) / softmax_sum \
+					  + torch.exp(o2_t) * torch.tanh(c2_t) / softmax_sum
+		else:
+			o1_t = torch.sigmoid(o1_t)
+			o2_t = torch.sigmoid(o2_t)
 
-		o1_t = torch.exp(o1_t) / softmax_sum
-		o2_t = torch.exp(o2_t) / softmax_sum
-		
+			if self.training and random.random() < x2_drop:
+				h_t = o1_t * torch.tanh(c1_t)
+			else:
+				h_t = torch.tanh(o1_t * torch.tanh(c1_t) + o2_t * torch.tanh(c2_t))
+
 		# new hidden state
 #		h_t = torch.tanh(o1_t * torch.tanh(c1_t) + o2_t * torch.tanh(c2_t))
-#h_t = (o1_t * torch.tanh(c1_t) + o2_t * torch.tanh(c2_t)) / (o1_t + o2_t)
 #		alpha = 0.2
 #	h_t = o1_t * torch.tanh(c1_t) * (1.0 - alpha) + o2_t * torch.tanh(c2_t) * alpha
-		h_t = o1_t * torch.tanh(c1_t) + o2_t * torch.tanh(c2_t)
 
 		return h_t, (h_t, c1_t, c2_t)
 
@@ -151,6 +168,7 @@ class MyLSTM(nn.Module):
 		nn.init.xavier_normal_(self._W_i.data)
 		nn.init.xavier_normal_(self._W_c.data)
 		nn.init.xavier_normal_(self._W_o.data)
+
 
 	def to(self, device):
 		ret = super(MyLSTM, self).to(device)
@@ -197,12 +215,23 @@ class MultiCellModel(nn.Module):
 	def __init__(self, embed_size):
 		super(MultiCellModel, self).__init__()
 
-		self._hidden_size = 712
+		self._hidden_size = 1024
+# 712 0.2914
+# 384 0.2815
+# 1024 0.3060
 
-		self.lstm = MultiCellLSTM(embed_size, self._hidden_size, 10)
+		self.lstm = MultiCellLSTM(embed_size, self._hidden_size, 5)
+#self.dropout = nn.Dropout(0.3)
 		self.linear = nn.Linear(self._hidden_size, embed_size)
-		self.dropout = torch.nn.Dropout(0.3)
 		self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
+
+	def train(self, mode=True):
+		super(MultiCellModel, self).train(mode)
+		self.lstm.train(mode)
+
+	def eval(self):
+		super(MultiCellModel, self).eval()
+		self.lstm.eval()
 
 	def to(self, device):
 		ret = super(MultiCellModel, self).to(device)
@@ -243,17 +272,19 @@ class MultiCellModel(nn.Module):
 			cursor += sequence_lenth
 
 		outputs = torch.transpose(outputs, 1, 0).to(self._device)
+#		if self.training:
+#			outputs = self.dropout(outputs)
 
 		outputs = self.linear(outputs)
-		if self.training:
-			outputs = self.dropout(outputs)
 
-		outputs = outputs.view(-1, embed_size)
-		outputs = self.bn(outputs)
-		outputs = outputs.view(batch_size, -1, embed_size)
-
-		outputs, _ = unpack(pack(outputs, seq_lens, batch_first=True), batch_first=True)
 		return outputs
+
+#		outputs = outputs.view(-1, embed_size)
+#		outputs = self.bn(outputs)
+#		outputs = outputs.view(batch_size, -1, embed_size)
+#
+#		outputs, _ = unpack(pack(outputs, seq_lens, batch_first=True), batch_first=True)
+#		return outputs
 
 
 def main():

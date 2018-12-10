@@ -141,62 +141,15 @@ def generate_merged_sequences():
 #		dict_url_vec = json.load(f_u2v)
 #
 
-def generate_torch_rnn_input():
-	global merged_sequences, dict_url_idx, list_per_time, output_dir_path
-
-	# idx2url
-	dict_idx2url = {idx:url for url, idx in dict_url_idx.items()}
-
-	# sequence_datas
-	total_seq_count = len(merged_sequences)
-
-	division_infos = [
-#('train', 0, int(total_seq_count * 8 / 10)),
-		('train', 0, int(total_seq_count - 2000)),
-		('valid', int(total_seq_count * 8 / 10), int(total_seq_count - 1000)),
-#		('test', int(total_seq_count * 9 / 10), total_seq_count),
-		('test', total_seq_count - 2000, total_seq_count),
-	]
-
-	dict_seq_datas = {}
-	for dataset_name, idx_st, idx_ed in division_infos:
-		dict_seq_datas[dataset_name] = merged_sequences[idx_st:idx_ed]
-#		dict_seq_datas[dataset_name]['vec'] = [
-#			[dict_idx_vec[idx] for idx in sequence] \
-#				for (timestamp_start, timestamp_end, sequence) \
-#				in itertools.islice(merged_sequences, idx_st, idx_ed)
-#		]
-
-	# candidates
-	dict_time_idx = {}
-
-	prev_timestamp = None
-	for (timestamp, user_id, url) in list_per_time:
-		if prev_timestamp != timestamp:
-			if prev_timestamp != None:
-				dict_time_idx[prev_timestamp]['next_time'] = timestamp
-			dict_time_idx[timestamp] = {
-				'prev_time': prev_timestamp,
-				'next_time': None,
-				'indices': {},
-			}
-
-		idx_of_url = dict_url_idx[url]
-		dict_time_idx[timestamp]['indices'][idx_of_url] = \
-			dict_time_idx[timestamp]['indices'].get(idx_of_url, 0) + 1
-
-		prev_timestamp = timestamp
-
-	# trendy
+def extract_current_popular_indices(dict_time_idx, item_count=50, window_siz=60*60):
 	dict_trendy_idx = {}
 	def generate_trendy_items(dict_target, padding):
-		trendy_count = 50
 		ret = sorted(dict_target.items(), key=lambda x: x[1], reverse=True)
 		assert(len(ret) > 10)
-		if len(ret) < trendy_count:
-			ret += [(padding,0) * (trendy_count - len(ret))]
+		if len(ret) < item_count:
+			ret += [(padding,0) * (item_count - len(ret))]
 
-		return ret[:trendy_count]
+		return ret[:item_count]
 
 	window_size = 60*60*3
 	prev_timestamp = list_per_time[0][0]
@@ -245,6 +198,111 @@ def generate_torch_rnn_input():
 		# Update trendy data
 		dict_trendy_idx[cur_timestamp] = generate_trendy_items(dict_cur_trendy, dict_url_idx['url_pad'])
 
+	return dict_trendy_idx
+
+def extract_recency_indices(dict_time_idx, item_count=50, window_siz=60*60):
+	dict_indices = {}
+	def generate_recency_items(dict_target, padding):
+		ret = sorted(dict_target.items(), key=lambda x: x[1], reverse=True)
+		assert(len(ret) > 10)
+		if len(ret) < item_count:
+			ret += [(padding,0) * (item_count - len(ret))]
+
+		return ret[:item_count]
+
+	window_size = 60*60
+	prev_timestamp = list_per_time[0][0]
+	cur_timestamp = prev_timestamp
+	dict_cur_trendy = {}
+
+	# Initialize setting
+	while cur_timestamp != None and (int(cur_timestamp) - int(prev_timestamp)) < window_size:
+		for idx, count in dict_time_idx[cur_timestamp]['indices'].items():
+			dict_cur_trendy[idx] = int(cur_timestamp)
+
+		cur_timestamp = dict_time_idx[cur_timestamp]['next_time']
+
+	copy_timestamp = prev_timestamp
+	while(copy_timestamp is not cur_timestamp):
+		dict_indices[copy_timestamp] = generate_recency_items(dict_cur_trendy, dict_url_idx['url_pad'])
+
+		copy_timestamp = dict_time_idx[copy_timestamp]['next_time']
+	dict_indices[cur_timestamp] = generate_recency_items(dict_cur_trendy, dict_url_idx['url_pad'])
+
+	# main step
+	while(True):
+		# move cur
+		cur_timestamp = dict_time_idx[cur_timestamp]['next_time']
+
+		if cur_timestamp == None:
+			break
+
+		for idx, count in dict_time_idx[cur_timestamp]['indices'].items():
+			dict_cur_trendy[idx] = cur_timestamp
+
+		# move prev
+		to_be_removed = []
+		while prev_timestamp != None and (int(cur_timestamp) - int(prev_timestamp)) > window_size:
+
+			for idx, timestamp in dict_time_idx[prev_timestamp]['indices'].items():
+				if dict_cur_trendy[idx] <= int(prev_timestamp):
+					to_be_removed.append(idx)
+
+			prev_timestamp = dict_time_idx[prev_timestamp]['next_time']
+
+		for idx in to_be_removed:
+			dict_cur_trendy.pop(idx, None)
+
+		# Update trendy data
+		dict_indices[cur_timestamp] = generate_recency_items(dict_cur_trendy, dict_url_idx['url_pad'])
+
+	return dict_indices
+
+def generate_torch_rnn_input():
+	global merged_sequences, dict_url_idx, list_per_time, output_dir_path
+
+	# idx2url
+	dict_idx2url = {idx:url for url, idx in dict_url_idx.items()}
+
+	# sequence_datas
+	total_seq_count = len(merged_sequences)
+
+	division_infos = [
+		('train', 0, int(total_seq_count - 10000)),
+		('valid', int(total_seq_count - 10000), int(total_seq_count - 5000)),
+		('test', total_seq_count - 5000, total_seq_count),
+	]
+
+	dict_seq_datas = {}
+	for dataset_name, idx_st, idx_ed in division_infos:
+		dict_seq_datas[dataset_name] = merged_sequences[idx_st:idx_ed]
+
+	# candidates
+	dict_time_idx = {}
+
+	prev_timestamp = None
+	for (timestamp, user_id, url) in list_per_time:
+		if prev_timestamp != timestamp:
+			if prev_timestamp != None:
+				dict_time_idx[prev_timestamp]['next_time'] = timestamp
+			dict_time_idx[timestamp] = {
+				'prev_time': prev_timestamp,
+				'next_time': None,
+				'indices': {},
+			}
+
+		idx_of_url = dict_url_idx[url]
+		dict_time_idx[timestamp]['indices'][idx_of_url] = \
+			dict_time_idx[timestamp]['indices'].get(idx_of_url, 0) + 1
+
+		prev_timestamp = timestamp
+
+	# trendy
+	dict_trendy_idx = extract_current_popular_indices(dict_time_idx, item_count=50, window_siz=60*60*3)
+
+	# recency
+	dict_recency_idx = extract_recency_indices(dict_time_idx, item_count=50, window_siz=60*60)
+
 	# save
 	dict_torch_rnn_input = {
 		'dataset': dict_seq_datas,
@@ -254,6 +312,7 @@ def generate_torch_rnn_input():
 		'pad_idx': dict_url_idx['url_pad'],
 #		'embedding_dimension': embeding_dimension,
 		'trendy_idx': dict_trendy_idx,
+		'recency_idx': dict_recency_idx,
 	}
 
 	with open('{}/torch_rnn_input.dict'.format(output_dir_path), 'w') as f_extra:

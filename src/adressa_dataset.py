@@ -32,7 +32,7 @@ class AdressaRNNInput(object):
 		self._dict_url2vec = dict_url2vec
 
 		self._dict_rnn_input = load_json(rnn_input_json_path)
-		self._trendy_count = 10
+		self._trendy_count = 5
 
 		self._dataset = {}
 
@@ -78,14 +78,14 @@ class AdressaRNNInput(object):
 				trendy_infos = [self.get_trendy(timestamp, trendy_count, self.get_pad_idx()) \
 						 for timestamp in pad_time_indices]
 
-				seq_trendy = [[self.idx2vec(idx) for idx, count in trendy] for trendy in trendy_infos][1:]
+				seq_trendy = [[self.idx2vec(idx) for idx, count in trendy] \
+							 for trendy in trendy_infos][1:]
 				idx_trendy = [[idx for idx, count in trendy] for trendy in trendy_infos][1:]
 				
 				datas.append(
 					(seq_x, seq_y, seq_len, idx_x, idx_y, seq_trendy, idx_trendy, \
 					 timestamp_start, timestamp_end)
 				)
-
 
 			self._dataset[data_type] = AdressaDataset(datas)
 
@@ -193,7 +193,7 @@ class AdressaRec(object):
 		self._ws_path = ws_path
 
 		dim_article = len(next(iter(dict_url2vec.values())))
-		learning_rate = 0.003
+		learning_rate = 3e-3
 
 		dict_rnn_input_path = '{}/torch_rnn_input.dict'.format(torch_input_path)
 		self._rnn_input = AdressaRNNInput(dict_rnn_input_path, dict_url2vec)
@@ -279,10 +279,8 @@ class AdressaRec(object):
 			packed_outputs = pack(outputs, seq_lens, batch_first=True).data
 			packed_y_s = pack(input_y_s, seq_lens, batch_first=True).data
 
-#loss = self._criterion(F.softmax(packed_outputs, dim=1), \
-#F.softmax(packed_y_s, dim=1).long())
-			loss = self._criterion(F.softmax(packed_outputs, dim=1), \
-					F.softmax(packed_y_s, dim=1))
+			loss = self._criterion(F.softmax(packed_outputs, dim=1), F.softmax(packed_y_s, dim=1))
+#loss = self._criterion(packed_outputs, packed_y_s)
 			loss.backward()
 			self._optimizer.step()
 
@@ -311,6 +309,7 @@ class AdressaRec(object):
 			packed_y_s = pack(input_y_s, seq_lens, batch_first=True).data
 
 			loss = self._criterion(F.softmax(packed_outputs, dim=1), F.softmax(packed_y_s, dim=1))
+#loss = self._criterion(packed_outputs, packed_y_s)
 
 			test_loss += loss.item()
 
