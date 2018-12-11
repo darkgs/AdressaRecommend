@@ -62,6 +62,7 @@ def main():
 
 	target_name = 'multicell'
 	target_name = 'lstm'
+	target_name = 'gru4rec'
 
 	dict_param_db = {
 		'multicell': [
@@ -84,6 +85,16 @@ def main():
 				'learning_rate': [3e-3],
 				'hidden_size': [1024, 1280, 1408],
 				'num_layers': [1, 2],
+			},
+		],
+		'gru4rec': [
+			'comp_gru4rec.py',
+			'-i cache/one_week/torch_input -u cache/article_to_vec.json -w cache/one_week/gru4rec -z',
+			{
+				'd2v_embed': [1000],
+				'learning_rate': [3e-3],
+				'hidden_size': [786, 1024, 1408],
+				'num_layers': [2, 3, 4],
 			},
 		],
 	}

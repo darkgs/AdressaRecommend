@@ -109,10 +109,6 @@ comp_yahoo: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) $(BA
 	$(info [Makefile] $@)
 	python3 src/comp_yahoo.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json_$(D2V_EMBED) -a $(BASE_PATH)/article_info.json -w $(BASE_PATH)/yahoo
 
-comp_gru4rec: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_gru4rec.py
-	$(info [Makefile] $@)
-	python3 src/comp_gru4rec.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json_$(D2V_EMBED) -w $(BASE_PATH)/gru4rec
-
 comp_multi_layer_lstm: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_multi_layer_lstm.py
 	$(info [Makefile] $@)
 	python3 src/comp_multi_layer_lstm.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json_$(D2V_EMBED) -w $(BASE_PATH)/ml_lstm
@@ -120,6 +116,8 @@ comp_multi_layer_lstm: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_
 comp_pop: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_pop.py
 	$(info [Makefile] $@)
 	python3 src/comp_pop.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json_$(D2V_EMBED) -w $(BASE_PATH)/pop
+
+###################
 
 comp_multicell: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_multicell.py
 	$(info [Makefile] $@)
@@ -129,12 +127,16 @@ comp_lstm: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) src/a
 	$(info [Makefile] $@)
 	python3 src/comp_lstm.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json -w $(BASE_PATH)/lstm
 
+comp_gru4rec: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_gru4rec.py
+	$(info [Makefile] $@)
+	python3 src/comp_gru4rec.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json -w $(BASE_PATH)/gru4rec
+
 #run: d2v_rnn_torch
 #run: comp_pop
 #run: comp_multicell
-run: comp_lstm
+#run: comp_lstm
 #run: comp_multi_layer_lstm
-#run: comp_gru4rec
+run: comp_gru4rec
 #run: comp_yahoo
 	$(info run)
 
