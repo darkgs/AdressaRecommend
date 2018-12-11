@@ -4,6 +4,7 @@ import json
 import itertools
 
 import torch
+import numpy as np
 
 from optparse import OptionParser
 from multiprocessing import Pool
@@ -147,7 +148,7 @@ def extract_current_popular_indices(dict_time_idx, item_count=50, window_siz=60*
 		ret = sorted(dict_target.items(), key=lambda x: x[1], reverse=True)
 		assert(len(ret) > 10)
 		if len(ret) < item_count:
-			ret += [(padding,0) * (item_count - len(ret))]
+			ret += [[padding,0]] * (item_count - len(ret))
 
 		return ret[:item_count]
 
@@ -268,14 +269,17 @@ def generate_torch_rnn_input():
 	total_seq_count = len(merged_sequences)
 
 	division_infos = [
-		('train', 0, int(total_seq_count - 10000)),
-		('valid', int(total_seq_count - 10000), int(total_seq_count - 5000)),
-		('test', total_seq_count - 5000, total_seq_count),
+		('train', 0, int(total_seq_count*0.8)),
+		('valid', int(total_seq_count*0.8), int(total_seq_count*0.9)),
+		('test', int(total_seq_count*0.9), int(total_seq_count)),
 	]
 
 	dict_seq_datas = {}
 	for dataset_name, idx_st, idx_ed in division_infos:
 		dict_seq_datas[dataset_name] = merged_sequences[idx_st:idx_ed]
+
+	# shuffle and clip test set
+	dict_seq_datas['test'] = [ dict_seq_datas['test'][idx] for idx in np.random.permutation(len(dict_seq_datas['test'])).tolist()[:5000]]
 
 	# candidates
 	dict_time_idx = {}
@@ -298,10 +302,10 @@ def generate_torch_rnn_input():
 		prev_timestamp = timestamp
 
 	# trendy
-	dict_trendy_idx = extract_current_popular_indices(dict_time_idx, item_count=50, window_siz=60*60*3)
+	dict_trendy_idx = extract_current_popular_indices(dict_time_idx, item_count=100, window_siz=60*60*3)
 
 	# recency
-	dict_recency_idx = extract_recency_indices(dict_time_idx, item_count=50, window_siz=60*60)
+	dict_recency_idx = extract_recency_indices(dict_time_idx, item_count=15, window_siz=60*60)
 
 	# save
 	dict_torch_rnn_input = {

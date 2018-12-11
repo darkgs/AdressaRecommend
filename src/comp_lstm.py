@@ -14,20 +14,30 @@ from torch.nn.utils.rnn import pad_packed_sequence as unpack
 from adressa_dataset import AdressaRec
 
 from ad_util import load_json
+from ad_util import option2str
 
 parser = OptionParser()
 parser.add_option('-i', '--input', dest='input', type='string', default=None)
-parser.add_option('-e', '--d2v_embed', dest='d2v_embed', type='string', default='1000')
 parser.add_option('-u', '--u2v_path', dest='u2v_path', type='string', default=None)
 parser.add_option('-w', '--ws_path', dest='ws_path', type='string', default=None)
+parser.add_option('-s', action="store_true", dest='save_model', default=False)
+parser.add_option('-z', action="store_true", dest='search_mode', default=False)
+
+parser.add_option('-t', '--trendy_count', dest='trendy_count', type='int', default=1)
+parser.add_option('-r', '--recency_count', dest='recency_count', type='int', default=1)
+
+parser.add_option('-e', '--d2v_embed', dest='d2v_embed', type='string', default='1000')
+parser.add_option('-l', '--learning_rate', dest='learning_rate', type='float', default=3e-3)
+parser.add_option('-a', '--hidden_size', dest='hidden_size', type='int', default=1024)
+parser.add_option('-b', '--num_layers', dest='num_layers', type='int', default=1)
 
 
 class SingleLSTMModel(nn.Module):
-	def __init__(self, embed_size):
+	def __init__(self, embed_size, args):
 		super(SingleLSTMModel, self).__init__()
 
-		hidden_size = 384
-		num_layers = 1
+		hidden_size = args.hidden_size
+		num_layers = args.num_layers
 
 		self.rnn = nn.LSTM(embed_size, hidden_size, num_layers, batch_first=True)
 		self.linear = nn.Linear(hidden_size, embed_size)
@@ -60,20 +70,37 @@ def main():
 
 	torch_input_path = options.input
 	embedding_dimension = int(options.d2v_embed)
-	url2vec_path = options.u2v_path
+	url2vec_path = '{}_{}'.format(options.u2v_path, embedding_dimension)
 	ws_path = options.ws_path
+	search_mode = options.search_mode
+	model_ws_path = '{}/model/{}'.format(ws_path, option2str(options))
 
-	os.system('rm -rf {}'.format(ws_path))
-	os.system('mkdir -p {}'.format(ws_path))
+	if not os.path.exists(ws_path):
+		os.system('mkdir -p {}'.format(ws_path))
+
+	os.system('rm -rf {}'.format(model_ws_path))
+	os.system('mkdir -p {}'.format(model_ws_path))
+
+	# Save best result with param name
+	param_search_path = ws_path + '/param_search'
+	if not os.path.exists(param_search_path):
+		os.system('mkdir -p {}'.format(param_search_path))
+	param_search_file_path = '{}/{}'.format(param_search_path, option2str(options))
+
+	if search_mode and os.path.exists(param_search_file_path):
+		print('Param search mode already exist : {}'.format(param_search_file_path))
+		return
 
 	print('Loading url2vec : start')
 	dict_url2vec = load_json(url2vec_path)
 	print('Loading url2vec : end')
 
-	predictor = AdressaRec(SingleLSTMModel, ws_path, torch_input_path, dict_url2vec)
-	predictor.do_train()
+	predictor = AdressaRec(SingleLSTMModel, ws_path, torch_input_path, dict_url2vec, options)
+	best_mrr = predictor.do_train()
 
-	print('Fianl mrr 20 : {}'.format(predictor.test_mrr_20_trendy()))
+	if search_mode:
+		with open(param_search_file_path, 'w') as f_out:
+			f_out.write(str(best_mrr))
 
 
 if __name__ == '__main__':

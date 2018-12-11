@@ -18,7 +18,7 @@ MODE=one_week
 
 D2V_EMBED=default
 D2V_EMBED=1000
-D2V_EMBED=500
+#D2V_EMBED=500
 
 BASE_PATH=cache/$(MODE)
 DATA_SET=data/simple data/one_week data/three_month data/contentdata
@@ -113,21 +113,21 @@ comp_gru4rec: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) sr
 	$(info [Makefile] $@)
 	python3 src/comp_gru4rec.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json_$(D2V_EMBED) -w $(BASE_PATH)/gru4rec
 
-comp_lstm: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_lstm.py
-	$(info [Makefile] $@)
-	python3 src/comp_lstm.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json_$(D2V_EMBED) -w $(BASE_PATH)/lstm
-
 comp_multi_layer_lstm: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_multi_layer_lstm.py
 	$(info [Makefile] $@)
 	python3 src/comp_multi_layer_lstm.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json_$(D2V_EMBED) -w $(BASE_PATH)/ml_lstm
 
-comp_multicell: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_multicell.py
-	$(info [Makefile] $@)
-	python3 src/comp_multicell.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json -w $(BASE_PATH)/multicell
-
 comp_pop: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_pop.py
 	$(info [Makefile] $@)
 	python3 src/comp_pop.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json_$(D2V_EMBED) -w $(BASE_PATH)/pop
+
+comp_multicell: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_multicell.py
+	$(info [Makefile] $@)
+	python3 src/comp_multicell.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json -w $(BASE_PATH)/multicell
+
+comp_lstm: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_lstm.py
+	$(info [Makefile] $@)
+	python3 src/comp_lstm.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json -w $(BASE_PATH)/lstm
 
 #run: d2v_rnn_torch
 #run: comp_pop

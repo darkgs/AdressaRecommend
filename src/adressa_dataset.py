@@ -80,10 +80,17 @@ class AdressaRNNInput(object):
 				seq_trendy = [[self.idx2vec(idx) for idx, count in trendy] \
 							 for trendy in trendy_infos][1:]
 				idx_trendy = [[idx for idx, count in trendy] for trendy in trendy_infos][1:]
+
+				candidate_infos = [self.get_mrr_candidates(timestamp, self.get_pad_idx()) \
+							for timestamp in pad_time_indices]
+
+				seq_candi = [[self.idx2vec(idx) for idx, count in candi] \
+							for candi in candidate_infos][1:]
+				idx_candi = [[idx for idx, count in candi] for candi in candidate_infos][1:]
 				
 				datas.append(
 					(seq_x, seq_y, seq_len, idx_x, idx_y, seq_trendy, idx_trendy, \
-					 timestamp_start, timestamp_end)
+					 seq_candi, idx_candi, timestamp_start, timestamp_end)
 				)
 
 			self._dataset[data_type] = AdressaDataset(datas)
@@ -112,6 +119,23 @@ class AdressaRNNInput(object):
 		assert(len(recency_list) >= self._recency_count)
 
 		return trendy_list[:self._trendy_count] + recency_list[:self._recency_count]
+
+	def get_mrr_candidates(self, cur_time=-1, padding=0):
+		candidates_max = 100
+
+		trendy_list = self._dict_rnn_input['trendy_idx'].get(str(cur_time), None)
+
+		if trendy_list == None:
+			trendy_list = [[padding, 0]] * candidates_max
+
+		if len(trendy_list) < candidates_max:
+			trendy_list += [[padding, 0]] * (candidates_max - len(trendy_list))
+		elif len(trendy_list) > candidates_max:
+			trendy_list = trendy_list[:candidates_max]
+
+		assert(len(trendy_list) == candidates_max)
+
+		return trendy_list
 
 	def get_candidates(self, start_time=-1, end_time=-1, idx_count=0):
 		if (start_time < 0) or (end_time < 0) or (idx_count <= 0):
@@ -171,22 +195,28 @@ class AdressaRNNInput(object):
 		return list(map(lambda x: int(x[0]), ret_sorted))
 
 
-def adressa_collate(batch):
+def adressa_collate_train(batch):
 	batch.sort(key=lambda x: x[2], reverse=True)
 
-	seq_x = [x for x, _, _, _, _, _, _, _, _ in batch]
-	seq_y = [x for _, x, _, _, _, _, _, _, _ in batch]
-	seq_len = [x for _, _, x, _, _, _, _, _, _ in batch]
-	x_indices = [x for _, _, _, x, _, _, _, _, _ in batch]
-	y_indices = [x for _, _, _, _, x, _, _, _, _ in batch]
-	seq_trendy = [x for _, _, _, _, _, x, _, _, _ in batch]
-	seq_indices = [x for _, _, _, _, _, _, x, _, _ in batch]
-	timestamp_starts = [x for _, _, _, _, _, _, _, x, _ in batch]
-	timestamp_ends = [x for _, _, _, _, _, _, _, _, x in batch]
+	seq_x, seq_y, seq_len, x_indices, y_indices, seq_trendy, \
+		trendy_indices, _, _, \
+		timestamp_starts,timestamp_ends = zip(*batch)
 
 	return torch.FloatTensor(seq_x), torch.FloatTensor(seq_y), torch.FloatTensor(seq_trendy), \
 		torch.IntTensor(seq_len), timestamp_starts, timestamp_ends, \
-		x_indices, y_indices, seq_indices
+		x_indices, y_indices, trendy_indices
+
+def adressa_collate(batch):
+	batch.sort(key=lambda x: x[2], reverse=True)
+
+	seq_x, seq_y, seq_len, x_indices, y_indices, seq_trendy, \
+		trendy_indices, seq_candi, candi_indices, \
+		timestamp_starts,timestamp_ends = zip(*batch)
+
+	return torch.FloatTensor(seq_x), torch.FloatTensor(seq_y), torch.FloatTensor(seq_trendy), \
+		torch.FloatTensor(seq_candi), \
+		torch.IntTensor(seq_len), timestamp_starts, timestamp_ends, \
+		x_indices, y_indices, trendy_indices, candi_indices
 
 
 class AdressaRec(object):
@@ -205,7 +235,7 @@ class AdressaRec(object):
 		dict_rnn_input_path = '{}/torch_rnn_input.dict'.format(torch_input_path)
 		self._rnn_input = AdressaRNNInput(dict_rnn_input_path, dict_url2vec, args)
 
-		self._train_dataloader, self._test_dataloader = \
+		self._train_dataloader, self._valid_dataloader, self._test_dataloader = \
 								self.get_dataloader(dict_url2vec)
 
 		self._model = model_class(dim_article, args).to(self._device)
@@ -222,18 +252,22 @@ class AdressaRec(object):
 
 	def get_dataloader(self, dict_url2vec):
 		train_dataloader = torch.utils.data.DataLoader(self._rnn_input.get_dataset(data_type='train'),
-				batch_size=256, shuffle=True, num_workers=16,
-				collate_fn=adressa_collate)
+				batch_size=512, shuffle=True, num_workers=16,
+				collate_fn=adressa_collate_train)
+
+		valid_dataloader = torch.utils.data.DataLoader(self._rnn_input.get_dataset(data_type='valid'),
+				batch_size=512, shuffle=True, num_workers=16,
+				collate_fn=adressa_collate_train)
 
 		test_dataloader = torch.utils.data.DataLoader(self._rnn_input.get_dataset(data_type='test'),
-				batch_size=128, shuffle=True, num_workers=16,
+				batch_size=64, shuffle=True, num_workers=16,
 				collate_fn=adressa_collate)
 
-		return train_dataloader, test_dataloader
+		return train_dataloader, valid_dataloader, test_dataloader
 
 	def do_train(self, total_epoch=1000, early_stop=10):
 
-		start_epoch, best_test_loss = self.load_model()
+		start_epoch, best_valid_loss = self.load_model()
 		best_mrr = -1.0
 
 		if start_epoch < total_epoch:
@@ -245,19 +279,19 @@ class AdressaRec(object):
 					break
 
 				train_loss = self.train()
-				test_loss = self.test()
+				valid_loss = self.test()
 				mrr_20 = self.test_mrr_20_trendy()
 				best_mrr = max(best_mrr, mrr_20)
 
-				print('epoch {} - train loss({:.8f}) test loss({:.8f}) test mrr_20({:.4f}) best mrr({:.4f}) tooks {:.2f}'.format(
-					epoch, train_loss, test_loss, mrr_20, best_mrr, time.time() - start_time))
+				print('epoch {} - train loss({:.8f}) valid loss({:.8f}) test mrr_20({:.4f}) best mrr({:.4f}) tooks {:.2f}'.format(
+					epoch, train_loss, valid_loss, mrr_20, best_mrr, time.time() - start_time))
 
 				if self._args.save_model and best_mrr == mrr_20:
-					self.save_model(epoch, test_loss)
+					self.save_model(epoch, valid_loss)
 					print('Model saved! - best mrr({})'.format(best_mrr))
 
-				if best_test_loss > test_loss:
-					best_test_loss = test_loss
+				if best_valid_loss > valid_loss:
+					best_valid_loss = valid_loss
 					endure = 0
 				else:
 					endure += 1
@@ -271,7 +305,8 @@ class AdressaRec(object):
 
 		for batch_idx, train_input in enumerate(self._train_dataloader):
 			input_x_s, input_y_s, input_trendy, seq_lens, \
-				timestamp_starts, timestamp_ends, indices_x, indices_y, indices_trendy = train_input
+				timestamp_starts, timestamp_ends, \
+				indices_x, indices_y, indices_trendy = train_input
 			input_x_s = input_x_s.to(self._device)
 			input_y_s = input_y_s.to(self._device)
 			input_trendy = input_trendy.to(self._device)
@@ -301,13 +336,15 @@ class AdressaRec(object):
 		self._model.eval()
 
 		test_loss = 0.0
-		batch_count = len(self._test_dataloader)
+		sampling_count = 0
 
-		for batch_idx, test_input in enumerate(self._test_dataloader):
+		for batch_idx, test_input in enumerate(self._valid_dataloader):
 			input_x_s, input_y_s, input_trendy, seq_lens, _, _, _, _, _ = test_input
 			input_x_s = input_x_s.to(self._device)
 			input_y_s = input_y_s.to(self._device)
 			input_trendy = input_trendy.to(self._device)
+
+			batch_size = input_x_s.shape[0]
 
 #outputs = self._model(input_x_s, input_trendy, seq_lens)
 #unpacked_y_s, _ = unpack(pack(input_y_s, seq_lens, batch_first=True), batch_first=True)
@@ -320,22 +357,31 @@ class AdressaRec(object):
 			loss = self._criterion(F.softmax(packed_outputs, dim=1), F.softmax(packed_y_s, dim=1))
 #loss = self._criterion(packed_outputs, packed_y_s)
 
-			test_loss += loss.item()
+			test_loss += loss.item() * batch_size
+			sampling_count += batch_size
 
-		return test_loss / batch_count
+		return test_loss / sampling_count
 
-	def test_mrr_20_trendy(self):
+	def test_mrr_20_trendy(self, max_sampling_count=2000):
 		self._model.eval()
 
 		predict_count = 0
 		predict_mrr = 0.0
+
+		sampling_count = 0
+
+
 		for i, data in enumerate(self._test_dataloader, 0):
-			input_x_s, input_y_s, input_trendy, seq_lens, \
-				timestamp_starts, timestamp_ends, _, indices_y, indices_trendy = data
+			if sampling_count >= max_sampling_count:
+				continue
+
+			input_x_s, input_y_s, input_trendy, input_candi, seq_lens, \
+				timestamp_starts, timestamp_ends, _, indices_y, indices_trendy, indices_candi = data
 			input_x_s = input_x_s.to(self._device)
 			input_y_s = input_y_s.to(self._device)
 			# [batch_size, seq_len, 100, embed_size]]
 			input_trendy = input_trendy.to(self._device)
+			input_candi = input_candi.to(self._device)
 
 			with torch.no_grad():
 				outputs = self._model(input_x_s, input_trendy, seq_lens)
@@ -346,11 +392,14 @@ class AdressaRec(object):
 			for batch in range(batch_size):
 				for seq_idx in range(seq_lens[batch]):
 					next_idx = indices_y[batch][seq_idx]
-					candidates = indices_trendy[batch][seq_idx]
+					candidates = indices_candi[batch][seq_idx]
+
+					sampling_count += 1
+
 					if next_idx not in candidates:
 						continue
 
-					scores = -1.0 * torch.mean((input_trendy[batch][seq_idx] - \
+					scores = -1.0 * torch.mean((input_candi[batch][seq_idx] - \
 								outputs[batch][seq_idx]) ** 2, dim=1)
 
 					candidates = np.array(candidates)
@@ -365,7 +414,6 @@ class AdressaRec(object):
 	def pop_20(self):
 		predict_count = 0
 		predict_mrr = 0.0
-
 
 		for i, data in enumerate(self._test_dataloader, 0):
 			_, _, _, seq_lens, _, _, _, indices_y, indices_trendy = data
@@ -390,10 +438,12 @@ class AdressaRec(object):
 		return predict_mrr / float(predict_count) if predict_count > 0 else 0.0
 
 	def test_mrr_20(self):
+
 		self._model.eval()
 
 		predict_count = 0
 		predict_mrr = 0.0
+
 		for i, data in enumerate(self._test_dataloader, 0):
 			input_x_s, input_y_s, input_tendy, seq_lens, \
 				timestamp_starts, timestamp_ends, _, indices_y, _ = data
@@ -444,10 +494,10 @@ class AdressaRec(object):
 
 		return predict_mrr / float(predict_count) if predict_count > 0 else 0.0
 
-	def save_model(self, epoch, test_loss):
+	def save_model(self, epoch, valid_loss):
 		dict_states = {
 			'epoch': epoch,
-			'test_loss': test_loss,
+			'valid_loss': valid_loss,
 			'model': self._model.state_dict(),
 			'optimizer': self._optimizer.state_dict(),
 		}
@@ -464,7 +514,7 @@ class AdressaRec(object):
 		self._model.load_state_dict(dict_states['model'])
 		self._optimizer.load_state_dict(dict_states['optimizer'])
 
-		return dict_states['epoch'], dict_states['test_loss']
+		return dict_states['epoch'], dict_states['valid_loss']
 
 
 def main():
