@@ -131,8 +131,8 @@ comp_lstm: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) src/a
 
 #run: d2v_rnn_torch
 #run: comp_pop
-run: comp_multicell
-#run: comp_lstm
+#run: comp_multicell
+run: comp_lstm
 #run: comp_multi_layer_lstm
 #run: comp_gru4rec
 #run: comp_yahoo

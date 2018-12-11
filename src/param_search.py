@@ -60,14 +60,34 @@ def worker_function(args):
 def main():
 	global total_works
 
-	dict_params = {
-		'd2v_embed': [1000],
-		'learning_rate': [3e-3],
-		'trendy_count': [5, 10],
-		'recency_count': [3, 5],
-		'hidden_size': [1024, 1208],
-		'x2_dropout_rate': [0.3, 0.5, 0.7],
+	target_name = 'multicell'
+	target_name = 'lstm'
+
+	dict_param_db = {
+		'multicell': [
+			'comp_multicell.py',
+			'-i cache/one_week/torch_input -u cache/article_to_vec.json -w cache/one_week/multicell -z',
+			{
+				'd2v_embed': [1000],
+				'learning_rate': [3e-3],
+				'trendy_count': [5, 10],
+				'recency_count': [3, 5],
+				'hidden_size': [1024, 1208],
+				'x2_dropout_rate': [0.3, 0.5, 0.7],
+			},
+		],
+		'lstm': [
+			'comp_lstm.py',
+			'-i cache/one_week/torch_input -u cache/article_to_vec.json -w cache/one_week/lstm -z',
+			{
+				'd2v_embed': [1000],
+				'learning_rate': [3e-3],
+				'hidden_size': [1024, 1280, 1408],
+				'num_layers': [1, 2],
+			},
+		],
 	}
+
 	def generate_hyper_params(dict_params):
 		if len(dict_params.keys()) <= 0:
 			return []
@@ -89,10 +109,11 @@ def main():
 
 		return hyper_params
 
+	python_file, default_param, dict_params = dict_param_db[target_name]
+
 	params = generate_hyper_params(dict_params)
-	default_param = '-i cache/one_week/torch_input -u cache/article_to_vec.json -w cache/one_week/multicell -z'
 	params = [default_param + ' ' + param for param in params]
-	works = [('comp_multicell.py', param) for param in params]
+	works = [(python_file, param) for param in params]
 	total_works = len(works)
 
 	thread_pool = ThreadPool(4)
