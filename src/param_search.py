@@ -61,7 +61,7 @@ def main():
 	global total_works
 
 	dict_params = {
-		'd2v_embed': [500, 1000],
+		'd2v_embed': [1000],
 		'learning_rate': [3e-3],
 		'trendy_count': [5, 10],
 		'recency_count': [3, 5],
