@@ -265,7 +265,7 @@ class AdressaRec(object):
 
 		return train_dataloader, valid_dataloader, test_dataloader
 
-	def do_train(self, total_epoch=1000, early_stop=10):
+	def do_train(self, total_epoch=100, early_stop=10):
 
 		start_epoch, best_valid_loss = self.load_model()
 		best_mrr = -1.0

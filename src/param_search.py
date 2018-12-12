@@ -57,12 +57,8 @@ def worker_function(args):
 	visible_gpus.append(my_gpu)
 	visible_gpus_sema.release()
 
-def main():
+def parameter_search(target_name):
 	global total_works
-
-	target_name = 'multicell'
-	target_name = 'lstm'
-	target_name = 'gru4rec'
 
 	dict_param_db = {
 		'multicell': [
@@ -93,8 +89,8 @@ def main():
 			{
 				'd2v_embed': [1000],
 				'learning_rate': [3e-3],
-				'hidden_size': [786, 1024, 1408],
-				'num_layers': [2, 3, 4],
+				'hidden_size': [424, 512, 786],
+				'num_layers': [1, 2, 3],
 			},
 		],
 	}
@@ -130,6 +126,32 @@ def main():
 	thread_pool = ThreadPool(4)
 	thread_pool.map(worker_function, works)
 
+
+def show_result(target_name):
+	result_dir_path = 'cache/one_week/{}/param_search'.format(target_name)
+
+	results = []
+
+	for (dir_path, dir_names, file_names) in os.walk(result_dir_path):
+		for file_name in file_names:
+			result_file_path = os.path.join(dir_path, file_name)
+
+			with open(result_file_path, 'r') as f_ret:
+				lines = f_ret.readlines()
+				results.append((float(lines[0].strip()), file_name))
+
+	results.sort(key=lambda x:x[0], reverse=True)
+
+	for mrr, file_name in results:
+		print(mrr, file_name)
+
+def main():
+	target_name = 'multicell'
+	target_name = 'gru4rec'
+	target_name = 'lstm'
+
+#parameter_search(target_name)
+	show_result(target_name)
 
 if __name__ == '__main__':
 	main()
