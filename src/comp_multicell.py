@@ -158,78 +158,12 @@ class MultiCellLSTM(nn.Module):
 
 		return h_t, (h_t, c1_t, c2_t)
 
-	
-class MyLSTM(nn.Module):
-	def __init__(self, embed_size, hidden_size):
-		super(MyLSTM, self).__init__()
-
-		self._W_f = torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True)
-		self._b_f = torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True)
-
-		self._W_i = torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True)
-		self._b_i = torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True)
-
-		self._W_c = torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True)
-		self._b_c = torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True)
-
-		self._W_o = torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True)
-		self._b_o = torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True)
-
-		nn.init.xavier_normal_(self._W_f.data)
-		nn.init.xavier_normal_(self._W_i.data)
-		nn.init.xavier_normal_(self._W_c.data)
-		nn.init.xavier_normal_(self._W_o.data)
-
-
-	def to(self, device):
-		ret = super(MyLSTM, self).to(device)
-
-		self._W_f = self._W_f.to(device)
-		self._b_f = self._b_f.to(device)
-
-		self._W_i = self._W_i.to(device)
-		self._b_i = self._b_i.to(device)
-
-		self._W_c = self._W_c.to(device)
-		self._b_c = self._b_c.to(device)
-
-		self._W_o = self._W_o.to(device)
-		self._b_o = self._b_o.to(device)
-
-		return ret
-
-	def forward(self, x, states):
-		h_t, c_t = states
-
-		# forget gate
-		f_t = torch.sigmoid(torch.matmul(torch.cat([h_t, x], 1), self._W_f) + self._b_f)
-
-		# input gate
-		i_t = torch.sigmoid(torch.matmul(torch.cat([h_t, x], 1), self._W_i) + self._b_i)
-
-		# cell candidate
-		c_tilda = torch.tanh(torch.matmul(torch.cat([h_t, x], 1), self._W_c) + self._b_c)
-
-		# new cell state
-		c_t = f_t * c_t + i_t * c_tilda
-
-		# out gate
-		o_t = torch.sigmoid(torch.matmul(torch.cat([h_t, x], 1), self._W_o) + self._b_o)
-		
-		# new hidden state
-		h_t = o_t * torch.tanh(c_t)
-
-		return h_t, (h_t, c_t)
-
 
 class MultiCellModel(nn.Module):
 	def __init__(self, embed_size, args):
 		super(MultiCellModel, self).__init__()
 
 		self._hidden_size = args.hidden_size
-# 712 0.2914
-# 384 0.2815
-# 1024 0.3060
 		attn = args.trendy_count + args.recency_count
 
 		self.lstm = MultiCellLSTM(embed_size, self._hidden_size, attn, args.x2_dropout_rate)

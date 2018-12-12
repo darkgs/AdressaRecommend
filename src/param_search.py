@@ -93,6 +93,16 @@ def parameter_search(target_name):
 				'num_layers': [1, 2, 3],
 			},
 		],
+		'lstm_2input': [
+			'comp_lstm.py',
+			'-i cache/one_week/torch_input -u cache/article_to_vec.json -w cache/one_week/lstm_2input -z',
+			{
+				'd2v_embed': [1000],
+				'learning_rate': [3e-3],
+				'hidden_size': [786, 1024, 1280],
+				'num_layers': [1, 2],
+			},
+		],
 	}
 
 	def generate_hyper_params(dict_params):
@@ -149,6 +159,7 @@ def main():
 	target_name = 'lstm'
 	target_name = 'multicell'
 	target_name = 'gru4rec'
+	target_name = 'lstm_2input'
 
 	parameter_search(target_name)
 	show_result(target_name)
