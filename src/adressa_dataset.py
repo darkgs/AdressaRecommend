@@ -206,6 +206,7 @@ def adressa_collate_train(batch):
 		torch.IntTensor(seq_len), timestamp_starts, timestamp_ends, \
 		x_indices, y_indices, trendy_indices
 
+
 def adressa_collate(batch):
 	batch.sort(key=lambda x: x[2], reverse=True)
 

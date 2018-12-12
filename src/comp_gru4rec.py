@@ -39,6 +39,8 @@ class GRU4RecModel(nn.Module):
 		hidden_size = args.hidden_size
 		num_layers = args.num_layers
 		dropout_rate = args.dropout_rate
+		if num_layers == 1:
+			dropout_rate = 0.0
 
 		self.rnn = nn.GRU(embed_size, hidden_size, num_layers, batch_first=True, dropout=dropout_rate)
 		self.linear = nn.Linear(hidden_size, embed_size)
