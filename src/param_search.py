@@ -48,9 +48,9 @@ def worker_function(args):
 	command += 'source deactivate'
 	command += '\"'
 
-	subprocess.check_output(command, shell=True)
+#subprocess.check_output(command, shell=True)
 
-#os.system(command)
+	os.system(command)
 
 	# Release GPU resource
 	visible_gpus_sema.acquire()
@@ -94,13 +94,12 @@ def parameter_search(target_name):
 			},
 		],
 		'lstm_2input': [
-			'comp_lstm.py',
+			'comp_lstm_2input.py',
 			'-i cache/one_week/torch_input -u cache/article_to_vec.json -w cache/one_week/lstm_2input -z',
 			{
 				'd2v_embed': [1000],
 				'learning_rate': [3e-3],
-				'hidden_size': [786, 1024, 1280],
-				'num_layers': [1, 2],
+				'hidden_size': [512, 786, 1024, 1280, 1408],
 			},
 		],
 	}
@@ -157,11 +156,11 @@ def show_result(target_name):
 
 def main():
 	target_name = 'lstm'
-	target_name = 'multicell'
 	target_name = 'gru4rec'
+	target_name = 'multicell'
 	target_name = 'lstm_2input'
 
-	parameter_search(target_name)
+#parameter_search(target_name)
 	show_result(target_name)
 
 if __name__ == '__main__':
