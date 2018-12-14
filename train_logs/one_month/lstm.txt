@@ -1,0 +1,71 @@
+AdressaRec generating ...
+AdressaRec generating Done!
+epoch 0 - train loss(0.00790098) valid loss(0.00789962) test mrr_20(0.0699) best mrr(0.0699) tooks 719.32
+Model saved! - best mrr(0.06987432876654923)
+epoch 1 - train loss(0.00789775) valid loss(0.00789924) test mrr_20(0.0809) best mrr(0.0809) tooks 800.19
+Model saved! - best mrr(0.08094199025217289)
+epoch 2 - train loss(0.00789757) valid loss(0.00789912) test mrr_20(0.1027) best mrr(0.1027) tooks 733.57
+Model saved! - best mrr(0.10267304862704395)
+epoch 3 - train loss(0.00789747) valid loss(0.00789905) test mrr_20(0.1008) best mrr(0.1027) tooks 730.68
+epoch 4 - train loss(0.00789739) valid loss(0.00789899) test mrr_20(0.0992) best mrr(0.1027) tooks 735.70
+epoch 5 - train loss(0.00789733) valid loss(0.00789897) test mrr_20(0.1093) best mrr(0.1093) tooks 738.80
+Model saved! - best mrr(0.10934136222875267)
+epoch 7 - train loss(0.00789723) valid loss(0.00789889) test mrr_20(0.1163) best mrr(0.1163) tooks 741.80
+Model saved! - best mrr(0.11625311910695492)
+epoch 8 - train loss(0.00789719) valid loss(0.00789891) test mrr_20(0.1087) best mrr(0.1163) tooks 737.33
+epoch 9 - train loss(0.00789715) valid loss(0.00789889) test mrr_20(0.1038) best mrr(0.1163) tooks 804.64
+epoch 10 - train loss(0.00789712) valid loss(0.00789888) test mrr_20(0.1284) best mrr(0.1284) tooks 734.47
+Model saved! - best mrr(0.12835821838836622)
+epoch 11 - train loss(0.00789709) valid loss(0.00789889) test mrr_20(0.1158) best mrr(0.1284) tooks 734.00
+epoch 12 - train loss(0.00789707) valid loss(0.00789890) test mrr_20(0.1021) best mrr(0.1284) tooks 729.16
+epoch 13 - train loss(0.00789704) valid loss(0.00789886) test mrr_20(0.1170) best mrr(0.1284) tooks 733.72
+epoch 14 - train loss(0.00789702) valid loss(0.00789882) test mrr_20(0.1134) best mrr(0.1284) tooks 740.97
+epoch 15 - train loss(0.00789699) valid loss(0.00789884) test mrr_20(0.1236) best mrr(0.1284) tooks 738.01
+epoch 16 - train loss(0.00789697) valid loss(0.00789884) test mrr_20(0.1115) best mrr(0.1284) tooks 736.82
+epoch 17 - train loss(0.00789696) valid loss(0.00789881) test mrr_20(0.1209) best mrr(0.1284) tooks 808.69
+epoch 18 - train loss(0.00789694) valid loss(0.00789880) test mrr_20(0.1244) best mrr(0.1284) tooks 728.05
+epoch 19 - train loss(0.00789692) valid loss(0.00789879) test mrr_20(0.1203) best mrr(0.1284) tooks 736.47
+epoch 20 - train loss(0.00789690) valid loss(0.00789879) test mrr_20(0.1259) best mrr(0.1284) tooks 729.89
+epoch 21 - train loss(0.00789689) valid loss(0.00789878) test mrr_20(0.1224) best mrr(0.1284) tooks 733.14
+epoch 22 - train loss(0.00789687) valid loss(0.00789878) test mrr_20(0.1226) best mrr(0.1284) tooks 732.98
+epoch 23 - train loss(0.00789686) valid loss(0.00789875) test mrr_20(0.1208) best mrr(0.1284) tooks 735.03
+epoch 24 - train loss(0.00789685) valid loss(0.00789880) test mrr_20(0.1288) best mrr(0.1288) tooks 733.27
+Model saved! - best mrr(0.12878195606861592)
+epoch 25 - train loss(0.00789683) valid loss(0.00789874) test mrr_20(0.1225) best mrr(0.1288) tooks 808.80
+epoch 26 - train loss(0.00789682) valid loss(0.00789875) test mrr_20(0.1362) best mrr(0.1362) tooks 725.81
+Model saved! - best mrr(0.13622231532430198)
+epoch 27 - train loss(0.00789681) valid loss(0.00789872) test mrr_20(0.1196) best mrr(0.1362) tooks 729.05
+epoch 28 - train loss(0.00789680) valid loss(0.00789873) test mrr_20(0.1356) best mrr(0.1362) tooks 727.52
+epoch 29 - train loss(0.00789678) valid loss(0.00789872) test mrr_20(0.1212) best mrr(0.1362) tooks 738.79
+epoch 30 - train loss(0.00789677) valid loss(0.00789875) test mrr_20(0.1292) best mrr(0.1362) tooks 733.16
+epoch 31 - train loss(0.00789676) valid loss(0.00789871) test mrr_20(0.1269) best mrr(0.1362) tooks 732.88
+epoch 32 - train loss(0.00789675) valid loss(0.00789873) test mrr_20(0.1206) best mrr(0.1362) tooks 735.07
+epoch 33 - train loss(0.00789674) valid loss(0.00789877) test mrr_20(0.1322) best mrr(0.1362) tooks 806.86
+epoch 34 - train loss(0.00789673) valid loss(0.00789875) test mrr_20(0.1245) best mrr(0.1362) tooks 738.75
+epoch 35 - train loss(0.00789672) valid loss(0.00789874) test mrr_20(0.1221) best mrr(0.1362) tooks 726.58
+epoch 36 - train loss(0.00789671) valid loss(0.00789871) test mrr_20(0.1262) best mrr(0.1362) tooks 739.63
+epoch 37 - train loss(0.00789670) valid loss(0.00789869) test mrr_20(0.1349) best mrr(0.1362) tooks 741.03
+epoch 38 - train loss(0.00789669) valid loss(0.00789872) test mrr_20(0.1264) best mrr(0.1362) tooks 733.80
+epoch 39 - train loss(0.00789668) valid loss(0.00789871) test mrr_20(0.1252) best mrr(0.1362) tooks 734.30
+epoch 40 - train loss(0.00789667) valid loss(0.00789871) test mrr_20(0.1355) best mrr(0.1362) tooks 736.86
+epoch 41 - train loss(0.00789667) valid loss(0.00789875) test mrr_20(0.1265) best mrr(0.1362) tooks 732.64
+epoch 42 - train loss(0.00789666) valid loss(0.00789871) test mrr_20(0.1363) best mrr(0.1363) tooks 804.42
+Model saved! - best mrr(0.13629432343651565)
+epoch 43 - train loss(0.00789665) valid loss(0.00789869) test mrr_20(0.1426) best mrr(0.1426) tooks 740.43
+Model saved! - best mrr(0.14264554033218668)
+epoch 44 - train loss(0.00789664) valid loss(0.00789873) test mrr_20(0.1477) best mrr(0.1477) tooks 741.84
+Model saved! - best mrr(0.14767904297318826)
+epoch 45 - train loss(0.00789663) valid loss(0.00789872) test mrr_20(0.1320) best mrr(0.1477) tooks 730.60
+epoch 46 - train loss(0.00789662) valid loss(0.00789869) test mrr_20(0.1414) best mrr(0.1477) tooks 733.12
+epoch 47 - train loss(0.00789661) valid loss(0.00789870) test mrr_20(0.1279) best mrr(0.1477) tooks 739.57
+epoch 48 - train loss(0.00789660) valid loss(0.00789870) test mrr_20(0.1301) best mrr(0.1477) tooks 742.41
+epoch 49 - train loss(0.00789659) valid loss(0.00789870) test mrr_20(0.1380) best mrr(0.1477) tooks 731.61
+epoch 50 - train loss(0.00789659) valid loss(0.00789870) test mrr_20(0.1476) best mrr(0.1477) tooks 800.44
+epoch 51 - train loss(0.00789658) valid loss(0.00789869) test mrr_20(0.1349) best mrr(0.1477) tooks 743.01
+epoch 52 - train loss(0.00789657) valid loss(0.00789876) test mrr_20(0.1255) best mrr(0.1477) tooks 744.04
+epoch 53 - train loss(0.00789656) valid loss(0.00789870) test mrr_20(0.1352) best mrr(0.1477) tooks 736.91
+epoch 54 - train loss(0.00789655) valid loss(0.00789871) test mrr_20(0.1361) best mrr(0.1477) tooks 731.08
+epoch 55 - train loss(0.00789655) valid loss(0.00789869) test mrr_20(0.1269) best mrr(0.1477) tooks 736.26
+epoch 56 - train loss(0.00789654) valid loss(0.00789869) test mrr_20(0.1227) best mrr(0.1477) tooks 734.88
+epoch 57 - train loss(0.00789653) valid loss(0.00789871) test mrr_20(0.1375) best mrr(0.1477) tooks 732.61
+Early stop!
