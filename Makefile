@@ -152,7 +152,7 @@ stat_adressa_dataset: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_E
 
 #run: d2v_rnn_torch
 #run: comp_pop
-#run: comp_multicell
+run: comp_multicell
 #run: comp_lstm
 #run: comp_lstm_2input
 #run: comp_multi_layer_lstm
@@ -160,6 +160,6 @@ stat_adressa_dataset: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_E
 #run: comp_yahoo
 #run: cache/yahoo_article2vec.json_$(D2V_EMBED)
 #run: cache/yahoo_a2v_rnn_input.json_$(D2V_EMBED)
-run: stat_adressa_dataset
+#run: stat_adressa_dataset
 	$(info run)
 

@@ -55,7 +55,7 @@ class MultiCellLSTM(nn.Module):
 		self._W2_o = torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True)
 		self._b2_o = torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True)
 
-		self._W_attn = torch.zeros([hidden_size+embed_size, attn_count])
+		self._W_attn = torch.zeros([hidden_size + embed_size * 2, 1])
 
 		nn.init.xavier_normal_(self._W1_f.data)
 		nn.init.xavier_normal_(self._W1_i.data)
@@ -108,10 +108,14 @@ class MultiCellLSTM(nn.Module):
 		h_t, c1_t, c2_t = states
 
 		# Attention
-		attn_score = torch.softmax(torch.matmul(torch.cat([h_t, x1], 1), self._W_attn), dim=1)
-		attn_score = torch.unsqueeze(attn_score, dim=1)
-		x2 = torch.squeeze(torch.bmm(attn_score, x2), dim=1)
-		
+		att_count = x2.size(1)
+
+		attn_scores = []
+		for i in range(att_count):
+			attn_scores.append(torch.softmax(torch.matmul(torch.cat([h_t, x1, x2[:,i,:]], 1), self._W_attn), dim=1))
+		attn_scores = torch.unsqueeze(torch.cat(attn_scores, dim=1), dim=1)
+		x2 = torch.squeeze(torch.bmm(attn_scores, x2), dim=1)
+
 		#x2 = x1
 
 		# forget gate
