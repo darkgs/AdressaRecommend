@@ -151,11 +151,6 @@ class MultiCellLSTM(nn.Module):
 			else:
 				h_t = torch.tanh(o1_t * torch.tanh(c1_t) + o2_t * torch.tanh(c2_t))
 
-		# new hidden state
-#		h_t = torch.tanh(o1_t * torch.tanh(c1_t) + o2_t * torch.tanh(c2_t))
-#		alpha = 0.2
-#	h_t = o1_t * torch.tanh(c1_t) * (1.0 - alpha) + o2_t * torch.tanh(c2_t) * alpha
-
 		return h_t, (h_t, c1_t, c2_t)
 
 

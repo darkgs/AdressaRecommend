@@ -44,15 +44,15 @@ def generate_rnn_input(dict_url2info, dict_url2vec):
 
 	def generate_triples(target_datas):
 		# full combination of same categories
-		# There are 172,991,409 combinations in the train set
-		# There are 2,131,705 combinations in the test set
+		# There are 173,025,765 combinations in the train set
+		# There are 2,135,504 combinations in the test set
 		url_triples = []
 		for category, urls in target_datas.items():
 			another_urls = []
-			for cate, urls in target_datas.items():
-				if category == cate:
+			for k, v in target_datas.items():
+				if category == k:
 					continue
-				another_urls += urls
+				another_urls += v
 
 			if len(another_urls) <= 0:
 				 continue
@@ -93,6 +93,8 @@ def main():
 	dict_rnn_input = generate_rnn_input(dict_url2info, dict_url2vec)
 	print(len(dict_rnn_input['train']), len(dict_rnn_input['test']))
 
+	with open(output_file_path, 'w') as f_out:
+		json.dump(dict_rnn_input, f_out)
 
 if __name__ == '__main__':
 	main()
