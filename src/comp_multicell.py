@@ -108,12 +108,12 @@ class MultiCellLSTM(nn.Module):
 		h_t, c1_t, c2_t = states
 
 		# Attention
-		att_count = x2.size(1)
-
+		attn_count = x2.size(1)
 		attn_scores = []
-		for i in range(att_count):
-			attn_scores.append(torch.softmax(torch.matmul(torch.cat([h_t, x1, x2[:,i,:]], 1), self._W_attn), dim=1))
-		attn_scores = torch.unsqueeze(torch.cat(attn_scores, dim=1), dim=1)
+		for i in range(attn_count):
+			attn_scores.append(torch.matmul(torch.cat([h_t, x1, x2[:,i,:]], 1), self._W_attn))
+		attn_scores = torch.softmax(torch.cat(attn_scores, dim=1), dim=1)
+		attn_scores = torch.unsqueeze(attn_scores, dim=1)
 		x2 = torch.squeeze(torch.bmm(attn_scores, x2), dim=1)
 
 		#x2 = x1

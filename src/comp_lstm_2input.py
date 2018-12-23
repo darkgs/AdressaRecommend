@@ -103,7 +103,7 @@ class SingleLSTMModel(nn.Module):
 		self.linear = nn.Linear(self._hidden_size, embed_size)
 		self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
 
-		self._W_attn = torch.zeros([self._hidden_size+embed_size, attn_count])
+		self._W_attn = torch.zeros([self._hidden_size + embed_size * 2, 1])
 		nn.init.xavier_normal_(self._W_attn.data)
 
 	def to(self, device):
@@ -139,9 +139,14 @@ class SingleLSTMModel(nn.Module):
 			x2_step = x2.data[cursor:cursor+sequence_lenth]
 
 			# Attention
-			attn_score = torch.softmax(torch.matmul(torch.cat([hx[:sequence_lenth], x1_step], 1), self._W_attn), dim=1)
-			attn_score = torch.unsqueeze(attn_score, dim=1)
-			x2_step = torch.squeeze(torch.bmm(attn_score, x2_step), dim=1)
+			attn_count = x2_step.size(1)
+			attn_scores = []
+			for i in range(attn_count):
+				attn_scores.append(torch.matmul(torch.cat([hx[:sequence_lenth], \
+								x1_step, x2_step[:,i,:]], 1), self._W_attn))
+			attn_scores = torch.softmax(torch.cat(attn_scores, dim=1), dim=1)
+			attn_scores = torch.unsqueeze(attn_scores, dim=1)
+			x2_step = torch.squeeze(torch.bmm(attn_scores, x2_step), dim=1)
 
 			x_step = torch.cat([x1_step, x2_step], 1)
 
