@@ -25,7 +25,7 @@ parser.add_option('-r', '--recency_count', dest='recency_count', type='int', def
 
 parser.add_option('-e', '--d2v_embed', dest='d2v_embed', type='string', default='1000')
 parser.add_option('-l', '--learning_rate', dest='learning_rate', type='float', default=3e-3)
-parser.add_option('-a', '--hidden_size', dest='hidden_size', type='int', default=1024)
+parser.add_option('-a', '--hidden_size', dest='hidden_size', type='int', default=1280)
 parser.add_option('-d', '--x2_dropout_rate', dest='x2_dropout_rate', type='float', default=0.3)
 
 

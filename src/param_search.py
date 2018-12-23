@@ -155,10 +155,10 @@ def show_result(target_name):
 		print(mrr, file_name)
 
 def main():
-	target_name = 'lstm'
-	target_name = 'gru4rec'
 	target_name = 'multicell'
 	target_name = 'lstm_2input'
+	target_name = 'lstm'
+	target_name = 'gru4rec'
 
 #parameter_search(target_name)
 	show_result(target_name)
