@@ -1,4 +1,7 @@
 
+import os, sys
+import time
+
 import numpy as np
 
 import torch
@@ -10,13 +13,13 @@ from torch.utils.data.dataset import Dataset  # For custom datasets
 from optparse import OptionParser
 
 from ad_util import load_json
+from ad_util import weights_init
 
 parser = OptionParser()
-parser.add_option('-o', '--output', dest='output', type='string', default=None)
 parser.add_option('-e', '--d2v_embed', dest='d2v_embed', type='string', default='1000')
 parser.add_option('-u', '--u2v_path', dest='u2v_path', type='string', default=None)
-parser.add_option('-a', '--u2i_path', dest='u2i_path', type='string', default=None)
-
+parser.add_option('-i', '--input', dest='input', type='string', default=None)
+parser.add_option('-o', '--output', dest='output', type='string', default=None)
 
 class ArticleModel(nn.Module):
 	def __init__(self, dim_article, dim_h, corruption_rate=0.1):
@@ -83,13 +86,12 @@ class ArticleRepresentationDataset(Dataset):
 
 
 class ArticleRepresentation(object):
-	def __init__(self, dict_url2vec, dict_url2info, ws_path):
+	def __init__(self, dict_url2vec, dict_rnn_input, output_path, embedding_dimension):
 		self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 		self._dict_url2vec = dict_url2vec
-		self._dict_url2info = dict_url2info
-		self._ws_path = ws_path
+		self._dict_rnn_input = dict_rnn_input
 
-		self._dim_article = len(next(iter(dict_url2vec.values())))
+		self._dim_article = embedding_dimension
 		self._dim_h = self._dim_article // 2
 		learning_rate = 1e-3
 
@@ -102,30 +104,16 @@ class ArticleRepresentation(object):
 #self._optimizer = torch.optim.SGD(self._vae.parameters(), lr=learning_rate, momentum=0.9)
 		self._optimizer = torch.optim.Adam(self._vae.parameters(), lr=learning_rate)
 
-		self._saved_model_path = self._ws_path + '/article_representation_vae.pth.tar'
+		self._saved_model_path = output_path
 
 	def get_dataloader(self):
-		saved_rnn_input_path = self._ws_path + '/rnn_input_article.json'
-
-		if not os.path.exists(saved_rnn_input_path):
-			print("rnn input : Newly generating!")
-			dict_rnn_input = self.generate_rnn_input()
-			with open(saved_rnn_input_path, 'w') as f_input:
-				json.dump(dict_rnn_input, f_input)
-			print("rnn input : Newly generating! - end")
-		else:
-			print("rnn input : Load from file!")
-			with open(saved_rnn_input_path, 'r') as f_input:
-				dict_rnn_input = json.load(f_input)
-			print("rnn input : Load from file! - end")
-
 		def article_collate(batch):
 			# batch * (url0, url1, url_diff)
 			return torch.FloatTensor([ (self._dict_url2vec[url0], self._dict_url2vec[url1], 
 					self._dict_url2vec[url_diff]) for url0, url1, url_diff in batch ])
 
-		train_dataset = ArticleRepresentationDataset(dict_rnn_input['train'])
-		test_dataset = ArticleRepresentationDataset(dict_rnn_input['test'])
+		train_dataset = ArticleRepresentationDataset(self._dict_rnn_input['train'])
+		test_dataset = ArticleRepresentationDataset(self._dict_rnn_input['test'])
 
 		train_dataloader = torch.utils.data.DataLoader(train_dataset,
 						batch_size=128, shuffle=True, num_workers=16,
@@ -138,83 +126,6 @@ class ArticleRepresentation(object):
 
 		return train_dataloader, test_dataloader
 
-	def generate_rnn_input(self):
-		stat = True
-		# 38,155 items has category in the total 51,418
-		# 44 category variation
-		# dict_url2info contains only existing url in the sequence
-		dict_datas = {}
-		if stat:
-			total_datas = 0
-			cate_datas = 0
-
-		for url, dict_info in self._dict_url2info.items():
-			category = dict_info.get("category0", None)
-
-			if self._dict_url2vec.get(url, None) == None:
-				if stat:
-					total_datas += 1
-				continue
-
-			if category == None:
-				continue
-
-			dict_datas[category] = dict_datas.get(category, [])
-			dict_datas[category].append(url)
-
-			if stat:
-				cate_datas += 1
-
-		if stat:
-			print('has category / total : {}/{}'.format(cate_datas, total_datas))
-
-		train_datas = {}
-		test_datas = {}
-
-		for category, datas in dict_datas.items():
-			if len(datas) < 20:
-				train_datas[category] = datas
-				continue
-
-			random.shuffle(datas)
-
-			test_datas[category] = datas[:len(datas)//10]
-			train_datas[category] = datas[len(test_datas[category]):]
-
-		def generate_triples(target_datas):
-			if stat:
-				sim_combs = 0
-				for category, urls in target_datas.items():
-					sim_combs += len(urls) * (len(urls) - 1) // 2
-				print('Total similar combinations : {}'.format(sim_combs))
-
-			# full combination of same categories
-			# There are 172,991,409 combinations in the train set
-			# There are 2,131,705 combinations in the test set
-			url_triples = []
-			for category, urls in target_datas.items():
-				another_urls = []
-				for cate, urls in target_datas.items():
-					if category == cate:
-						continue
-					another_urls += urls
-
-				if len(another_urls) <= 0:
-				 	continue
-
-				for i in range(len(urls)):
-					for j in range(i, len(urls)):
-						for _ in range(1):
-							url_triples.append((urls[i], urls[j], another_urls[random.randrange(len(another_urls))]))
-
-			return url_triples
-
-		dict_rnn_input = {
-			'train': generate_triples(train_datas),
-			'test': generate_triples(test_datas),
-		}
-
-		return dict_rnn_input
 
 	# alpha is a hyperparameter for balancing
 	def loss_f(self, x, h, y, alpha=0.3):
@@ -268,6 +179,36 @@ class ArticleRepresentation(object):
 			test_loss += loss.item()
 		return test_loss / batch_count
 
+	def do_train(self, total_epoch=1000, early_stop=10):
+		start_epoch, best_test_loss = self.load_model()
+
+		if start_epoch >= total_epoch:
+			return best_test_loss
+
+		endure = 0
+		for epoch in range(start_epoch, total_epoch):
+			start_time = time.time()
+			if endure > early_stop:
+				print('Early stop!')
+				break
+
+			train_loss = self.train()
+			test_loss = self.test()
+
+			print('epoch {} - train loss({:.8f}) test loss({:.8f}) tooks {:.2f}'.format(
+					epoch, train_loss, test_loss, time.time() - start_time))
+
+			if best_test_loss > test_loss:
+				best_test_loss = test_loss
+				endure = 0
+
+				self.save_model(epoch, test_loss)
+				print('Model saved! - best test loss({:.8f})'.format(best_test_loss))
+			else:
+				endure += 1
+
+		return best_test_loss
+
 	def generate_article_vector(self, x):
 		self._vae.eval()
 		x = x.to(self._device)
@@ -298,21 +239,26 @@ def main():
 	options, args = parser.parse_args()
 
 	if (options.d2v_embed == None) or (options.u2v_path == None) \
-						   or (options.u2i_path == None) or (options.output == None):
+						   or (options.input == None) or (options.output == None):
 		return
 
 	output_file_path = options.output
 	embedding_dimension = int(options.d2v_embed)
 	url2vec_path = '{}_{}'.format(options.u2v_path, embedding_dimension)
-	url2info_path = options.u2i_path
+
+	rnn_input_path = options.input
 
 	print('Loading url2vec : start')
 	dict_url2vec = load_json(url2vec_path)
 	print('Loading url2vec : end')
 
-	print('Loading url2info : start')
-	dict_url2info = load_json(url2info_path)
-	print('Loading url2info : end')
+	print('Loading a2v rnn input : start')
+	dict_rnn_input = load_json(rnn_input_path)
+	print('Loading a2v rnn input : end')
+
+	ar = ArticleRepresentation(dict_url2vec, dict_rnn_input, output_file_path, embedding_dimension)
+	ar.do_train()
+
 
 if __name__ == '__main__':
 	main()

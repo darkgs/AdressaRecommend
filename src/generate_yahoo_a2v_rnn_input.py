@@ -91,7 +91,6 @@ def main():
 	print('Loading url2info : end')
 
 	dict_rnn_input = generate_rnn_input(dict_url2info, dict_url2vec)
-	print(len(dict_rnn_input['train']), len(dict_rnn_input['test']))
 
 	with open(output_file_path, 'w') as f_out:
 		json.dump(dict_rnn_input, f_out)

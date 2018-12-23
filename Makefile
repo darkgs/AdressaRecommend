@@ -13,7 +13,7 @@ endef
 
 # mode in [simple, one_week, one_month, three_month]
 MODE=simple
-#MODE=one_week
+MODE=one_week
 #MODE=one_month
 #MODE=three_month
 
@@ -138,13 +138,15 @@ comp_gru4rec: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) sr
 	$(info [Makefile] $@)
 	python3 src/comp_gru4rec.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json -w $(BASE_PATH)/gru4rec
 
-cache/yahoo_a2v_rnn_input.json_$(D2V_EMBED): cache/article_to_vec.json_$(D2V_EMBED) $(BASE_PATH)/article_info.json src/generate_yahoo_a2v_rnn_input.py
+$(BASE_PATH)/yahoo_a2v_rnn_input.json_$(D2V_EMBED): cache/article_to_vec.json_$(D2V_EMBED) $(BASE_PATH)/article_info.json src/generate_yahoo_a2v_rnn_input.py
 	$(info [Makefile] $@)
+	$(call asked_delete, $@)
 	python3 src/generate_yahoo_a2v_rnn_input.py -e $(D2V_EMBED) -u cache/article_to_vec.json -a $(BASE_PATH)/article_info.json -o $@
 
-cache/yahoo_article2vec.json_$(D2V_EMBED): cache/yahoo_a2v_rnn_input.json_$(D2V_EMBED) cache/article_to_vec.json_$(D2V_EMBED) src/generate_yahoo_a2v.py
+$(BASE_PATH)/yahoo_article2vec.json_$(D2V_EMBED): $(BASE_PATH)/yahoo_a2v_rnn_input.json_$(D2V_EMBED) cache/article_to_vec.json_$(D2V_EMBED) src/generate_yahoo_a2v.py
 	$(info [Makefile] $@)
-	python3 src/generate_yahoo_a2v.py -e $(D2V_EMBED) -u cache/article_to_vec.json -a $(BASE_PATH)/article_info.json 
+	$(call asked_delete, $@)
+	python3 src/generate_yahoo_a2v.py -e $(D2V_EMBED) -u cache/article_to_vec.json -i $(BASE_PATH)/yahoo_a2v_rnn_input.json_$(D2V_EMBED) -o $@
 
 stat_adressa_dataset: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) $(BASE_PATH)/article_info.json src/stat_adressa_dataset.py
 	$(info [Makefile] $@)
@@ -152,14 +154,14 @@ stat_adressa_dataset: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_E
 
 #run: d2v_rnn_torch
 #run: comp_pop
-run: comp_multicell
+#run: comp_multicell
 #run: comp_lstm
 #run: comp_lstm_2input
 #run: comp_multi_layer_lstm
 #run: comp_gru4rec
 #run: comp_yahoo
-#run: cache/yahoo_article2vec.json_$(D2V_EMBED)
-#run: cache/yahoo_a2v_rnn_input.json_$(D2V_EMBED)
+#run: $(BASE_PATH)/yahoo_a2v_rnn_input.json_$(D2V_EMBED)
+run: $(BASE_PATH)/yahoo_article2vec.json_$(D2V_EMBED)
 #run: stat_adressa_dataset
 	$(info run)
 
