@@ -1,6 +1,7 @@
 
 import os, sys
 import time
+import json
 
 import numpy as np
 
@@ -20,6 +21,7 @@ parser.add_option('-e', '--d2v_embed', dest='d2v_embed', type='string', default=
 parser.add_option('-u', '--u2v_path', dest='u2v_path', type='string', default=None)
 parser.add_option('-i', '--input', dest='input', type='string', default=None)
 parser.add_option('-o', '--output', dest='output', type='string', default=None)
+parser.add_option('-w', '--ws_path', dest='ws_path', type='string', default=None)
 
 class ArticleModel(nn.Module):
 	def __init__(self, dim_article, dim_h, corruption_rate=0.1):
@@ -86,10 +88,11 @@ class ArticleRepresentationDataset(Dataset):
 
 
 class ArticleRepresentation(object):
-	def __init__(self, dict_url2vec, dict_rnn_input, output_path, embedding_dimension):
+	def __init__(self, dict_url2vec, dict_rnn_input, embedding_dimension, ws_path):
 		self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 		self._dict_url2vec = dict_url2vec
 		self._dict_rnn_input = dict_rnn_input
+		self._ws_path = ws_path
 
 		self._dim_article = embedding_dimension
 		self._dim_h = self._dim_article // 2
@@ -104,7 +107,7 @@ class ArticleRepresentation(object):
 #self._optimizer = torch.optim.SGD(self._vae.parameters(), lr=learning_rate, momentum=0.9)
 		self._optimizer = torch.optim.Adam(self._vae.parameters(), lr=learning_rate)
 
-		self._saved_model_path = output_path
+		self._saved_model_path = '{}/yahoo_vae_model.pth.tar'.format(self._ws_path)
 
 	def get_dataloader(self):
 		def article_collate(batch):
@@ -209,12 +212,6 @@ class ArticleRepresentation(object):
 
 		return best_test_loss
 
-	def generate_article_vector(self, x):
-		self._vae.eval()
-		x = x.to(self._device)
-
-		return self._vae.inference(x)
-
 	def save_model(self, epoch, test_loss):
 		dict_states = {
 			'epoch': epoch,
@@ -234,19 +231,63 @@ class ArticleRepresentation(object):
 
 		return dict_states['epoch'], dict_states['test_loss']
 
+
+	def generate_y2v(self):
+		self._vae.eval()
+		dict_y2v = {}
+
+		def update_y2v(urls, x):
+			x = torch.tensor(x).to(self._device)
+			x_ = self._vae.inference(x)
+			x_ = x_.detach().cpu().numpy().tolist()
+
+			for i in range(len(urls)):
+				url = urls[i]
+				vec = x_[i]
+
+				dict_y2v[url] = vec
+
+		batch_size = 512
+
+		urls = []
+		vecs = []
+		for url, vec in self._dict_url2vec.items():
+			urls.append(url)
+			vecs.append(vec)
+
+			if len(urls) < batch_size:
+				continue
+
+			update_y2v(urls, vecs)
+
+			urls = []
+			vecs = []
+
+		if len(vecs) > 0:
+			update_y2v(urls, vecs)
+
+		return dict_y2v
 		
 def main():
 	options, args = parser.parse_args()
 
 	if (options.d2v_embed == None) or (options.u2v_path == None) \
-						   or (options.input == None) or (options.output == None):
+						   or (options.input == None) or (options.output == None) \
+						   or (options.ws_path == None):
 		return
 
 	output_file_path = options.output
 	embedding_dimension = int(options.d2v_embed)
 	url2vec_path = '{}_{}'.format(options.u2v_path, embedding_dimension)
+	ws_path = options.ws_path
 
 	rnn_input_path = options.input
+
+	if os.path.exists(ws_path):
+		os.system('rm -rf {}'.format(ws_path))
+
+	if not os.path.exists(ws_path):
+		os.system('mkdir -p {}'.format(ws_path))
 
 	print('Loading url2vec : start')
 	dict_url2vec = load_json(url2vec_path)
@@ -256,8 +297,12 @@ def main():
 	dict_rnn_input = load_json(rnn_input_path)
 	print('Loading a2v rnn input : end')
 
-	ar = ArticleRepresentation(dict_url2vec, dict_rnn_input, output_file_path, embedding_dimension)
+	ar = ArticleRepresentation(dict_url2vec, dict_rnn_input, embedding_dimension, ws_path)
 	ar.do_train()
+	dict_y2v = ar.generate_y2v()
+
+	with open(output_file_path, 'w') as f_out:
+		json.dump(dict_y2v, f_out)
 
 
 if __name__ == '__main__':

@@ -13,7 +13,7 @@ endef
 
 # mode in [simple, one_week, one_month, three_month]
 MODE=simple
-MODE=one_week
+#MODE=one_week
 #MODE=one_month
 #MODE=three_month
 
@@ -108,9 +108,6 @@ $(BASE_PATH)/sequence_difference/$(D2V_EMBED): $(BASE_PATH)/torch_input cache/ar
 	$(info [Makefile] $@)
 	@python3 src/sequence_difference.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json_$(D2V_EMBED) -o $@
 
-comp_yahoo: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) $(BASE_PATH)/article_info.json src/comp_yahoo.py
-	$(info [Makefile] $@)
-	python3 src/comp_yahoo.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json_$(D2V_EMBED) -a $(BASE_PATH)/article_info.json -w $(BASE_PATH)/yahoo
 
 comp_multi_layer_lstm: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_multi_layer_lstm.py
 	$(info [Makefile] $@)
@@ -146,7 +143,11 @@ $(BASE_PATH)/yahoo_a2v_rnn_input.json_$(D2V_EMBED): cache/article_to_vec.json_$(
 $(BASE_PATH)/yahoo_article2vec.json_$(D2V_EMBED): $(BASE_PATH)/yahoo_a2v_rnn_input.json_$(D2V_EMBED) cache/article_to_vec.json_$(D2V_EMBED) src/generate_yahoo_a2v.py
 	$(info [Makefile] $@)
 	$(call asked_delete, $@)
-	python3 src/generate_yahoo_a2v.py -e $(D2V_EMBED) -u cache/article_to_vec.json -i $(BASE_PATH)/yahoo_a2v_rnn_input.json_$(D2V_EMBED) -o $@
+	python3 src/generate_yahoo_a2v.py -e $(D2V_EMBED) -u cache/article_to_vec.json -i $(BASE_PATH)/yahoo_a2v_rnn_input.json_$(D2V_EMBED) -w $(BASE_PATH)/yahoo_vae -o $@
+
+comp_yahoo: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) $(BASE_PATH)/yahoo_article2vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_yahoo.py
+	$(info [Makefile] $@)
+	python3 src/comp_yahoo.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json -w $(BASE_PATH)/yahoo -y $(BASE_PATH)/yahoo_article2vec.json_$(D2V_EMBED)
 
 stat_adressa_dataset: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) $(BASE_PATH)/article_info.json src/stat_adressa_dataset.py
 	$(info [Makefile] $@)

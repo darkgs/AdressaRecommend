@@ -2,6 +2,8 @@
 import json
 import random
 
+import numpy as np
+
 from optparse import OptionParser
 
 from ad_util import load_json
@@ -58,11 +60,16 @@ def generate_rnn_input(dict_url2info, dict_url2vec):
 				 continue
 
 			for i in range(len(urls)):
-				for j in range(i, len(urls)):
-					for _ in range(1):
+				for j in range(i+1, len(urls)):
+					for _ in range(10):
 						url_triples.append((urls[i], urls[j], another_urls[random.randrange(len(another_urls))]))
 
-		return url_triples
+		url_triples = np.random.permutation(np.array(url_triples))
+		maximum_count = 50000000
+		if len(url_triples) > maximum_count:
+			url_triples = url_triples[:maximum_count]
+
+		return url_triples.tolist()
 
 	dict_rnn_input = {
 		'train': generate_triples(train_datas),
