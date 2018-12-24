@@ -161,8 +161,8 @@ stat_adressa_dataset: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_E
 #run: comp_multi_layer_lstm
 #run: comp_gru4rec
 #run: comp_yahoo
-run: $(BASE_PATH)/yahoo_a2v_rnn_input.json_$(D2V_EMBED)
-#run: $(BASE_PATH)/yahoo_article2vec.json_$(D2V_EMBED)
+#run: $(BASE_PATH)/yahoo_a2v_rnn_input.json_$(D2V_EMBED)
+run: $(BASE_PATH)/yahoo_article2vec.json_$(D2V_EMBED)
 #run: stat_adressa_dataset
 	$(info run)
 

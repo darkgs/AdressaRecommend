@@ -61,11 +61,11 @@ def generate_rnn_input(dict_url2info, dict_url2vec):
 
 			for i in range(len(urls)):
 				for j in range(i+1, len(urls)):
-					for _ in range(10):
+					for _ in range(5):
 						url_triples.append((urls[i], urls[j], another_urls[random.randrange(len(another_urls))]))
 
 		random.shuffle(url_triples)
-		maximum_count = 20000000
+		maximum_count = 5000000
 		if len(url_triples) > maximum_count:
 			url_triples = url_triples[:maximum_count]
 
