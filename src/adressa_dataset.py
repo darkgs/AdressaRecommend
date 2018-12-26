@@ -28,8 +28,9 @@ class AdressaDataset(Dataset):
 		return self._data_len
 
 class AdressaRNNInput(object):
-	def __init__(self, rnn_input_json_path, dict_url2vec, args):
+	def __init__(self, rnn_input_json_path, dict_url2vec, args, dict_yahoo_url2vec=None):
 		self._dict_url2vec = dict_url2vec
+		self._dict_yahoo_url2vec = dict_yahoo_url2vec
 
 		self._dict_rnn_input = load_json(rnn_input_json_path)
 		self._trendy_count = args.trendy_count
@@ -98,7 +99,10 @@ class AdressaRNNInput(object):
 		return self._dataset[data_type]
 
 	def idx2vec(self, idx):
-		return self._dict_url2vec[self._dict_rnn_input['idx2url'][str(idx)]]
+		if self._dict_yahoo_url2vec == None:
+			return self._dict_url2vec[self._dict_rnn_input['idx2url'][str(idx)]]
+		else:
+			return self._dict_yahoo_url2vec[self._dict_rnn_input['idx2url'][str(idx)]]
 
 	def get_pad_idx(self):
 		return self._dict_rnn_input['pad_idx']
@@ -221,7 +225,8 @@ def adressa_collate(batch):
 
 
 class AdressaRec(object):
-	def __init__(self, model_class, ws_path, torch_input_path, dict_url2vec, args):
+	def __init__(self, model_class, ws_path, torch_input_path, \
+			dict_url2vec, args, dict_yahoo_url2vec=None):
 		super(AdressaRec, self).__init__()
 
 		print("AdressaRec generating ...")
@@ -234,7 +239,8 @@ class AdressaRec(object):
 		learning_rate = args.learning_rate
 
 		dict_rnn_input_path = '{}/torch_rnn_input.dict'.format(torch_input_path)
-		self._rnn_input = AdressaRNNInput(dict_rnn_input_path, dict_url2vec, args)
+		self._rnn_input = AdressaRNNInput(dict_rnn_input_path, dict_url2vec, \
+				args, dict_yahoo_url2vec=dict_yahoo_url2vec)
 
 		self._train_dataloader, self._valid_dataloader, self._test_dataloader = \
 								self.get_dataloader(dict_url2vec)

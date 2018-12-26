@@ -24,7 +24,7 @@ parser.add_option('-o', '--output', dest='output', type='string', default=None)
 parser.add_option('-w', '--ws_path', dest='ws_path', type='string', default=None)
 
 class ArticleModel(nn.Module):
-	def __init__(self, dim_article, dim_h, corruption_rate=0.1):
+	def __init__(self, dim_article, dim_h, corruption_rate=0.05):
 		super(ArticleModel, self).__init__()
 
 		self._p = corruption_rate
@@ -39,6 +39,7 @@ class ArticleModel(nn.Module):
 		ret = super(ArticleModel, self).to(*args, **kwargs)
 
 		device, dtype, non_blocking = torch._C._nn._parse_to(*args, **kwargs)
+		self._device = device
 
 		self._encode_w = self._encode_w.to(device)
 		self._encode_b = self._encode_b.to(device)
@@ -46,11 +47,15 @@ class ArticleModel(nn.Module):
 
 
 	def forward(self, x0, x1, x2):
+		def stocastic_corruption(x):
+			mask = torch.tensor(np.random.binomial(1.0, 1.0 - self._p, x.shape), \
+					requires_grad=False, dtype=torch.float32).to(self._device)
+			return x * mask
+
 		if self.training:
-			# TODO stocastic corruption distribution
-			x0 = x0
-			x1 = x1
-			x2 = x2
+			x0 = stocastic_corruption(x0)
+			x1 = stocastic_corruption(x1)
+			x2 = stocastic_corruption(x2)
 		else:
 			# constant decay
 			x0 = (1.0 - self._p) * x0
@@ -95,7 +100,7 @@ class ArticleRepresentation(object):
 		self._ws_path = ws_path
 
 		self._dim_article = embedding_dimension
-		self._dim_h = self._dim_article // 2
+		self._dim_h = self._dim_article * 1 // 10
 		learning_rate = 1e-3
 
 		# Generate dataloader
@@ -134,7 +139,8 @@ class ArticleRepresentation(object):
 	def loss_f(self, x, h, y, alpha=0.3):
 		loss = 0.0
 		for i in range(3):
-			loss += F.binary_cross_entropy(y[i], torch.sigmoid(x[i]))
+#loss += F.binary_cross_entropy(y[i], torch.sigmoid(x[i]))
+			loss += F.binary_cross_entropy(y[i], x[i])
 
 		# log(1+exp(h0.*h2−h0.*h1))
 		loss += alpha * torch.mean(torch.log(
@@ -146,9 +152,11 @@ class ArticleRepresentation(object):
 	def train(self):
 		self._vae.train()
 		train_loss = 0.0
-		batch_count = len(self._train_dataloader)
+		batch_count = 0
 		
 		for batch_idx, train_input in enumerate(self._train_dataloader):
+			batch_size = train_input.size(0)
+
 			train_input = train_input.to(self._device)
 			x = [train_input[:,0,:], train_input[:,1,:], train_input[:,2,:]]
 
@@ -161,7 +169,8 @@ class ArticleRepresentation(object):
 			loss.backward()
 			self._optimizer.step()
 
-			train_loss += loss.item()
+			train_loss += loss.item() * batch_size
+			batch_count += batch_size
 
 		return train_loss / batch_count
 
@@ -169,9 +178,11 @@ class ArticleRepresentation(object):
 		self._vae.eval()
 
 		test_loss = 0.0
-		batch_count = len(self._test_dataloader)
+		batch_count = 0
 		
 		for batch_idx, test_input in enumerate(self._test_dataloader):
+			batch_size = test_input.size(0)
+
 			test_input = test_input.to(self._device)
 			x = [test_input[:,0,:], test_input[:,1,:], test_input[:,2,:]]
 
@@ -179,7 +190,10 @@ class ArticleRepresentation(object):
 
 			loss = self.loss_f(x, h, y)
 
-			test_loss += loss.item()
+			test_loss += loss.item() * batch_size
+			batch_count += batch_size
+
+
 		return test_loss / batch_count
 
 	def do_train(self, total_epoch=1000, early_stop=10):

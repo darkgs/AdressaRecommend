@@ -101,7 +101,12 @@ def main():
 	dict_url2vec = load_json(url2vec_path)
 	print('Loading url2vec : end')
 
-	predictor = AdressaRec(UserRepModel, ws_path, torch_input_path, dict_url2vec, options)
+	print('Loading yahoo_url2vec : start')
+	dict_yahoo_url2vec = load_json(yahoo_url2vec_path)
+	print('Loading yahoo_url2vec : end')
+
+	predictor = AdressaRec(UserRepModel, ws_path, torch_input_path, 
+			dict_url2vec, options, dict_yahoo_url2vec=dict_yahoo_url2vec)
 	best_mrr = predictor.do_train()
 
 	if search_mode:
