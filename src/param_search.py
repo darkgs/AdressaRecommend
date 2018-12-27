@@ -67,10 +67,10 @@ def parameter_search(target_name):
 			{
 				'd2v_embed': [1000],
 				'learning_rate': [3e-3],
-				'trendy_count': [5, 10],
-				'recency_count': [3, 5],
+				'trendy_count': [3, 5, 7],
+				'recency_count': [3],
 				'hidden_size': [1024, 1208],
-				'x2_dropout_rate': [0.3, 0.5, 0.7],
+				'x2_dropout_rate': [0.3, 0.5],
 			},
 		],
 		'lstm': [
@@ -99,7 +99,18 @@ def parameter_search(target_name):
 			{
 				'd2v_embed': [1000],
 				'learning_rate': [3e-3],
-				'hidden_size': [512, 786, 1024, 1280, 1408],
+				'hidden_size': [896, 1024],
+			},
+		],
+		'yahoo': [
+			'comp_yahoo.py',
+			'-i cache/one_week/torch_input -u cache/article_to_vec.json -w cache/one_week/yahoo -z -y cache/adressa/simple/yahoo_article2vec.json',
+			{
+				'd2v_embed': [1000],
+				'learning_rate': [3e-3],
+				'hidden_size': [786, 1024],
+				'num_layers': [2, 3],
+				'dropout_rate': [0.3, 0.5, 0.7],
 			},
 		],
 	}
@@ -155,10 +166,11 @@ def show_result(target_name):
 		print(mrr, file_name)
 
 def main():
-	target_name = 'multicell'
-	target_name = 'lstm_2input'
 	target_name = 'lstm'
 	target_name = 'gru4rec'
+	target_name = 'multicell'
+	target_name = 'lstm_2input'
+	target_name = 'yahoo'
 
 #parameter_search(target_name)
 	show_result(target_name)
