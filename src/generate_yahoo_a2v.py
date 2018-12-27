@@ -24,7 +24,7 @@ parser.add_option('-o', '--output', dest='output', type='string', default=None)
 parser.add_option('-w', '--ws_path', dest='ws_path', type='string', default=None)
 
 class ArticleModel(nn.Module):
-	def __init__(self, dim_article, dim_h, corruption_rate=0.05):
+	def __init__(self, dim_article, dim_h, corruption_rate=0.1):
 		super(ArticleModel, self).__init__()
 
 		self._p = corruption_rate
@@ -69,15 +69,19 @@ class ArticleModel(nn.Module):
 		h2 = torch.matmul(x2, self._encode_w) + self._encode_b
 		h2 = torch.sigmoid(h2) - torch.sigmoid(self._encode_b)
 
-		y0 = torch.sigmoid(self._decode(h0))
-		y1 = torch.sigmoid(self._decode(h1))
-		y2 = torch.sigmoid(self._decode(h2))
+#		y0 = torch.sigmoid(self._decode(h0))
+#		y1 = torch.sigmoid(self._decode(h1))
+#		y2 = torch.sigmoid(self._decode(h2))
+		y0 = self._decode(h0)
+		y1 = self._decode(h1)
+		y2 = self._decode(h2)
 		return [h0, h1, h2], [y0, y1, y2]
 
 	def inference(self, x):
 		h = torch.matmul(x, self._encode_w) + self._encode_b
 		h = torch.sigmoid(h) - torch.sigmoid(self._encode_b)
-		y = torch.sigmoid(self._decode(h))
+#y = torch.sigmoid(self._decode(h))
+		y = self._decode(h)
 		return y
 
 
@@ -100,7 +104,7 @@ class ArticleRepresentation(object):
 		self._ws_path = ws_path
 
 		self._dim_article = embedding_dimension
-		self._dim_h = self._dim_article * 1 // 10
+		self._dim_h = self._dim_article * 2 // 5
 		learning_rate = 1e-3
 
 		# Generate dataloader
@@ -136,11 +140,11 @@ class ArticleRepresentation(object):
 
 
 	# alpha is a hyperparameter for balancing
-	def loss_f(self, x, h, y, alpha=0.3):
+	def loss_f(self, x, h, y, alpha=0.1):
 		loss = 0.0
 		for i in range(3):
-#loss += F.binary_cross_entropy(y[i], torch.sigmoid(x[i]))
-			loss += F.binary_cross_entropy(y[i], x[i])
+#			loss += F.binary_cross_entropy(y[i], torch.sigmoid(x[i]))
+			loss += F.binary_cross_entropy(torch.sigmoid(y[i]), torch.sigmoid(x[i]))
 
 		# log(1+exp(h0.*h2−h0.*h1))
 		loss += alpha * torch.mean(torch.log(

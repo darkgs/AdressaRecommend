@@ -13,6 +13,7 @@ from ad_util import get_files_under_path
 parser = OptionParser()
 parser.add_option('-m', '--mode', dest='mode', type='string', default=None)
 parser.add_option('-o', '--output', dest='output', type='string', default=None)
+parser.add_option('-d', '--dataset', dest='dataset', type='string', default=None)
 
 data_mode = None
 out_dir = None
@@ -108,11 +109,16 @@ def main():
 	global data_mode, out_dir, data_path, dict_url2id
 	options, args = parser.parse_args()
 
-	if (options.mode == None) or (options.output == None):
+	if (options.mode == None) or (options.output == None) or (options.dataset == None):
 		return
 
 	data_mode = options.mode
 	out_dir = options.output
+	dataset = options.dataset
+
+	if dataset not in ['adressa', 'glob']:
+		print('Wrong dataset name : {}'.format(dataset))
+		return
 
 	os.system('mkdir -p {}'.format(out_dir + '/per_user'))
 	os.system('mkdir -p {}'.format(out_dir + '/per_time'))
