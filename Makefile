@@ -120,7 +120,7 @@ $(BASE_PATH)/yahoo_article2vec.json_$(D2V_EMBED): $(BASE_PATH)/yahoo_a2v_rnn_inp
 
 comp_yahoo: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) $(BASE_PATH)/yahoo_article2vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_yahoo.py
 	$(info [Makefile] $@)
-	python3 src/comp_yahoo.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json -w $(BASE_PATH)/yahoo -y $(BASE_PATH)/yahoo_article2vec.json_$(D2V_EMBED)
+	python3 src/comp_yahoo.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u cache/article_to_vec.json -w $(BASE_PATH)/yahoo -y $(BASE_PATH)/yahoo_article2vec.json
 
 stat_adressa_dataset: $(BASE_PATH)/torch_input cache/article_to_vec.json_$(D2V_EMBED) $(BASE_PATH)/article_info.json src/stat_adressa_dataset.py
 	$(info [Makefile] $@)

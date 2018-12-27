@@ -76,7 +76,7 @@ def main():
 	torch_input_path = options.input
 	embedding_dimension = int(options.d2v_embed)
 	url2vec_path = '{}_{}'.format(options.u2v_path, embedding_dimension)
-	yahoo_url2vec_path = options.y2v_path
+	yahoo_url2vec_path = '{}_{}'.format(options.y2v_path, embedding_dimension)
 	ws_path = options.ws_path
 	search_mode = options.search_mode
 	model_ws_path = '{}/model/{}'.format(ws_path, option2str(options))
