@@ -175,7 +175,6 @@ def parameter_search(dataset, target_name):
 	else:
 		print('Wrong dataset name : {}'.foramt(dataset))
 		return
->>>>>>> d3f79c42130c66740a05fae572f74f1bc82115b3
 
 	def generate_hyper_params(dict_params):
 		if len(dict_params.keys()) <= 0:
@@ -228,7 +227,6 @@ def show_result(target_name):
 		print(mrr, file_name)
 
 def main():
-	dataset = 'adressa'
 	dataset = 'glob'
 
 	target_name = 'lstm'
@@ -236,6 +234,9 @@ def main():
 	target_name = 'multicell'
 	target_name = 'lstm_2input'
 	target_name = 'yahoo'
+
+	dataset = 'adressa'
+	target_name = 'lstm'
 
 	parameter_search(dataset, target_name)
 #show_result(dataset, target_name)
