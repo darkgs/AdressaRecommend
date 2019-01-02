@@ -12,12 +12,17 @@ from ad_util import load_json
 
 parser = OptionParser()
 parser.add_option('-i', '--input', dest='input', type='string', default=None)
-parser.add_option('-e', '--d2v_embed', dest='d2v_embed', type='string', default='1000')
 parser.add_option('-u', '--u2v_path', dest='u2v_path', type='string', default=None)
 parser.add_option('-w', '--ws_path', dest='ws_path', type='string', default=None)
 
+parser.add_option('-t', '--trendy_count', dest='trendy_count', type='int', default=1)
+parser.add_option('-r', '--recency_count', dest='recency_count', type='int', default=1)
+
+parser.add_option('-e', '--d2v_embed', dest='d2v_embed', type='string', default='1000')
+parser.add_option('-l', '--learning_rate', dest='learning_rate', type='float', default=3e-3)
+
 class SingleLSTMModel(nn.Module):
-	def __init__(self, embed_size):
+	def __init__(self, embed_size, args):
 		super(SingleLSTMModel, self).__init__()
 
 		hidden_size = 768
@@ -57,15 +62,21 @@ def main():
 	dict_url2vec = load_json(url2vec_path)
 	print('Loading url2vec : end')
 
-	predictor = AdressaRec(SingleLSTMModel, ws_path, torch_input_path, dict_url2vec)
+	predictor = AdressaRec(SingleLSTMModel, ws_path, torch_input_path, dict_url2vec, options)
 
-	total_mrr = 0.0
-	for i in range(10):
-		mrr = predictor.pop_20()
-		print('{}th : mrr({:.4f})'.format(i, mrr))
-		total_mrr += mrr
+	test_count = 2
 
-	print('Final mrr : {:.4f}'.format(total_mrr/10))
+	total_mrr_5 = 0.0
+	total_mrr_20 = 0.0
+	for i in range(test_count):
+		mrr_5 = predictor.pop(candidate_count=5)
+		mrr_20 = predictor.pop(candidate_count=20)
+
+		print('{}th : mrr_5({:.4f}) mrr_20({:.4f})'.format(i, mrr_5, mrr_20))
+		total_mrr_5 += mrr_5
+		total_mrr_20 += mrr_20
+
+	print('Final mrr_5 : {:.4f} mrr_20 : {:.4f}'.format(total_mrr_5/test_count, total_mrr_20/test_count))
 
 
 if __name__ == '__main__':

@@ -1,7 +1,9 @@
 
-import json
+import json, pickle
 import time
 import random
+
+import numpy as np
 
 import gensim
 from optparse import OptionParser
@@ -13,6 +15,8 @@ parser.add_option('-i', '--input', dest='input', type='string', default=None)
 parser.add_option('-o', '--output', dest='output', type='string', default=None)
 parser.add_option('-e', '--d2v_embed', dest='d2v_embed', type='string', default='1000')
 parser.add_option('-m', '--model_path', dest='model_path', type='string', default=None)
+parser.add_option('-d', '--dataset', dest='dataset', type='string', default=None)
+parser.add_option('-g', '--glob_pickle', dest='glob_pickle', type='string', default=None)
 
 article_info_path = None
 output_path = None
@@ -75,19 +79,48 @@ def generate_w2v_map():
 		json.dump(dict_w2v, out_f)
 	write_log('W2V json dump : end')
 
+def generate_w2v_map_glob(pickle_path):
+	global output_path, embedding_dimension
+
+	with open(pickle_path, 'rb') as f_input:
+		embedding_data = pickle.load(f_input)
+
+	dict_w2v = {}
+	for i in range(embedding_data.shape[0]):
+		dict_w2v['url_{}'.format(i)] = embedding_data[i].tolist()
+
+	dict_w2v['url_pad'] = [float(0)] * embedding_dimension
+
+	with open(output_path, 'w') as out_f:
+		json.dump(dict_w2v, out_f)
+
 def main():
 	global article_info_path, output_path, embedding_dimension, model_path
 
 	options, args = parser.parse_args()
-	if (options.output == None) or (options.input == None) or (options.model_path == None):
+	if (options.output == None) or (options.input == None) or (options.model_path == None) \
+						or (options.dataset == None) or (options.glob_pickle == None):
 		return
 
 	article_info_path = options.input
 	output_path = options.output
 	embedding_dimension = int(options.d2v_embed)
 	model_path = options.model_path
+	dataset = options.dataset
+	glob_pickle_path = options.glob_pickle
 
-	generate_w2v_map()
+	if dataset not in ['adressa', 'glob']:
+		print('Wrong dataset name : {}'.format(dataset))
+		return
+
+	if dataset == 'glob' and embedding_dimension != 250:
+		print('Glob only supports 250 dims')
+		return
+
+	if dataset == 'adressa':
+		generate_w2v_map()
+	else:
+		generate_w2v_map_glob(glob_pickle_path)
 
 if __name__ == '__main__':
 	main()

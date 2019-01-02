@@ -104,6 +104,67 @@ def raw_to_per_day(raw_path):
 
 	write_log('Done : {}'.format(raw_path))
 
+def raw_to_per_day_glob(raw_path):
+	global out_dir, dict_url2id
+
+	write_log('Processing : {}'.format(raw_path))
+
+	with open(raw_path, 'r') as f_raw:
+		lines = f_raw.readlines()
+
+	dict_per_user = {}
+	list_per_time = []
+
+	total_count = len(lines)
+	count = 0
+
+	dict_header_idx = None
+	for line in lines:
+		if count % 10000 == 0:
+			write_log('Processing({}) : {}/{}'.format(raw_path, count, total_count))
+		count += 1
+
+		line = line.strip()
+		if dict_header_idx == None:
+			dict_header_idx = {}
+			for i, k in enumerate(line.split(',')):
+				dict_header_idx[k] = i
+			continue
+			 
+		line_split = line.split(',')
+		
+		user_id = 'uid_{}'.format(line_split[dict_header_idx['user_id']])
+		time = int(line_split[dict_header_idx['click_timestamp']]) // 1000
+		url = 'url_{}'.format(line_split[dict_header_idx['click_article_id']])
+		article_id = 'id_{}'.format(line_split[dict_header_idx['click_article_id']])
+
+		if (user_id == None) or (url == None) or (time < 0) or (article_id == None):
+			continue
+
+		if dict_per_user.get(user_id, None) == None:
+			dict_per_user[user_id] = []
+
+		dict_per_user[user_id].append(tuple((time, url)))
+		list_per_time.append(tuple((time, user_id, url)))
+
+		dict_url2id[url] = article_id
+
+	lines = None
+
+	per_user_path = out_dir + '/per_user/' + os.path.splitext(os.path.basename(raw_path))[0]
+	per_time_path = out_dir + '/per_time/' + os.path.splitext(os.path.basename(raw_path))[0]
+
+	with open(per_user_path, 'w') as f_user:
+		json.dump(dict_per_user, f_user)
+
+	with open(per_time_path, 'w') as f_time:
+		json.dump(list_per_time, f_time)
+
+	dict_per_user = None
+	list_per_time = None
+
+	write_log('Done : {}'.format(raw_path))
+
 
 def main():
 	global data_mode, out_dir, data_path, dict_url2id
@@ -120,15 +181,25 @@ def main():
 		print('Wrong dataset name : {}'.format(dataset))
 		return
 
+	if dataset == 'adressa':
+		data_path = 'data/' + data_mode
+		worker_fn = raw_to_per_day
+	elif dataset == 'glob':
+		data_path = 'data/glob'
+		if data_mode == 'simple':
+			data_path += '/simple'
+		else:
+			data_path += '/clicks'
+		worker_fn = raw_to_per_day_glob
+
 	os.system('mkdir -p {}'.format(out_dir + '/per_user'))
 	os.system('mkdir -p {}'.format(out_dir + '/per_time'))
 
-	data_path = 'data/' + data_mode
 	works = get_files_under_path(data_path)
 
 	dict_url2id = {}
 	with ThreadPool(8) as pool:
-		pool.map(raw_to_per_day, works)
+		pool.map(worker_fn, works)
 
 	with open(out_dir + '/url2id.json', 'w') as f_dict:
 		json.dump(dict_url2id, f_dict)

@@ -57,63 +57,125 @@ def worker_function(args):
 	visible_gpus.append(my_gpu)
 	visible_gpus_sema.release()
 
-def parameter_search(target_name):
+def parameter_search(dataset, target_name):
 	global total_works
 
-	dict_param_db = {
-		'multicell': [
-			'comp_multicell.py',
-			'-i cache/one_week/torch_input -u cache/article_to_vec.json -w cache/one_week/multicell -z',
-			{
-				'd2v_embed': [1000],
-				'learning_rate': [3e-3],
-				'trendy_count': [3, 5, 7],
-				'recency_count': [3],
-				'hidden_size': [1024, 1208],
-				'x2_dropout_rate': [0.3, 0.5],
-			},
-		],
-		'lstm': [
-			'comp_lstm.py',
-			'-i cache/one_week/torch_input -u cache/article_to_vec.json -w cache/one_week/lstm -z',
-			{
-				'd2v_embed': [1000],
-				'learning_rate': [3e-3],
-				'hidden_size': [1024, 1280, 1408],
-				'num_layers': [1, 2],
-			},
-		],
-		'gru4rec': [
-			'comp_gru4rec.py',
-			'-i cache/one_week/torch_input -u cache/article_to_vec.json -w cache/one_week/gru4rec -z',
-			{
-				'd2v_embed': [1000],
-				'learning_rate': [3e-3],
-				'hidden_size': [424, 512, 786],
-				'num_layers': [1, 2, 3],
-			},
-		],
-		'lstm_2input': [
-			'comp_lstm_2input.py',
-			'-i cache/one_week/torch_input -u cache/article_to_vec.json -w cache/one_week/lstm_2input -z',
-			{
-				'd2v_embed': [1000],
-				'learning_rate': [3e-3],
-				'hidden_size': [896, 1024],
-			},
-		],
-		'yahoo': [
-			'comp_yahoo.py',
-			'-i cache/one_week/torch_input -u cache/article_to_vec.json -w cache/one_week/yahoo -z -y cache/adressa/simple/yahoo_article2vec.json',
-			{
-				'd2v_embed': [1000],
-				'learning_rate': [3e-3],
-				'hidden_size': [786, 1024],
-				'num_layers': [2, 3],
-				'dropout_rate': [0.3, 0.5, 0.7],
-			},
-		],
-	}
+	if dataset == 'adressa':
+		dict_param_db = {
+			'lstm': [
+				'comp_lstm.py',
+				'-i cache/adressa/one_week/torch_input -u cache/adressa/article_to_vec.json -w cache/adressa/one_week/lstm -z',
+				{
+					'd2v_embed': [1000],
+					'learning_rate': [3e-3],
+					'hidden_size': [896, 1024, 1280],
+					'num_layers': [1, 2],
+				},
+			],
+			'gru4rec': [
+				'comp_gru4rec.py',
+				'-i cache/adressa/one_week/torch_input -u cache/adressa/article_to_vec.json -w cache/adressa/one_week/gru4rec -z',
+				{
+					'd2v_embed': [1000],
+					'learning_rate': [3e-3],
+					'dropout_rate': [0.3, 0.5],
+					'hidden_size': [512, 786],
+					'num_layers': [2, 3],
+				},
+			],
+			'lstm_2input': [
+				'comp_lstm_2input.py',
+				'-i cache/adressa/one_week/torch_input -u cache/adressa/article_to_vec.json -w cache/adressa/one_week/lstm_2input -z',
+				{
+					'd2v_embed': [1000],
+					'learning_rate': [3e-3],
+					'hidden_size': [682, 786, 896],
+				},
+			],
+			'multicell': [
+				'comp_multicell.py',
+				'-i cache/adressa/one_week/torch_input -u cache/adressa/article_to_vec.json -w cache/adressa/one_week/multicell -z',
+				{
+					'd2v_embed': [1000],
+					'learning_rate': [3e-3],
+					'trendy_count': [5],
+					'recency_count': [3],
+					'hidden_size': [1024, 1208, 1440],
+					'x2_dropout_rate': [0.3, 0.5],
+				},
+			],
+			'yahoo': [
+				'comp_yahoo.py',
+				'-i cache/adressa/one_week/torch_input -u cache/adressa/article_to_vec.json -w cache/adressa/one_week/yahoo -y cache/adressa/one_week/yahoo_article2vec.json -z',
+				{
+					'd2v_embed': [1000],
+					'learning_rate': [3e-3],
+					'dropout_rate': [0.3, 0.5],
+					'hidden_size': [786, 1024, 1208],
+					'num_layers': [2, 3],
+				},
+			],
+		}
+	elif dataset == 'glob':
+		dict_param_db = {
+			'lstm': [
+				'comp_lstm.py',
+				'-i cache/glob/one_week/torch_input -u cache/glob/article_to_vec.json -w cache/glob/one_week/lstm -z',
+				{
+					'd2v_embed': [250],
+					'learning_rate': [3e-3],
+					'hidden_size': [512, 896, 1024],
+					'num_layers': [1, 2],
+				},
+			],
+			'gru4rec': [
+				'comp_gru4rec.py',
+				'-i cache/glob/one_week/torch_input -u cache/glob/article_to_vec.json -w cache/glob/one_week/gru4rec -z',
+				{
+					'd2v_embed': [250],
+					'learning_rate': [3e-3],
+					'dropout_rate': [0.3, 0.5],
+					'hidden_size': [386, 512, 786],
+					'num_layers': [2, 3],
+				},
+			],
+			'lstm_2input': [
+				'comp_lstm_2input.py',
+				'-i cache/glob/one_week/torch_input -u cache/glob/article_to_vec.json -w cache/glob/one_week/lstm_2input -z',
+				{
+					'd2v_embed': [250],
+					'learning_rate': [3e-3],
+					'hidden_size': [486, 682, 786],
+				},
+			],
+			'multicell': [
+				'comp_multicell.py',
+				'-i cache/glob/one_week/torch_input -u cache/glob/article_to_vec.json -w cache/glob/one_week/multicell -z',
+				{
+					'd2v_embed': [250],
+					'learning_rate': [3e-3],
+					'trendy_count': [5],
+					'recency_count': [3],
+					'hidden_size': [512, 792, 1024],
+					'x2_dropout_rate': [0.3, 0.5],
+				},
+			],
+			'yahoo': [
+				'comp_yahoo.py',
+				'-i cache/adressa/one_week/torch_input -u cache/adressa/article_to_vec.json -w cache/adressa/one_week/yahoo -y cache/adressa/one_week/yahoo_article2vec.json -z',
+				{
+					'd2v_embed': [250],
+					'learning_rate': [3e-3],
+					'dropout_rate': [0.3, 0.5],
+					'hidden_size': [486, 512, 786, 1024],
+					'num_layers': [2, 3],
+				},
+			],
+		}
+	else:
+		print('Wrong dataset name : {}'.foramt(dataset))
+		return
+>>>>>>> d3f79c42130c66740a05fae572f74f1bc82115b3
 
 	def generate_hyper_params(dict_params):
 		if len(dict_params.keys()) <= 0:
@@ -166,14 +228,17 @@ def show_result(target_name):
 		print(mrr, file_name)
 
 def main():
+	dataset = 'adressa'
+	dataset = 'glob'
+
 	target_name = 'lstm'
 	target_name = 'gru4rec'
 	target_name = 'multicell'
 	target_name = 'lstm_2input'
 	target_name = 'yahoo'
 
-#parameter_search(target_name)
-	show_result(target_name)
+	parameter_search(dataset, target_name)
+#show_result(dataset, target_name)
 
 if __name__ == '__main__':
 	main()
