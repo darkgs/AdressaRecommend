@@ -1,6 +1,7 @@
 
 import sys
 import json
+import pickle
 
 from optparse import OptionParser
 
@@ -11,6 +12,8 @@ from ad_util import write_log
 
 parser = OptionParser()
 parser.add_option('-o', '--output', dest='output', type='string', default=None)
+parser.add_option('-d', '--dataset', dest='dataset', type='string', default=None)
+parser.add_option('-g', '--glob_pickle', dest='glob_pickle', type='string', default=None)
 
 out_dir = None
 
@@ -69,16 +72,45 @@ def extract_article_content():
 	write_log('Save to Json : end')
 
 
+def extract_article_content_glob(pickle_path):
+	global out_dir
+
+	with open(pickle_path, 'rb') as f_input:
+		article_id_count = pickle.load(f_input).shape[0]
+
+	article_content = {}
+
+	for i in range(article_id_count):
+		article_content['url_{}'.format(i)] = {
+			'sentence_header': [],
+			'sentence_body': [],
+			'words_header': [],
+			'words_body': [],
+		}
+
+	with open(out_dir, 'w') as f_json:
+		json.dump(article_content, f_json)
+
 def main():
 	global out_dir
 
 	options, args = parser.parse_args()
-	if options.output == None:
+	if (options.output == None) or (options.dataset == None) or \
+						(options.glob_pickle == None):
 		return
 
 	out_dir = options.output
+	dataset = options.dataset
+	glob_pickle_path = options.glob_pickle
 
-	extract_article_content()
+	if dataset not in ['adressa', 'glob']:
+		print('Wrong dataset name : {}'.format(dataset))
+		return
+
+	if dataset == 'adressa':
+		extract_article_content()
+	else:
+		extract_article_content_glob(glob_pickle_path)
 
 
 if __name__ == '__main__':

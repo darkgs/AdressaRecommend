@@ -11,7 +11,9 @@ from ad_util import write_log
 parser = OptionParser()
 parser.add_option('-i', '--input', dest='input', type='string', default=None)
 parser.add_option('-o', '--output', dest='output', type='string', default=None)
-parser.add_option('-d', '--url2id', dest='url2id', type='string', default=None)
+parser.add_option('-u', '--url2id', dest='url2id', type='string', default=None)
+parser.add_option('-d', '--dataset', dest='dataset', type='string', default=None)
+parser.add_option('-g', '--glob_meta', dest='glob_meta', type='string', default=None)
 
 contentdata_path = None
 dict_article_info = {}
@@ -55,21 +57,53 @@ def main():
 	global contentdata_path, dict_article_info
 
 	options, args = parser.parse_args()
-	if (options.output == None) or (options.url2id == None) or (options.input == None):
+	if (options.output == None) or (options.url2id == None) or (options.input == None) \
+						or (options.dataset == None) or (options.glob_meta == None):
 		return
 
 	contentdata_path = options.input
 	out_path = options.output
 	url2id_path = options.url2id
+	dataset = options.dataset
+	glob_meta_path = options.glob_meta
 
-	with open(url2id_path, 'r') as f_dict:
-		dict_url2id = json.load(f_dict)
+	if dataset not in ['adressa', 'glob']:
+		print('Wrong dataset name : {}'.format(dataset))
+		return
 
-	write_log('Starting threads')
 	dict_article_info = {}
-	with ThreadPool(8) as pool:
-		pool.map(extract_article_info, dict_url2id.items())
-	write_log('Thread works done')
+
+	if dataset == 'adressa':
+		with open(url2id_path, 'r') as f_dict:
+			dict_url2id = json.load(f_dict)
+
+		write_log('Starting threads')
+
+		with ThreadPool(8) as pool:
+			pool.map(extract_article_info, dict_url2id.items())
+		write_log('Thread works done')
+
+	elif dataset == 'glob':
+		with open(glob_meta_path, 'r') as f_meta:
+			lines = f_meta.readlines()
+
+		dict_header_idx = None
+		for line in lines:
+			line = line.strip()
+
+			if dict_header_idx == None:
+				dict_header_idx = {}
+				for i, k in enumerate(line.split(',')):
+					dict_header_idx[k] = i
+				continue
+
+			line_split = line.split(',')
+			url = 'url_{}'.format(line_split[dict_header_idx['article_id']])
+			category_id = 'cate_{}'.format(line_split[dict_header_idx['category_id']])
+
+			dict_article_info[url] = {
+				'category0': category_id,
+			}
 
 	write_log('Save to {}'.format(out_path))
 	with open(out_path, 'w') as f_json:

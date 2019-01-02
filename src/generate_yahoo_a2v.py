@@ -24,7 +24,7 @@ parser.add_option('-o', '--output', dest='output', type='string', default=None)
 parser.add_option('-w', '--ws_path', dest='ws_path', type='string', default=None)
 
 class ArticleModel(nn.Module):
-	def __init__(self, dim_article, dim_h, corruption_rate=0.1):
+	def __init__(self, dim_article, dim_h, corruption_rate=0.001):
 		super(ArticleModel, self).__init__()
 
 		self._p = corruption_rate
@@ -104,7 +104,7 @@ class ArticleRepresentation(object):
 		self._ws_path = ws_path
 
 		self._dim_article = embedding_dimension
-		self._dim_h = self._dim_article * 2 // 5
+		self._dim_h = self._dim_article * 4 // 5
 		learning_rate = 1e-3
 
 		# Generate dataloader

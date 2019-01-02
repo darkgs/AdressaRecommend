@@ -142,17 +142,17 @@ def generate_merged_sequences():
 #		dict_url_vec = json.load(f_u2v)
 #
 
-def extract_current_popular_indices(dict_time_idx, item_count=50, window_siz=60*60):
+def extract_current_popular_indices(dict_time_idx, item_count=50, window_size=60*60*3):
 	dict_trendy_idx = {}
 	def generate_trendy_items(dict_target, padding):
 		ret = sorted(dict_target.items(), key=lambda x: x[1], reverse=True)
-		assert(len(ret) > 10)
+#assert(len(ret) > 10)
+		assert(len(ret) > 0)
 		if len(ret) < item_count:
-			ret += [[padding,0]] * (item_count - len(ret))
+			ret += [(padding,0)] * (item_count - len(ret))
 
 		return ret[:item_count]
 
-	window_size = 60*60*3
 	prev_timestamp = list_per_time[0][0]
 	cur_timestamp = prev_timestamp
 	dict_cur_trendy = {}
@@ -184,7 +184,8 @@ def extract_current_popular_indices(dict_time_idx, item_count=50, window_siz=60*
 
 		# move prev
 		to_be_removed = []
-		while prev_timestamp != None and (int(cur_timestamp) - int(prev_timestamp)) > window_size:
+		while prev_timestamp != None and int(cur_timestamp) > int(prev_timestamp) and \
+								(int(cur_timestamp) - int(prev_timestamp)) > window_size:
 
 			for idx, count in dict_time_idx[prev_timestamp]['indices'].items():
 				dict_cur_trendy[idx] = dict_cur_trendy.get(idx, 0) - count
@@ -201,17 +202,17 @@ def extract_current_popular_indices(dict_time_idx, item_count=50, window_siz=60*
 
 	return dict_trendy_idx
 
-def extract_recency_indices(dict_time_idx, item_count=50, window_siz=60*60):
+def extract_recency_indices(dict_time_idx, item_count=50, window_size=60*60):
 	dict_indices = {}
 	def generate_recency_items(dict_target, padding):
 		ret = sorted(dict_target.items(), key=lambda x: x[1], reverse=True)
-		assert(len(ret) > 10)
+#assert(len(ret) > 10)
+		assert(len(ret) > 0)
 		if len(ret) < item_count:
-			ret += [(padding,0) * (item_count - len(ret))]
+			ret += [(padding,0)] * (item_count - len(ret))
 
 		return ret[:item_count]
 
-	window_size = 60*60
 	prev_timestamp = list_per_time[0][0]
 	cur_timestamp = prev_timestamp
 	dict_cur_trendy = {}
@@ -243,10 +244,10 @@ def extract_recency_indices(dict_time_idx, item_count=50, window_siz=60*60):
 
 		# move prev
 		to_be_removed = []
-		while prev_timestamp != None and (int(cur_timestamp) - int(prev_timestamp)) > window_size:
+		while prev_timestamp != None and int(cur_timestamp) > int(prev_timestamp) and (int(cur_timestamp) - int(prev_timestamp)) > window_size:
 
 			for idx, timestamp in dict_time_idx[prev_timestamp]['indices'].items():
-				if dict_cur_trendy[idx] <= int(prev_timestamp):
+				if dict_cur_trendy.get(idx, None) != None and dict_cur_trendy[idx] <= int(prev_timestamp):
 					to_be_removed.append(idx)
 
 			prev_timestamp = dict_time_idx[prev_timestamp]['next_time']
@@ -302,10 +303,10 @@ def generate_torch_rnn_input():
 		prev_timestamp = timestamp
 
 	# trendy
-	dict_trendy_idx = extract_current_popular_indices(dict_time_idx, item_count=100, window_siz=60*60*3)
+	dict_trendy_idx = extract_current_popular_indices(dict_time_idx, item_count=100, window_size=60*60*3)
 
 	# recency
-	dict_recency_idx = extract_recency_indices(dict_time_idx, item_count=15, window_siz=60*60)
+	dict_recency_idx = extract_recency_indices(dict_time_idx, item_count=15, window_size=60*60)
 
 	# save
 	dict_torch_rnn_input = {

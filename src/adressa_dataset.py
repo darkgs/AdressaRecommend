@@ -275,7 +275,11 @@ class AdressaRec(object):
 	def do_train(self, total_epoch=200, early_stop=10):
 
 		start_epoch, best_valid_loss = self.load_model()
-		best_mrr = -1.0
+		best_hit_5 = -1.0
+		best_mrr_5 = -1.0
+		best_mrr_20 = -1.0
+		best_auc_10 = -1.0
+		best_auc_20 = -1.0
 
 		if start_epoch < total_epoch:
 			endure = 0
@@ -287,15 +291,30 @@ class AdressaRec(object):
 
 				train_loss = self.train()
 				valid_loss = self.test()
-				mrr_20 = self.test_mrr_20_trendy()
-				best_mrr = max(best_mrr, mrr_20)
+				hit_5, auc_10, mrr_5 = self.test_mrr_trendy(metric_count=5, candidate_count=10)
+				_, auc_20, mrr_20 = self.test_mrr_trendy(metric_count=20, candidate_count=20)
+		
+				best_hit_5 = max(best_hit_5, hit_5)
 
-				print('epoch {} - train loss({:.8f}) valid loss({:.8f}) test mrr_20({:.4f}) best mrr({:.4f}) tooks {:.2f}'.format(
-					epoch, train_loss, valid_loss, mrr_20, best_mrr, time.time() - start_time))
+				best_mrr_5 = max(best_mrr_5, mrr_5)
+				best_mrr_20 = max(best_mrr_20, mrr_20)
 
-				if self._args.save_model and best_mrr == mrr_20:
+				best_auc_10 = max(best_auc_10, auc_10)
+				best_auc_20 = max(best_auc_20, auc_20)
+
+				print('epoch {} - train loss({:.8f}) valid loss({:.8f})\n \
+	test hit_5({:.4f}) best hit_5({:.4f})\n \
+	test auc_10({:.4f}) test auc_20({:.4f}) best auc_10({:.4f}) best auc_20({:.4f})\n \
+	test mrr_5({:.4f}) test mrr_20({:.4f}) best mrr_5({:.4f}) best mrr_20({:.4f}) tooks {:.2f}'.format(
+					epoch, train_loss, valid_loss, \
+					hit_5, best_hit_5, \
+					auc_10, auc_20, best_auc_10, best_auc_20, \
+					mrr_5, mrr_20, best_mrr_5, best_mrr_20, \
+					time.time() - start_time))
+
+				if self._args.save_model and best_mrr_20 == mrr_20:
 					self.save_model(epoch, valid_loss)
-					print('Model saved! - best mrr({})'.format(best_mrr))
+					print('Model saved! - best mrr_20({})'.format(best_mrr_20))
 
 				if best_valid_loss > valid_loss:
 					best_valid_loss = valid_loss
@@ -303,7 +322,7 @@ class AdressaRec(object):
 				else:
 					endure += 1
 
-		return best_mrr
+		return best_hit_5, best_auc_10, best_auc_20, best_mrr_5, best_mrr_20
 
 	def train(self):
 		self._model.train()
@@ -369,14 +388,16 @@ class AdressaRec(object):
 
 		return test_loss / sampling_count
 
-	def test_mrr_20_trendy(self, max_sampling_count=2000):
+	def test_mrr_trendy(self, metric_count=20, candidate_count=20, max_sampling_count=2000):
 		self._model.eval()
 
 		predict_count = 0
+
+		predict_auc = 0.0
 		predict_mrr = 0.0
+		predict_hit = 0
 
 		sampling_count = 0
-
 
 		for i, data in enumerate(self._test_dataloader, 0):
 			if sampling_count >= max_sampling_count:
@@ -397,107 +418,84 @@ class AdressaRec(object):
 			seq_lens = seq_lens.cpu().numpy()
 	
 			for batch in range(batch_size):
+#				if seq_lens[batch] < 2:
+#					continue
+
 				for seq_idx in range(seq_lens[batch]):
 					next_idx = indices_y[batch][seq_idx]
 					candidates = indices_candi[batch][seq_idx]
 
 					sampling_count += 1
 
-					if next_idx not in candidates:
-						continue
+					if next_idx in candidates[:candidate_count]:
+						candidates_cut = candidate_count
+					else:
+						candidates_cut = candidate_count - 1
 
-					scores = -1.0 * torch.mean((input_candi[batch][seq_idx] - \
+					scores = -1.0 * torch.mean(((input_candi[batch][seq_idx])[:candidates_cut] - \
 								outputs[batch][seq_idx]) ** 2, dim=1)
+					candidates = candidates[:candidates_cut]
 
-					candidates = np.array(candidates)
-					top_indices = candidates[scores.cpu().numpy().argsort()[::-1][:20]].tolist()
-
-					predict_count += 1
-					if next_idx in top_indices:
-						predict_mrr += 1.0 / float(top_indices.index(next_idx) + 1)
-
-		return predict_mrr / float(predict_count) if predict_count > 0 else 0.0
-
-	def pop_20(self):
-		predict_count = 0
-		predict_mrr = 0.0
-
-		for i, data in enumerate(self._test_dataloader, 0):
-			_, _, _, seq_lens, _, _, _, indices_y, indices_trendy = data
-
-			batch_size = seq_lens.size(0)
-			seq_lens = seq_lens.cpu().numpy()
-
-			for batch in range(batch_size):
-				for seq_idx in range(seq_lens[batch]):
-					next_idx = indices_y[batch][seq_idx]
-					candidates = indices_trendy[batch][seq_idx]
-
+					scores = scores.cpu().numpy()
 					if next_idx not in candidates:
+						next_score = -1.0 * np.mean((np.array(self._rnn_input.idx2vec(next_idx)) - \
+									outputs[batch][seq_idx].cpu().numpy()) ** 2)
+
+						candidates = [next_idx] + candidates
+						scores = np.append(next_score, scores)
+			
+					top_indices = (np.array(candidates)[list(filter(lambda x: \
+									candidates[x] != self._rnn_input.get_pad_idx(), \
+									scores.argsort()[::-1]))]).tolist()
+
+					if len(top_indices) < candidate_count:
 						continue
 
-					#POP@20
-					top_indices = candidates[:20]
+					hit_index = top_indices.index(next_idx)
+
 					predict_count += 1
-					if next_idx in top_indices:
-						predict_mrr += 1.0 / float(top_indices.index(next_idx) + 1)
 
-		return predict_mrr / float(predict_count) if predict_count > 0 else 0.0
+					if hit_index < metric_count:
+						predict_hit += 1
 
-	def test_mrr_20(self):
+					predict_auc += (candidate_count - 1 - hit_index) / (candidate_count - 1)
 
-		self._model.eval()
+					if hit_index < metric_count:
+						predict_mrr += 1.0 / float(hit_index + 1)
 
+
+		return ((predict_hit / float(predict_count)), (predict_auc / float(predict_count)), (predict_mrr / float(predict_count))) if predict_count > 0 else (0.0, 0.0)
+
+	def pop(self, candidate_count=20):
 		predict_count = 0
 		predict_mrr = 0.0
 
 		for i, data in enumerate(self._test_dataloader, 0):
-			input_x_s, input_y_s, input_tendy, seq_lens, \
-				timestamp_starts, timestamp_ends, _, indices_y, _ = data
-			input_x_s = input_x_s.to(self._device)
-			input_y_s = input_y_s.to(self._device)
-			input_tendy = input_tendy.to(self._device)
-			input_y_s = input_y_s.cpu().numpy()
-
-			with torch.no_grad():
-				outputs = self._model(input_x_s, input_tendy, seq_lens)
-
-			outputs = torch.tanh(outputs)
-			outputs = outputs.cpu().numpy()
+			input_x_s, input_y_s, input_trendy, input_candi, seq_lens, \
+				timestamp_starts, timestamp_ends, _, \
+				indices_y, indices_trendy, indices_candi = data
 
 			batch_size = seq_lens.size(0)
 			seq_lens = seq_lens.cpu().numpy()
 
 			for batch in range(batch_size):
-				cand_indices = self._rnn_input.get_candidates(start_time=timestamp_starts[batch],
-						end_time=timestamp_ends[batch], idx_count=100)
-				cand_embed = [self._rnn_input.idx2vec(idx) for idx in cand_indices]
-				cand_matrix = np.matrix(cand_embed)
-				cand_matrix = np.tanh(cand_matrix)
-#cand_matrix = np_sigmoid(np.matrix(cand_embed))
-
 				for seq_idx in range(seq_lens[batch]):
-
 					next_idx = indices_y[batch][seq_idx]
-					if next_idx not in cand_indices:
+					candidates = indices_candi[batch][seq_idx]
+
+#					if next_idx not in candidates[:5]:
+#						continue
+
+					#POP@
+					top_indices = candidates[:candidate_count]
+					if next_idx not in top_indices:
+						top_indices = top_indices[:candidate_count-1] + [next_idx]
+
+					if len(top_indices) < candidate_count:
 						continue
 
-					pred_vector = outputs[batch][seq_idx]
-#pred_vector = np_sigmoid(outputs[batch][seq_idx])
-					cand_eval = np.asarray(np.dot(cand_matrix, pred_vector).T).tolist()
-
-					infered_values = [(cand_indices[i], evaluated[0]) \
-										for i, evaluated in enumerate(cand_eval)]
-					infered_values.sort(key=lambda x:x[1], reverse=True)
-					# MRR@20
-					rank = -1
-					for infered_idx in range(20):
-						if next_idx == infered_values[infered_idx][0]:
-							rank = infered_idx + 1
-
-					if rank > 0:
-						predict_mrr += 1.0/float(rank)
 					predict_count += 1
+					predict_mrr += 1.0 / float(top_indices.index(next_idx) + 1)
 
 		return predict_mrr / float(predict_count) if predict_count > 0 else 0.0
 

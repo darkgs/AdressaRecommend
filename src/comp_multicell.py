@@ -25,7 +25,7 @@ parser.add_option('-r', '--recency_count', dest='recency_count', type='int', def
 
 parser.add_option('-e', '--d2v_embed', dest='d2v_embed', type='string', default='1000')
 parser.add_option('-l', '--learning_rate', dest='learning_rate', type='float', default=3e-3)
-parser.add_option('-a', '--hidden_size', dest='hidden_size', type='int', default=1280)
+parser.add_option('-a', '--hidden_size', dest='hidden_size', type='int', default=1208)
 parser.add_option('-d', '--x2_dropout_rate', dest='x2_dropout_rate', type='float', default=0.3)
 
 
@@ -267,11 +267,15 @@ def main():
 	print('Loading url2vec : end')
 
 	predictor = AdressaRec(MultiCellModel, model_ws_path, torch_input_path, dict_url2vec, options)
-	best_mrr = predictor.do_train()
+	best_hit_5, best_auc_10, best_auc_20, best_mrr_5, best_mrr_20 = predictor.do_train()
 
 	if search_mode:
 		with open(param_search_file_path, 'w') as f_out:
-			f_out.write(str(best_mrr))
+			f_out.write(str(best_hit_5))
+			f_out.write(str(best_auc_10))
+			f_out.write(str(best_auc_20))
+			f_out.write(str(best_mrr_5))
+			f_out.write(str(best_mrr_20))
 
 
 if __name__ == '__main__':
