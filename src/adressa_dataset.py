@@ -455,7 +455,7 @@ class AdressaRec(object):
 
 					predict_count += 1
 
-					if hit_index < metric_count:
+					if hit_index < 5:
 						predict_hit += 1
 
 					predict_auc += (candidate_count - 1 - hit_index) / (candidate_count - 1)

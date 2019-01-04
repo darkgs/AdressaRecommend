@@ -208,8 +208,8 @@ def parameter_search(dataset, target_name):
 	thread_pool.map(worker_function, works)
 
 
-def show_result(target_name):
-	result_dir_path = 'cache/one_week/{}/param_search'.format(target_name)
+def show_result(dataset, target_name):
+	result_dir_path = 'cache/{}/one_week/{}/param_search'.format(dataset, target_name)
 
 	results = []
 
@@ -219,27 +219,29 @@ def show_result(target_name):
 
 			with open(result_file_path, 'r') as f_ret:
 				lines = f_ret.readlines()
-				results.append((float(lines[0].strip()), file_name))
+				results.append(list(map(lambda x: float(x.strip()), lines)) + [file_name])
 
-	results.sort(key=lambda x:x[0], reverse=True)
+	print(results)
+	results.sort(key=lambda x:x[4], reverse=True)
 
-	for mrr, file_name in results:
-		print(mrr, file_name)
+	for hit_5, auc_10, auc_20, mrr_5, mrr_20, file_name in results:
+		print('hit_5({:.4f}) auc({:.4f}) mrr_20({:.4f}) : {}'.format(hit_5, auc_20, mrr_20, file_name))
 
 def main():
+	dataset = 'adressa'
 	dataset = 'glob'
 
 	target_name = 'lstm'
 	target_name = 'gru4rec'
-	target_name = 'multicell'
 	target_name = 'lstm_2input'
+	target_name = 'multicell'
 	target_name = 'yahoo'
 
-	dataset = 'adressa'
-	target_name = 'lstm'
+	dataset = 'glob'
+	target_name = 'multicell'
 
-	parameter_search(dataset, target_name)
-#show_result(dataset, target_name)
+#parameter_search(dataset, target_name)
+	show_result(dataset, target_name)
 
 if __name__ == '__main__':
 	main()

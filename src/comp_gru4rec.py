@@ -103,11 +103,11 @@ def main():
 
 	if search_mode:
 		with open(param_search_file_path, 'w') as f_out:
-			f_out.write(str(best_hit_5))
-			f_out.write(str(best_auc_10))
-			f_out.write(str(best_auc_20))
-			f_out.write(str(best_mrr_5))
-			f_out.write(str(best_mrr_20))
+			f_out.write(str(best_hit_5) + '\n')
+			f_out.write(str(best_auc_10) + '\n')
+			f_out.write(str(best_auc_20) + '\n')
+			f_out.write(str(best_mrr_5) + '\n')
+			f_out.write(str(best_mrr_20) + '\n')
 
 
 if __name__ == '__main__':
