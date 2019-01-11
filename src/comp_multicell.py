@@ -20,12 +20,12 @@ parser.add_option('-w', '--ws_path', dest='ws_path', type='string', default=None
 parser.add_option('-s', action="store_true", dest='save_model', default=False)
 parser.add_option('-z', action="store_true", dest='search_mode', default=False)
 
-parser.add_option('-t', '--trendy_count', dest='trendy_count', type='int', default=3)
+parser.add_option('-t', '--trendy_count', dest='trendy_count', type='int', default=5)
 parser.add_option('-r', '--recency_count', dest='recency_count', type='int', default=3)
 
 parser.add_option('-e', '--d2v_embed', dest='d2v_embed', type='string', default='1000')
 parser.add_option('-l', '--learning_rate', dest='learning_rate', type='float', default=3e-3)
-parser.add_option('-a', '--hidden_size', dest='hidden_size', type='int', default=1208)
+parser.add_option('-a', '--hidden_size', dest='hidden_size', type='int', default=1440)
 parser.add_option('-d', '--x2_dropout_rate', dest='x2_dropout_rate', type='float', default=0.3)
 
 

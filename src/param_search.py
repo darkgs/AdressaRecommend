@@ -6,7 +6,7 @@ import subprocess
 from multiprocessing.pool import ThreadPool
 from threading import Semaphore
 
-visible_gpus = [0, 1, 2, 3]
+visible_gpus = [1, 2]
 visible_gpus_sema = Semaphore(1)
 
 total_works = 0
@@ -154,9 +154,9 @@ def parameter_search(dataset, target_name):
 				{
 					'd2v_embed': [250],
 					'learning_rate': [3e-3],
-					'trendy_count': [5],
-					'recency_count': [3],
-					'hidden_size': [512, 792, 1024],
+					'trendy_count': [5, 7],
+					'recency_count': [3, 5],
+					'hidden_size': [1280, 1440],
 					'x2_dropout_rate': [0.3, 0.5],
 				},
 			],
@@ -221,7 +221,6 @@ def show_result(dataset, target_name):
 				lines = f_ret.readlines()
 				results.append(list(map(lambda x: float(x.strip()), lines)) + [file_name])
 
-	print(results)
 	results.sort(key=lambda x:x[4], reverse=True)
 
 	for hit_5, auc_10, auc_20, mrr_5, mrr_20, file_name in results:
@@ -240,7 +239,7 @@ def main():
 	dataset = 'glob'
 	target_name = 'multicell'
 
-#parameter_search(dataset, target_name)
+	parameter_search(dataset, target_name)
 	show_result(dataset, target_name)
 
 if __name__ == '__main__':
