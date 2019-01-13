@@ -33,7 +33,7 @@ parser.add_option('-d', '--dropout_rate', dest='dropout_rate', type='float', def
 
 
 class GRU4RecModel(nn.Module):
-	def __init__(self, embed_size, args):
+	def __init__(self, embed_size, cate_dim, args):
 		super(GRU4RecModel, self).__init__()
 
 		hidden_size = args.hidden_size
@@ -46,7 +46,7 @@ class GRU4RecModel(nn.Module):
 		self.linear = nn.Linear(hidden_size, embed_size)
 #self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
 
-	def forward(self, x, _, seq_lens):
+	def forward(self, x, _, _, seq_lens):
 		batch_size = x.size(0)
 		embed_size = x.size(2)
 

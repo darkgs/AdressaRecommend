@@ -159,7 +159,7 @@ class MultiCellLSTM(nn.Module):
 
 
 class MultiCellModel(nn.Module):
-	def __init__(self, embed_size, args):
+	def __init__(self, embed_size, cate_dim, args):
 		super(MultiCellModel, self).__init__()
 
 		self._hidden_size = args.hidden_size
@@ -192,7 +192,7 @@ class MultiCellModel(nn.Module):
 		c2_0 = torch.zeros(batch_size, hidden_size).to(self._device)
 		return (h0, c1_0, c2_0)
 
-	def forward(self, x1, x2, seq_lens):
+	def forward(self, x1, x2, _, seq_lens):
 		batch_size = x1.size(0)
 		max_seq_length = x1.size(1)
 		embed_size = x1.size(2)
