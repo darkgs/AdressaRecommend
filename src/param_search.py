@@ -6,7 +6,7 @@ import subprocess
 from multiprocessing.pool import ThreadPool
 from threading import Semaphore
 
-visible_gpus = [1, 2]
+visible_gpus = [0]
 visible_gpus_sema = Semaphore(1)
 
 total_works = 0
@@ -42,10 +42,10 @@ def worker_function(args):
 	print('Processing {}/{} on gpu {} - {}'.format(my_count, total_works, my_gpu, params))
 
 	command = 'bash -c \"'
-	command += 'source activate news;'
+#	command += 'source activate news;'
 	command += 'export CUDA_VISIBLE_DEVICES={};'.format(my_gpu)
 	command += 'python3 src/{} {};'.format(model_file, params)
-	command += 'source deactivate'
+#	command += 'source deactivate'
 	command += '\"'
 
 #subprocess.check_output(command, shell=True)
@@ -115,6 +115,16 @@ def parameter_search(dataset, target_name):
 					'num_layers': [2, 3],
 				},
 			],
+			'naver': [
+				'comp_naver.py',
+				'-i cache/adressa/one_week/torch_input -u cache/adressa/article_to_vec.json -w cache/adressa/one_week/naver -c cache/adressa/one_week/article_info.json -z',
+				{
+					'd2v_embed': [1000],
+					'learning_rate': [3e-3],
+					'hidden_size': [896, 1024, 1280],
+					'decay_rate': [0.1, 0.2, 0.5],
+				},
+			],
 		}
 	elif dataset == 'glob':
 		dict_param_db = {
@@ -162,13 +172,23 @@ def parameter_search(dataset, target_name):
 			],
 			'yahoo': [
 				'comp_yahoo.py',
-				'-i cache/adressa/one_week/torch_input -u cache/adressa/article_to_vec.json -w cache/adressa/one_week/yahoo -y cache/adressa/one_week/yahoo_article2vec.json -z',
+				'-i cache/glob/one_week/torch_input -u cache/glob/article_to_vec.json -w cache/glob/one_week/yahoo -y cache/glob/one_week/yahoo_article2vec.json -z',
 				{
 					'd2v_embed': [250],
 					'learning_rate': [3e-3],
 					'dropout_rate': [0.3, 0.5],
-					'hidden_size': [486, 512, 786, 1024],
+					'hidden_size': [386, 462, 512, 786, 1024],
 					'num_layers': [2, 3],
+				},
+			],
+			'naver': [
+				'comp_naver.py',
+				'-i cache/glob/one_week/torch_input -u cache/glob/article_to_vec.json -w cache/glob/one_week/naver -c cache/glob/one_week/article_info.json -z',
+				{
+					'd2v_embed': [1000],
+					'learning_rate': [3e-3],
+					'hidden_size': [896, 1024, 1280],
+					'decay_rate': [0.1, 0.2, 0.5],
 				},
 			],
 		}
@@ -235,9 +255,10 @@ def main():
 	target_name = 'lstm_2input'
 	target_name = 'multicell'
 	target_name = 'yahoo'
+	target_name = 'naver'
 
-	dataset = 'glob'
-	target_name = 'multicell'
+	dataset = 'adressa'
+	target_name = 'naver'
 
 	parameter_search(dataset, target_name)
 	show_result(dataset, target_name)

@@ -33,7 +33,7 @@ parser.add_option('-b', '--num_layers', dest='num_layers', type='int', default=1
 
 
 class SingleLSTMModel(nn.Module):
-	def __init__(self, embed_size, args):
+	def __init__(self, embed_size, cate_dim, args):
 		super(SingleLSTMModel, self).__init__()
 
 		hidden_size = args.hidden_size
@@ -43,7 +43,7 @@ class SingleLSTMModel(nn.Module):
 		self.linear = nn.Linear(hidden_size, embed_size)
 		self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
 
-	def forward(self, x, _, seq_lens):
+	def forward(self, x, _, _, seq_lens):
 		batch_size = x.size(0)
 		embed_size = x.size(2)
 

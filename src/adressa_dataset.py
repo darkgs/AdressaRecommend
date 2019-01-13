@@ -28,15 +28,62 @@ class AdressaDataset(Dataset):
 		return self._data_len
 
 class AdressaRNNInput(object):
-	def __init__(self, rnn_input_json_path, dict_url2vec, args, dict_yahoo_url2vec=None):
+	def __init__(self, rnn_input_json_path, dict_url2vec, args, dict_yahoo_url2vec=None, dict_url2info=None):
 		self._dict_url2vec = dict_url2vec
 		self._dict_yahoo_url2vec = dict_yahoo_url2vec
+
+		self._cate_dim, self._dict_url2cate = self.get_url2cate(dict_url2info, dict_url2vec)
 
 		self._dict_rnn_input = load_json(rnn_input_json_path)
 		self._trendy_count = args.trendy_count
 		self._recency_count = args.recency_count
 
 		self._dataset = {}
+
+	def get_url2cate(self, dict_url2info, dict_url2vec):
+		if dict_url2info == None:
+			return 0, None
+
+		categories = set([])
+
+		for url, dict_info in dict_url2info.items():
+			category = dict_info.get("category0", None)
+
+			if category == None:
+				continue
+
+			categories.update([category])
+
+		categories = sorted(list(categories))
+		cate_dim = len(categories)
+
+		cate_one_hots = []
+		for i in range(cate_dim):
+			cate_one_hot = [0.0] * cate_dim
+			cate_one_hot[i] = 1.0
+
+			cate_one_hots.append(cate_one_hot)
+
+		cate_one_hots.append([0.0] * cate_dim)
+
+		dict_url2cate = {}
+		for url, _ in dict_url2vec.items():
+			category = dict_url2info.get(url, {}).get("category0", None)
+
+			if category == None:
+				one_hot_idx = cate_dim
+			else:
+				one_hot_idx = categories.index(category)
+
+			dict_url2cate[url] = cate_one_hots[one_hot_idx]
+
+		return cate_dim, dict_url2cate
+
+	def idx2cate(self, idx):
+		if self._cate_dim <= 0 or self._dict_url2cate == None:
+			return [0.0]
+
+		return self._dict_url2cate[self._dict_rnn_input['idx2url'][str(idx)]]
 
 	def get_dataset(self, data_type='test'):
 		if data_type not in ['train', 'valid', 'test']:
@@ -71,6 +118,7 @@ class AdressaRNNInput(object):
 				seq_len = min(len(sequence), max_seq) - 1
 				seq_x = pad_seq[:-1]
 				seq_y = pad_seq[1:]
+				seq_cate = [self.idx2cate(idx) for idx in pad_indices][:-1]
 
 				idx_x = pad_indices[:-1]
 				idx_y = pad_indices[1:]
@@ -90,7 +138,7 @@ class AdressaRNNInput(object):
 				idx_candi = [[idx for idx, count in candi] for candi in candidate_infos][1:]
 				
 				datas.append(
-					(seq_x, seq_y, seq_len, idx_x, idx_y, seq_trendy, idx_trendy, \
+					(seq_x, seq_y, seq_cate, seq_len, idx_x, idx_y, seq_trendy, idx_trendy, \
 					 seq_candi, idx_candi, timestamp_start, timestamp_end)
 				)
 
@@ -200,33 +248,34 @@ class AdressaRNNInput(object):
 
 
 def adressa_collate_train(batch):
-	batch.sort(key=lambda x: x[2], reverse=True)
+	batch.sort(key=lambda x: x[3], reverse=True)
 
-	seq_x, seq_y, seq_len, x_indices, y_indices, seq_trendy, \
+	seq_x, seq_y, seq_cate, seq_len, x_indices, y_indices, seq_trendy, \
 		trendy_indices, _, _, \
 		timestamp_starts,timestamp_ends = zip(*batch)
 
 	return torch.FloatTensor(seq_x), torch.FloatTensor(seq_y), torch.FloatTensor(seq_trendy), \
-		torch.IntTensor(seq_len), timestamp_starts, timestamp_ends, \
+		torch.FloatTensor(seq_cate), torch.IntTensor(seq_len), \
+		timestamp_starts, timestamp_ends, \
 		x_indices, y_indices, trendy_indices
 
 
 def adressa_collate(batch):
-	batch.sort(key=lambda x: x[2], reverse=True)
+	batch.sort(key=lambda x: x[3], reverse=True)
 
-	seq_x, seq_y, seq_len, x_indices, y_indices, seq_trendy, \
+	seq_x, seq_y, seq_cate, seq_len, x_indices, y_indices, seq_trendy, \
 		trendy_indices, seq_candi, candi_indices, \
 		timestamp_starts,timestamp_ends = zip(*batch)
 
 	return torch.FloatTensor(seq_x), torch.FloatTensor(seq_y), torch.FloatTensor(seq_trendy), \
-		torch.FloatTensor(seq_candi), \
+		torch.FloatTensor(seq_candi), torch.FloatTensor(seq_cate), \
 		torch.IntTensor(seq_len), timestamp_starts, timestamp_ends, \
 		x_indices, y_indices, trendy_indices, candi_indices
 
 
 class AdressaRec(object):
 	def __init__(self, model_class, ws_path, torch_input_path, \
-			dict_url2vec, args, dict_yahoo_url2vec=None):
+			dict_url2vec, args, dict_yahoo_url2vec=None, dict_url2info=None):
 		super(AdressaRec, self).__init__()
 
 		print("AdressaRec generating ...")
@@ -240,12 +289,12 @@ class AdressaRec(object):
 
 		dict_rnn_input_path = '{}/torch_rnn_input.dict'.format(torch_input_path)
 		self._rnn_input = AdressaRNNInput(dict_rnn_input_path, dict_url2vec, \
-				args, dict_yahoo_url2vec=dict_yahoo_url2vec)
+				args, dict_yahoo_url2vec=dict_yahoo_url2vec, dict_url2info=dict_url2info)
 
 		self._train_dataloader, self._valid_dataloader, self._test_dataloader = \
 								self.get_dataloader(dict_url2vec)
 
-		self._model = model_class(dim_article, args).to(self._device)
+		self._model = model_class(dim_article, self._rnn_input._cate_dim, args).to(self._device)
 		self._model.apply(weights_init)
 
 #self._optimizer = torch.optim.SGD(self._model.parameters(), lr=learning_rate, momentum=0.9)
@@ -330,12 +379,13 @@ class AdressaRec(object):
 		batch_count = len(self._train_dataloader)
 
 		for batch_idx, train_input in enumerate(self._train_dataloader):
-			input_x_s, input_y_s, input_trendy, seq_lens, \
+			input_x_s, input_y_s, input_trendy, input_cate, seq_lens, \
 				timestamp_starts, timestamp_ends, \
 				indices_x, indices_y, indices_trendy = train_input
 			input_x_s = input_x_s.to(self._device)
 			input_y_s = input_y_s.to(self._device)
 			input_trendy = input_trendy.to(self._device)
+			input_cate = input_cate.to(self._device)
 
 			self._model.zero_grad()
 			self._optimizer.zero_grad()
@@ -345,7 +395,7 @@ class AdressaRec(object):
 
 #loss = self._criterion(outputs, unpacked_y_s)
 
-			outputs = self._model(input_x_s, input_trendy, seq_lens)
+			outputs = self._model(input_x_s, input_trendy, input_cate, seq_lens)
 			packed_outputs = pack(outputs, seq_lens, batch_first=True).data
 			packed_y_s = pack(input_y_s, seq_lens, batch_first=True).data
 
@@ -365,10 +415,11 @@ class AdressaRec(object):
 		sampling_count = 0
 
 		for batch_idx, test_input in enumerate(self._valid_dataloader):
-			input_x_s, input_y_s, input_trendy, seq_lens, _, _, _, _, _ = test_input
+			input_x_s, input_y_s, input_trendy, input_cate, seq_lens, _, _, _, _, _ = test_input
 			input_x_s = input_x_s.to(self._device)
 			input_y_s = input_y_s.to(self._device)
 			input_trendy = input_trendy.to(self._device)
+			input_cate = input_cate.to(self._device)
 
 			batch_size = input_x_s.shape[0]
 
@@ -376,7 +427,7 @@ class AdressaRec(object):
 #unpacked_y_s, _ = unpack(pack(input_y_s, seq_lens, batch_first=True), batch_first=True)
 #loss = self._criterion(outputs, unpacked_y_s)
 
-			outputs = self._model(input_x_s, input_trendy, seq_lens)
+			outputs = self._model(input_x_s, input_trendy, input_cate, seq_lens)
 			packed_outputs = pack(outputs, seq_lens, batch_first=True).data
 			packed_y_s = pack(input_y_s, seq_lens, batch_first=True).data
 
@@ -403,16 +454,17 @@ class AdressaRec(object):
 			if sampling_count >= max_sampling_count:
 				continue
 
-			input_x_s, input_y_s, input_trendy, input_candi, seq_lens, \
+			input_x_s, input_y_s, input_trendy, input_candi, input_cate, seq_lens, \
 				timestamp_starts, timestamp_ends, _, indices_y, indices_trendy, indices_candi = data
 			input_x_s = input_x_s.to(self._device)
 			input_y_s = input_y_s.to(self._device)
 			# [batch_size, seq_len, 100, embed_size]]
 			input_trendy = input_trendy.to(self._device)
+			input_cate = input_cate.to(self._device)
 			input_candi = input_candi.to(self._device)
 
 			with torch.no_grad():
-				outputs = self._model(input_x_s, input_trendy, seq_lens)
+				outputs = self._model(input_x_s, input_trendy, input_cate, seq_lens)
 
 			batch_size = seq_lens.size(0)
 			seq_lens = seq_lens.cpu().numpy()
@@ -432,13 +484,17 @@ class AdressaRec(object):
 					else:
 						candidates_cut = candidate_count - 1
 
-					scores = -1.0 * torch.mean(((input_candi[batch][seq_idx])[:candidates_cut] - \
+#					scores = -1.0 * torch.mean(((input_candi[batch][seq_idx])[:candidates_cut] - \
+#								outputs[batch][seq_idx]) ** 2, dim=1)
+					scores = 1.0 / torch.mean(((input_candi[batch][seq_idx])[:candidates_cut] - \
 								outputs[batch][seq_idx]) ** 2, dim=1)
 					candidates = candidates[:candidates_cut]
 
 					scores = scores.cpu().numpy()
 					if next_idx not in candidates:
-						next_score = -1.0 * np.mean((np.array(self._rnn_input.idx2vec(next_idx)) - \
+#						next_score = -1.0 * np.mean((np.array(self._rnn_input.idx2vec(next_idx)) - \
+#									outputs[batch][seq_idx].cpu().numpy()) ** 2)
+						next_score = 1.0 / np.mean((np.array(self._rnn_input.idx2vec(next_idx)) - \
 									outputs[batch][seq_idx].cpu().numpy()) ** 2)
 
 						candidates = [next_idx] + candidates
@@ -471,7 +527,7 @@ class AdressaRec(object):
 		predict_mrr = 0.0
 
 		for i, data in enumerate(self._test_dataloader, 0):
-			input_x_s, input_y_s, input_trendy, input_candi, seq_lens, \
+			input_x_s, input_y_s, input_trendy, input_candi, input_cate, seq_lens, \
 				timestamp_starts, timestamp_ends, _, \
 				indices_y, indices_trendy, indices_candi = data
 
