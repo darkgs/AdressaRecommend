@@ -1,0 +1,305 @@
+epoch 0 - train loss(0.00790195) valid loss(0.00790067)
+	        test hit_5(0.2424) best hit_5(0.2424)
+	        test auc_10(0.5165) test auc_20(0.4952) best auc_10(0.5165) best auc_20(0.4952)
+	        test mrr_5(0.2360) test mrr_20(0.1814) best mrr_5(0.2360) best mrr_20(0.1814) tooks 1307.93
+			Model saved! - best mrr_20(0.18140697634227734)
+epoch 1 - train loss(0.00790029) valid loss(0.00790022)
+	        test hit_5(0.2457) best hit_5(0.2457)
+	        test auc_10(0.5121) test auc_20(0.5047) best auc_10(0.5165) best auc_20(0.5047)
+	        test mrr_5(0.2262) test mrr_20(0.1806) best mrr_5(0.2360) best mrr_20(0.1814) tooks 1296.86
+epoch 2 - train loss(0.00789977) valid loss(0.00789981)
+	        test hit_5(0.2603) best hit_5(0.2603)
+	        test auc_10(0.5224) test auc_20(0.5149) best auc_10(0.5224) best auc_20(0.5149)
+	        test mrr_5(0.2506) test mrr_20(0.1819) best mrr_5(0.2506) best mrr_20(0.1819) tooks 1307.44
+			Model saved! - best mrr_20(0.18192033893234077)
+epoch 3 - train loss(0.00789946) valid loss(0.00789953)
+	        test hit_5(0.2553) best hit_5(0.2603)
+	        test auc_10(0.5187) test auc_20(0.5015) best auc_10(0.5224) best auc_20(0.5149)
+	        test mrr_5(0.2408) test mrr_20(0.1816) best mrr_5(0.2506) best mrr_20(0.1819) tooks 1296.77
+epoch 4 - train loss(0.00789924) valid loss(0.00789925)
+	        test hit_5(0.2806) best hit_5(0.2806)
+	        test auc_10(0.5269) test auc_20(0.5264) best auc_10(0.5269) best auc_20(0.5264)
+	        test mrr_5(0.2451) test mrr_20(0.1936) best mrr_5(0.2506) best mrr_20(0.1936) tooks 1308.78
+			Model saved! - best mrr_20(0.19362858063509622)
+epoch 5 - train loss(0.00789912) valid loss(0.00789912)
+	        test hit_5(0.2512) best hit_5(0.2806)
+	        test auc_10(0.5259) test auc_20(0.5062) best auc_10(0.5269) best auc_20(0.5264)
+	        test mrr_5(0.2480) test mrr_20(0.1833) best mrr_5(0.2506) best mrr_20(0.1936) tooks 1300.56
+epoch 6 - train loss(0.00789903) valid loss(0.00789905)
+	        test hit_5(0.2557) best hit_5(0.2806)
+	        test auc_10(0.5210) test auc_20(0.5105) best auc_10(0.5269) best auc_20(0.5264)
+	        test mrr_5(0.2451) test mrr_20(0.1771) best mrr_5(0.2506) best mrr_20(0.1936) tooks 1455.84
+epoch 7 - train loss(0.00789897) valid loss(0.00789900)
+	        test hit_5(0.2660) best hit_5(0.2806)
+	        test auc_10(0.5219) test auc_20(0.5194) best auc_10(0.5269) best auc_20(0.5264)
+	        test mrr_5(0.2411) test mrr_20(0.1862) best mrr_5(0.2506) best mrr_20(0.1936) tooks 1321.79
+epoch 8 - train loss(0.00789892) valid loss(0.00789901)
+	        test hit_5(0.2754) best hit_5(0.2806)
+	        test auc_10(0.5302) test auc_20(0.5227) best auc_10(0.5302) best auc_20(0.5264)
+	        test mrr_5(0.2539) test mrr_20(0.1934) best mrr_5(0.2539) best mrr_20(0.1936) tooks 1396.46
+epoch 9 - train loss(0.00789886) valid loss(0.00789892)
+	        test hit_5(0.2819) best hit_5(0.2819)
+	        test auc_10(0.5238) test auc_20(0.5269) best auc_10(0.5302) best auc_20(0.5269)
+	        test mrr_5(0.2424) test mrr_20(0.1967) best mrr_5(0.2539) best mrr_20(0.1967) tooks 1452.95
+			Model saved! - best mrr_20(0.19670350553266736)
+epoch 10 - train loss(0.00789881) valid loss(0.00789887)
+	        test hit_5(0.2820) best hit_5(0.2820)
+	        test auc_10(0.5334) test auc_20(0.5283) best auc_10(0.5334) best auc_20(0.5283)
+	        test mrr_5(0.2550) test mrr_20(0.2013) best mrr_5(0.2550) best mrr_20(0.2013) tooks 1408.11
+			Model saved! - best mrr_20(0.20129816860603272)
+epoch 11 - train loss(0.00789876) valid loss(0.00789883)
+	        test hit_5(0.2708) best hit_5(0.2820)
+	        test auc_10(0.5253) test auc_20(0.5268) best auc_10(0.5334) best auc_20(0.5283)
+	        test mrr_5(0.2484) test mrr_20(0.1904) best mrr_5(0.2550) best mrr_20(0.2013) tooks 1425.94
+epoch 12 - train loss(0.00789872) valid loss(0.00789875)
+	        test hit_5(0.2997) best hit_5(0.2997)
+	        test auc_10(0.5242) test auc_20(0.5396) best auc_10(0.5334) best auc_20(0.5396)
+	        test mrr_5(0.2444) test mrr_20(0.2024) best mrr_5(0.2550) best mrr_20(0.2024) tooks 1420.53
+			Model saved! - best mrr_20(0.20239800530623325)
+epoch 13 - train loss(0.00789868) valid loss(0.00789869)
+	        test hit_5(0.2769) best hit_5(0.2997)
+	        test auc_10(0.5293) test auc_20(0.5302) best auc_10(0.5334) best auc_20(0.5396)
+	        test mrr_5(0.2488) test mrr_20(0.1955) best mrr_5(0.2550) best mrr_20(0.2024) tooks 1415.93
+epoch 14 - train loss(0.00789865) valid loss(0.00789866)
+	        test hit_5(0.2779) best hit_5(0.2997)
+	        test auc_10(0.5273) test auc_20(0.5286) best auc_10(0.5334) best auc_20(0.5396)
+	        test mrr_5(0.2588) test mrr_20(0.1956) best mrr_5(0.2588) best mrr_20(0.2024) tooks 1462.10
+epoch 15 - train loss(0.00789861) valid loss(0.00789861)
+	        test hit_5(0.3091) best hit_5(0.3091)
+	        test auc_10(0.5540) test auc_20(0.5389) best auc_10(0.5540) best auc_20(0.5396)
+	        test mrr_5(0.2764) test mrr_20(0.2047) best mrr_5(0.2764) best mrr_20(0.2047) tooks 1427.31
+			Model saved! - best mrr_20(0.20467393954790097)
+epoch 16 - train loss(0.00789858) valid loss(0.00789857)
+	        test hit_5(0.2885) best hit_5(0.3091)
+	        test auc_10(0.5287) test auc_20(0.5256) best auc_10(0.5540) best auc_20(0.5396)
+	        test mrr_5(0.2536) test mrr_20(0.1941) best mrr_5(0.2764) best mrr_20(0.2047) tooks 1412.23
+epoch 17 - train loss(0.00789855) valid loss(0.00789857)
+	        test hit_5(0.2893) best hit_5(0.3091)
+	        test auc_10(0.5352) test auc_20(0.5293) best auc_10(0.5540) best auc_20(0.5396)
+	        test mrr_5(0.2588) test mrr_20(0.1955) best mrr_5(0.2764) best mrr_20(0.2047) tooks 1592.11
+epoch 18 - train loss(0.00789853) valid loss(0.00789851)
+	        test hit_5(0.3082) best hit_5(0.3091)
+	        test auc_10(0.5321) test auc_20(0.5497) best auc_10(0.5540) best auc_20(0.5497)
+	        test mrr_5(0.2534) test mrr_20(0.2078) best mrr_5(0.2764) best mrr_20(0.2078) tooks 1413.89
+			Model saved! - best mrr_20(0.20777720521003412)
+epoch 19 - train loss(0.00789850) valid loss(0.00789850)
+	        test hit_5(0.2928) best hit_5(0.3091)
+	        test auc_10(0.5337) test auc_20(0.5330) best auc_10(0.5540) best auc_20(0.5497)
+	        test mrr_5(0.2530) test mrr_20(0.1995) best mrr_5(0.2764) best mrr_20(0.2078) tooks 1430.26
+epoch 20 - train loss(0.00789848) valid loss(0.00789846)
+	        test hit_5(0.2841) best hit_5(0.3091)
+	        test auc_10(0.5318) test auc_20(0.5203) best auc_10(0.5540) best auc_20(0.5497)
+	        test mrr_5(0.2609) test mrr_20(0.1956) best mrr_5(0.2764) best mrr_20(0.2078) tooks 1421.18
+epoch 21 - train loss(0.00789846) valid loss(0.00789843)
+	        test hit_5(0.2851) best hit_5(0.3091)
+	        test auc_10(0.5264) test auc_20(0.5336) best auc_10(0.5540) best auc_20(0.5497)
+	        test mrr_5(0.2505) test mrr_20(0.1952) best mrr_5(0.2764) best mrr_20(0.2078) tooks 1466.30
+epoch 22 - train loss(0.00789844) valid loss(0.00789838)
+	        test hit_5(0.2912) best hit_5(0.3091)
+	        test auc_10(0.5351) test auc_20(0.5364) best auc_10(0.5540) best auc_20(0.5497)
+	        test mrr_5(0.2622) test mrr_20(0.2006) best mrr_5(0.2764) best mrr_20(0.2078) tooks 1433.86
+epoch 23 - train loss(0.00789842) valid loss(0.00789837)
+	        test hit_5(0.3285) best hit_5(0.3285)
+	        test auc_10(0.5313) test auc_20(0.5480) best auc_10(0.5540) best auc_20(0.5497)
+	        test mrr_5(0.2582) test mrr_20(0.2151) best mrr_5(0.2764) best mrr_20(0.2151) tooks 1433.40
+			Model saved! - best mrr_20(0.21513900991912685)
+epoch 24 - train loss(0.00789840) valid loss(0.00789832)
+	        test hit_5(0.3140) best hit_5(0.3285)
+	        test auc_10(0.5372) test auc_20(0.5490) best auc_10(0.5540) best auc_20(0.5497)
+	        test mrr_5(0.2608) test mrr_20(0.2107) best mrr_5(0.2764) best mrr_20(0.2151) tooks 1423.03
+epoch 25 - train loss(0.00789839) valid loss(0.00789836)
+	        test hit_5(0.3074) best hit_5(0.3285)
+	        test auc_10(0.5408) test auc_20(0.5465) best auc_10(0.5540) best auc_20(0.5497)
+	        test mrr_5(0.2622) test mrr_20(0.2109) best mrr_5(0.2764) best mrr_20(0.2151) tooks 1468.71
+epoch 26 - train loss(0.00789837) valid loss(0.00789829)
+	        test hit_5(0.3130) best hit_5(0.3285)
+	        test auc_10(0.5459) test auc_20(0.5413) best auc_10(0.5540) best auc_20(0.5497)
+	        test mrr_5(0.2681) test mrr_20(0.2091) best mrr_5(0.2764) best mrr_20(0.2151) tooks 1476.19
+epoch 27 - train loss(0.00789836) valid loss(0.00789829)
+	        test hit_5(0.2921) best hit_5(0.3285)
+	        test auc_10(0.5281) test auc_20(0.5347) best auc_10(0.5540) best auc_20(0.5497)
+	        test mrr_5(0.2517) test mrr_20(0.2060) best mrr_5(0.2764) best mrr_20(0.2151) tooks 1379.17
+epoch 28 - train loss(0.00789834) valid loss(0.00789827)
+	        test hit_5(0.3094) best hit_5(0.3285)
+	        test auc_10(0.5282) test auc_20(0.5479) best auc_10(0.5540) best auc_20(0.5497)
+	        test mrr_5(0.2543) test mrr_20(0.2133) best mrr_5(0.2764) best mrr_20(0.2151) tooks 1546.30
+epoch 29 - train loss(0.00789833) valid loss(0.00789829)
+	        test hit_5(0.3009) best hit_5(0.3285)
+	        test auc_10(0.5291) test auc_20(0.5394) best auc_10(0.5540) best auc_20(0.5497)
+	        test mrr_5(0.2528) test mrr_20(0.2034) best mrr_5(0.2764) best mrr_20(0.2151) tooks 1382.01
+epoch 30 - train loss(0.00789832) valid loss(0.00789825)
+	        test hit_5(0.3100) best hit_5(0.3285)
+	        test auc_10(0.5342) test auc_20(0.5343) best auc_10(0.5540) best auc_20(0.5497)
+	        test mrr_5(0.2596) test mrr_20(0.2087) best mrr_5(0.2764) best mrr_20(0.2151) tooks 1371.01
+epoch 31 - train loss(0.00789831) valid loss(0.00789822)
+	        test hit_5(0.3128) best hit_5(0.3285)
+	        test auc_10(0.5360) test auc_20(0.5470) best auc_10(0.5540) best auc_20(0.5497)
+	        test mrr_5(0.2652) test mrr_20(0.2117) best mrr_5(0.2764) best mrr_20(0.2151) tooks 1327.49
+epoch 32 - train loss(0.00789829) valid loss(0.00789821)
+	        test hit_5(0.3001) best hit_5(0.3285)
+	        test auc_10(0.5485) test auc_20(0.5398) best auc_10(0.5540) best auc_20(0.5497)
+	        test mrr_5(0.2732) test mrr_20(0.2117) best mrr_5(0.2764) best mrr_20(0.2151) tooks 1317.55
+epoch 33 - train loss(0.00789828) valid loss(0.00789820)
+	        test hit_5(0.2939) best hit_5(0.3285)
+	        test auc_10(0.5266) test auc_20(0.5333) best auc_10(0.5540) best auc_20(0.5497)
+	        test mrr_5(0.2493) test mrr_20(0.2040) best mrr_5(0.2764) best mrr_20(0.2151) tooks 1324.75
+epoch 34 - train loss(0.00789827) valid loss(0.00789821)
+	        test hit_5(0.3032) best hit_5(0.3285)
+	        test auc_10(0.5387) test auc_20(0.5399) best auc_10(0.5540) best auc_20(0.5497)
+	        test mrr_5(0.2600) test mrr_20(0.2088) best mrr_5(0.2764) best mrr_20(0.2151) tooks 1307.38
+epoch 35 - train loss(0.00789826) valid loss(0.00789818)
+	        test hit_5(0.3020) best hit_5(0.3285)
+	        test auc_10(0.5351) test auc_20(0.5422) best auc_10(0.5540) best auc_20(0.5497)
+	        test mrr_5(0.2653) test mrr_20(0.2170) best mrr_5(0.2764) best mrr_20(0.2170) tooks 1314.46
+			Model saved! - best mrr_20(0.21702053087831089)
+epoch 36 - train loss(0.00789825) valid loss(0.00789818)
+	        test hit_5(0.3106) best hit_5(0.3285)
+	        test auc_10(0.5343) test auc_20(0.5482) best auc_10(0.5540) best auc_20(0.5497)
+	        test mrr_5(0.2609) test mrr_20(0.2047) best mrr_5(0.2764) best mrr_20(0.2170) tooks 1320.19
+epoch 37 - train loss(0.00789824) valid loss(0.00789817)
+	        test hit_5(0.2958) best hit_5(0.3285)
+	        test auc_10(0.5405) test auc_20(0.5392) best auc_10(0.5540) best auc_20(0.5497)
+	        test mrr_5(0.2633) test mrr_20(0.2044) best mrr_5(0.2764) best mrr_20(0.2170) tooks 1314.66
+epoch 38 - train loss(0.00789822) valid loss(0.00789816)
+	        test hit_5(0.3211) best hit_5(0.3285)
+	        test auc_10(0.5431) test auc_20(0.5436) best auc_10(0.5540) best auc_20(0.5497)
+	        test mrr_5(0.2680) test mrr_20(0.2165) best mrr_5(0.2764) best mrr_20(0.2170) tooks 1316.55
+epoch 39 - train loss(0.00789822) valid loss(0.00789813)
+	        test hit_5(0.3247) best hit_5(0.3285)
+	        test auc_10(0.5430) test auc_20(0.5514) best auc_10(0.5540) best auc_20(0.5514)
+	        test mrr_5(0.2657) test mrr_20(0.2090) best mrr_5(0.2764) best mrr_20(0.2170) tooks 1470.05
+epoch 40 - train loss(0.00789821) valid loss(0.00789814)
+	        test hit_5(0.3089) best hit_5(0.3285)
+	        test auc_10(0.5240) test auc_20(0.5468) best auc_10(0.5540) best auc_20(0.5514)
+	        test mrr_5(0.2568) test mrr_20(0.2124) best mrr_5(0.2764) best mrr_20(0.2170) tooks 1340.22
+epoch 41 - train loss(0.00789819) valid loss(0.00789813)
+	        test hit_5(0.3082) best hit_5(0.3285)
+	        test auc_10(0.5475) test auc_20(0.5388) best auc_10(0.5540) best auc_20(0.5514)
+	        test mrr_5(0.2716) test mrr_20(0.2115) best mrr_5(0.2764) best mrr_20(0.2170) tooks 1424.39
+epoch 42 - train loss(0.00789818) valid loss(0.00789813)
+	        test hit_5(0.3151) best hit_5(0.3285)
+	        test auc_10(0.5508) test auc_20(0.5359) best auc_10(0.5540) best auc_20(0.5514)
+	        test mrr_5(0.2731) test mrr_20(0.2075) best mrr_5(0.2764) best mrr_20(0.2170) tooks 1438.16
+epoch 43 - train loss(0.00789817) valid loss(0.00789812)
+	        test hit_5(0.3222) best hit_5(0.3285)
+	        test auc_10(0.5417) test auc_20(0.5568) best auc_10(0.5540) best auc_20(0.5568)
+	        test mrr_5(0.2667) test mrr_20(0.2223) best mrr_5(0.2764) best mrr_20(0.2223) tooks 1450.94
+			Model saved! - best mrr_20(0.22228927034656623)
+epoch 44 - train loss(0.00789817) valid loss(0.00789814)
+	        test hit_5(0.3184) best hit_5(0.3285)
+	        test auc_10(0.5463) test auc_20(0.5520) best auc_10(0.5540) best auc_20(0.5568)
+	        test mrr_5(0.2658) test mrr_20(0.2197) best mrr_5(0.2764) best mrr_20(0.2223) tooks 1465.82
+epoch 45 - train loss(0.00789816) valid loss(0.00789814)
+	        test hit_5(0.3070) best hit_5(0.3285)
+	        test auc_10(0.5426) test auc_20(0.5491) best auc_10(0.5540) best auc_20(0.5568)
+	        test mrr_5(0.2675) test mrr_20(0.2131) best mrr_5(0.2764) best mrr_20(0.2223) tooks 1472.23
+epoch 46 - train loss(0.00789814) valid loss(0.00789811)
+	        test hit_5(0.3088) best hit_5(0.3285)
+	        test auc_10(0.5464) test auc_20(0.5459) best auc_10(0.5540) best auc_20(0.5568)
+	        test mrr_5(0.2712) test mrr_20(0.2125) best mrr_5(0.2764) best mrr_20(0.2223) tooks 1460.71
+epoch 47 - train loss(0.00789814) valid loss(0.00789809)
+	        test hit_5(0.3114) best hit_5(0.3285)
+	        test auc_10(0.5358) test auc_20(0.5486) best auc_10(0.5540) best auc_20(0.5568)
+	        test mrr_5(0.2614) test mrr_20(0.2163) best mrr_5(0.2764) best mrr_20(0.2223) tooks 1459.11
+epoch 48 - train loss(0.00789812) valid loss(0.00789807)
+	        test hit_5(0.3109) best hit_5(0.3285)
+	        test auc_10(0.5480) test auc_20(0.5405) best auc_10(0.5540) best auc_20(0.5568)
+	        test mrr_5(0.2690) test mrr_20(0.2082) best mrr_5(0.2764) best mrr_20(0.2223) tooks 1462.97
+epoch 49 - train loss(0.00789811) valid loss(0.00789808)
+	        test hit_5(0.3085) best hit_5(0.3285)
+	        test auc_10(0.5400) test auc_20(0.5455) best auc_10(0.5540) best auc_20(0.5568)
+	        test mrr_5(0.2659) test mrr_20(0.2101) best mrr_5(0.2764) best mrr_20(0.2223) tooks 1434.84
+epoch 50 - train loss(0.00789810) valid loss(0.00789806)
+	        test hit_5(0.3066) best hit_5(0.3285)
+	        test auc_10(0.5415) test auc_20(0.5334) best auc_10(0.5540) best auc_20(0.5568)
+	        test mrr_5(0.2644) test mrr_20(0.2086) best mrr_5(0.2764) best mrr_20(0.2223) tooks 1437.81
+epoch 51 - train loss(0.00789809) valid loss(0.00789808)
+	        test hit_5(0.3185) best hit_5(0.3285)
+	        test auc_10(0.5378) test auc_20(0.5509) best auc_10(0.5540) best auc_20(0.5568)
+	        test mrr_5(0.2647) test mrr_20(0.2152) best mrr_5(0.2764) best mrr_20(0.2223) tooks 1613.16
+epoch 52 - train loss(0.00789808) valid loss(0.00789808)
+	        test hit_5(0.3094) best hit_5(0.3285)
+	        test auc_10(0.5408) test auc_20(0.5458) best auc_10(0.5540) best auc_20(0.5568)
+	        test mrr_5(0.2625) test mrr_20(0.2078) best mrr_5(0.2764) best mrr_20(0.2223) tooks 1439.01
+epoch 53 - train loss(0.00789806) valid loss(0.00789806)
+	        test hit_5(0.3072) best hit_5(0.3285)
+	        test auc_10(0.5421) test auc_20(0.5421) best auc_10(0.5540) best auc_20(0.5568)
+	        test mrr_5(0.2702) test mrr_20(0.2140) best mrr_5(0.2764) best mrr_20(0.2223) tooks 1424.16
+epoch 54 - train loss(0.00789805) valid loss(0.00789810)
+	        test hit_5(0.3242) best hit_5(0.3285)
+	        test auc_10(0.5490) test auc_20(0.5515) best auc_10(0.5540) best auc_20(0.5568)
+	        test mrr_5(0.2758) test mrr_20(0.2201) best mrr_5(0.2764) best mrr_20(0.2223) tooks 1474.87
+epoch 55 - train loss(0.00789804) valid loss(0.00789808)
+	        test hit_5(0.3209) best hit_5(0.3285)
+	        test auc_10(0.5398) test auc_20(0.5507) best auc_10(0.5540) best auc_20(0.5568)
+	        test mrr_5(0.2660) test mrr_20(0.2227) best mrr_5(0.2764) best mrr_20(0.2227) tooks 1412.17
+			Model saved! - best mrr_20(0.222699550027431)
+epoch 56 - train loss(0.00789802) valid loss(0.00789811)
+	        test hit_5(0.2957) best hit_5(0.3285)
+	        test auc_10(0.5403) test auc_20(0.5279) best auc_10(0.5540) best auc_20(0.5568)
+	        test mrr_5(0.2666) test mrr_20(0.2072) best mrr_5(0.2764) best mrr_20(0.2227) tooks 1386.54
+epoch 57 - train loss(0.00789801) valid loss(0.00789805)
+	        test hit_5(0.2937) best hit_5(0.3285)
+	        test auc_10(0.5376) test auc_20(0.5289) best auc_10(0.5540) best auc_20(0.5568)
+	        test mrr_5(0.2676) test mrr_20(0.2050) best mrr_5(0.2764) best mrr_20(0.2227) tooks 1389.39
+epoch 58 - train loss(0.00789799) valid loss(0.00789805)
+	        test hit_5(0.3156) best hit_5(0.3285)
+	        test auc_10(0.5349) test auc_20(0.5451) best auc_10(0.5540) best auc_20(0.5568)
+	        test mrr_5(0.2679) test mrr_20(0.2207) best mrr_5(0.2764) best mrr_20(0.2227) tooks 1381.81
+epoch 59 - train loss(0.00789798) valid loss(0.00789805)
+	        test hit_5(0.3289) best hit_5(0.3289)
+	        test auc_10(0.5435) test auc_20(0.5516) best auc_10(0.5540) best auc_20(0.5568)
+	        test mrr_5(0.2723) test mrr_20(0.2193) best mrr_5(0.2764) best mrr_20(0.2227) tooks 1396.81
+epoch 60 - train loss(0.00789796) valid loss(0.00789807)
+	        test hit_5(0.3330) best hit_5(0.3330)
+	        test auc_10(0.5473) test auc_20(0.5558) best auc_10(0.5540) best auc_20(0.5568)
+	        test mrr_5(0.2743) test mrr_20(0.2186) best mrr_5(0.2764) best mrr_20(0.2227) tooks 1447.71
+epoch 61 - train loss(0.00789795) valid loss(0.00789804)
+	        test hit_5(0.3238) best hit_5(0.3330)
+	        test auc_10(0.5273) test auc_20(0.5533) best auc_10(0.5540) best auc_20(0.5568)
+	        test mrr_5(0.2580) test mrr_20(0.2217) best mrr_5(0.2764) best mrr_20(0.2227) tooks 1463.21
+epoch 62 - train loss(0.00789793) valid loss(0.00789805)
+	        test hit_5(0.3102) best hit_5(0.3330)
+	        test auc_10(0.5409) test auc_20(0.5404) best auc_10(0.5540) best auc_20(0.5568)
+	        test mrr_5(0.2624) test mrr_20(0.2067) best mrr_5(0.2764) best mrr_20(0.2227) tooks 1578.08
+epoch 63 - train loss(0.00789791) valid loss(0.00789804)
+	        test hit_5(0.3010) best hit_5(0.3330)
+	        test auc_10(0.5468) test auc_20(0.5450) best auc_10(0.5540) best auc_20(0.5568)
+	        test mrr_5(0.2701) test mrr_20(0.2185) best mrr_5(0.2764) best mrr_20(0.2227) tooks 1334.41
+epoch 64 - train loss(0.00789789) valid loss(0.00789807)
+	        test hit_5(0.3050) best hit_5(0.3330)
+	        test auc_10(0.5420) test auc_20(0.5392) best auc_10(0.5540) best auc_20(0.5568)
+	        test mrr_5(0.2751) test mrr_20(0.2154) best mrr_5(0.2764) best mrr_20(0.2227) tooks 1334.75
+epoch 65 - train loss(0.00789788) valid loss(0.00789806)
+	        test hit_5(0.3131) best hit_5(0.3330)
+	        test auc_10(0.5369) test auc_20(0.5463) best auc_10(0.5540) best auc_20(0.5568)
+	        test mrr_5(0.2651) test mrr_20(0.2165) best mrr_5(0.2764) best mrr_20(0.2227) tooks 1404.90
+epoch 66 - train loss(0.00789786) valid loss(0.00789808)
+	        test hit_5(0.3415) best hit_5(0.3415)
+	        test auc_10(0.5399) test auc_20(0.5612) best auc_10(0.5540) best auc_20(0.5612)
+	        test mrr_5(0.2659) test mrr_20(0.2282) best mrr_5(0.2764) best mrr_20(0.2282) tooks 1471.04
+			Model saved! - best mrr_20(0.2282082942864502)
+epoch 67 - train loss(0.00789784) valid loss(0.00789808)
+	        test hit_5(0.3021) best hit_5(0.3415)
+	        test auc_10(0.5505) test auc_20(0.5424) best auc_10(0.5540) best auc_20(0.5612)
+	        test mrr_5(0.2733) test mrr_20(0.2091) best mrr_5(0.2764) best mrr_20(0.2282) tooks 1347.88
+epoch 68 - train loss(0.00789782) valid loss(0.00789813)
+	        test hit_5(0.3065) best hit_5(0.3415)
+	        test auc_10(0.5543) test auc_20(0.5411) best auc_10(0.5543) best auc_20(0.5612)
+	        test mrr_5(0.2815) test mrr_20(0.2136) best mrr_5(0.2815) best mrr_20(0.2282) tooks 1337.29
+epoch 69 - train loss(0.00789780) valid loss(0.00789810)
+	        test hit_5(0.3092) best hit_5(0.3415)
+	        test auc_10(0.5292) test auc_20(0.5440) best auc_10(0.5543) best auc_20(0.5612)
+	        test mrr_5(0.2546) test mrr_20(0.2190) best mrr_5(0.2815) best mrr_20(0.2282) tooks 1330.79
+epoch 70 - train loss(0.00789779) valid loss(0.00789813)
+	        test hit_5(0.3245) best hit_5(0.3415)
+	        test auc_10(0.5473) test auc_20(0.5509) best auc_10(0.5543) best auc_20(0.5612)
+	        test mrr_5(0.2723) test mrr_20(0.2235) best mrr_5(0.2815) best mrr_20(0.2282) tooks 1364.31
+epoch 71 - train loss(0.00789776) valid loss(0.00789813)
+	        test hit_5(0.3262) best hit_5(0.3415)
+	        test auc_10(0.5320) test auc_20(0.5539) best auc_10(0.5543) best auc_20(0.5612)
+	        test mrr_5(0.2605) test mrr_20(0.2174) best mrr_5(0.2815) best mrr_20(0.2282) tooks 1358.32
+epoch 72 - train loss(0.00789774) valid loss(0.00789809)
+	        test hit_5(0.3121) best hit_5(0.3415)
+	        test auc_10(0.5483) test auc_20(0.5480) best auc_10(0.5543) best auc_20(0.5612)
+	        test mrr_5(0.2819) test mrr_20(0.2130) best mrr_5(0.2819) best mrr_20(0.2282) tooks 1335.21
