@@ -520,11 +520,12 @@ class AdressaRec(object):
 						predict_mrr += 1.0 / float(hit_index + 1)
 
 
-		return ((predict_hit / float(predict_count)), (predict_auc / float(predict_count)), (predict_mrr / float(predict_count))) if predict_count > 0 else (0.0, 0.0)
+		return ((predict_hit / float(predict_count)), (predict_auc / float(predict_count)), (predict_mrr / float(predict_count))) if predict_count > 0 else (0.0, 0.0, 0.0)
 
 	def pop(self, candidate_count=20):
 		predict_count = 0
 		predict_mrr = 0.0
+		predict_hit = 0
 
 		for i, data in enumerate(self._test_dataloader, 0):
 			input_x_s, input_y_s, input_trendy, input_candi, input_cate, seq_lens, \
@@ -550,10 +551,15 @@ class AdressaRec(object):
 					if len(top_indices) < candidate_count:
 						continue
 
+					hit_index = top_indices.index(next_idx)
+
+					if hit_index < 5:
+						predict_hit += 1
+
 					predict_count += 1
 					predict_mrr += 1.0 / float(top_indices.index(next_idx) + 1)
 
-		return predict_mrr / float(predict_count) if predict_count > 0 else 0.0
+		return ((predict_hit / float(predict_count)), (predict_mrr / float(predict_count))) if predict_count > 0 else (0.0, 0.0)
 
 	def save_model(self, epoch, valid_loss):
 		dict_states = {

@@ -22,7 +22,7 @@ parser.add_option('-e', '--d2v_embed', dest='d2v_embed', type='string', default=
 parser.add_option('-l', '--learning_rate', dest='learning_rate', type='float', default=3e-3)
 
 class SingleLSTMModel(nn.Module):
-	def __init__(self, embed_size, args):
+	def __init__(self, embed_size, cate_dim, args):
 		super(SingleLSTMModel, self).__init__()
 
 		hidden_size = 768
@@ -32,7 +32,7 @@ class SingleLSTMModel(nn.Module):
 		self.linear = nn.Linear(hidden_size, embed_size)
 		self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
 
-	def forward(self, x, _, seq_lens):
+	def forward(self, x, _, __, seq_lens):
 		batch_size = x.size(0)
 		embed_size = x.size(2)
 
@@ -66,17 +66,10 @@ def main():
 
 	test_count = 2
 
-	total_mrr_5 = 0.0
-	total_mrr_20 = 0.0
 	for i in range(test_count):
-		mrr_5 = predictor.pop(candidate_count=5)
-		mrr_20 = predictor.pop(candidate_count=20)
+		hit_5, mrr_20 = predictor.pop(candidate_count=20)
 
-		print('{}th : mrr_5({:.4f}) mrr_20({:.4f})'.format(i, mrr_5, mrr_20))
-		total_mrr_5 += mrr_5
-		total_mrr_20 += mrr_20
-
-	print('Final mrr_5 : {:.4f} mrr_20 : {:.4f}'.format(total_mrr_5/test_count, total_mrr_20/test_count))
+		print('{}th : hit_5({:.4f}) mrr_20({:.4f})'.format(i, hit_5, mrr_20))
 
 
 if __name__ == '__main__':

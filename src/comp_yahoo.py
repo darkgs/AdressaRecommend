@@ -47,7 +47,7 @@ class UserRepModel(nn.Module):
 		self.linear = nn.Linear(hidden_size, embed_size)
 #self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
 
-	def forward(self, x, _, seq_lens):
+	def forward(self, x, _, __, seq_lens):
 		batch_size = x.size(0)
 		embed_size = x.size(2)
 

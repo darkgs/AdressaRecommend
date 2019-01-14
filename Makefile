@@ -18,8 +18,8 @@ DATA_SET=adressa
 # mode in [simple, one_week, one_month, three_month]
 MODE=simple
 MODE=one_week
-#MODE=one_month
-#MODE=three_month
+MODE=one_month
+MODE=three_month
 
 D2V_EMBED=default
 D2V_EMBED=1000
@@ -137,12 +137,12 @@ stat_adressa_dataset: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.
 	python3 src/stat_adressa_dataset.py -e $(D2V_EMBED) -u $(DATA_BASE_PATH)/article_to_vec.json -a $(BASE_PATH)/article_info.json 
 
 #run: d2v_rnn_torch
-#run: comp_pop
+run: comp_pop
 #run: comp_lstm
 #run: comp_gru4rec
 #run: comp_lstm_2input
 #run: comp_multicell
 #run: comp_yahoo
-run: comp_naver
+#run: comp_naver
 	$(info run)
 

@@ -257,10 +257,10 @@ def main():
 	target_name = 'yahoo'
 	target_name = 'naver'
 
-	dataset = 'adressa'
-	target_name = 'naver'
+	dataset = 'glob'
+	target_name = 'yahoo'
 
-	parameter_search(dataset, target_name)
+#parameter_search(dataset, target_name)
 	show_result(dataset, target_name)
 
 if __name__ == '__main__':
