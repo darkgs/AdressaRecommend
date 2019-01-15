@@ -277,8 +277,8 @@ def main():
 	target_name = 'yahoo'
 	target_name = 'naver'
 
-	dataset = 'glob'
-	target_name = 'yahoo'
+	dataset = 'adressa'
+	target_name = 'naver'
 
 #parameter_search(dataset, target_name)
 	show_result(dataset, target_name)
