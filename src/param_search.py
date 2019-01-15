@@ -125,6 +125,16 @@ def parameter_search(dataset, target_name):
 					'decay_rate': [0.1, 0.2, 0.5],
 				},
 			],
+			'yahoo_lstm': [
+				'comp_yahoo_lstm.py',
+				'-i cache/adressa/one_week/torch_input -u cache/adressa/article_to_vec.json -w cache/adressa/one_week/yahoo_lstm -y cache/adressa/one_week/yahoo_article2vec.json -z',
+				{
+					'd2v_embed': [1000],
+					'learning_rate': [3e-3],
+					'hidden_size': [896, 1280],
+					'num_layers': [1, 2],
+				},
+			],
 		}
 	elif dataset == 'glob':
 		dict_param_db = {
@@ -189,6 +199,16 @@ def parameter_search(dataset, target_name):
 					'learning_rate': [3e-3],
 					'hidden_size': [896, 1024, 1280],
 					'decay_rate': [0.1, 0.2, 0.5],
+				},
+			],
+			'yahoo_lstm': [
+				'comp_yahoo_lstm.py',
+				'-i cache/glob/one_week/torch_input -u cache/glob/article_to_vec.json -w cache/glob/one_week/yahoo_lstm -y cache/glob/one_week/yahoo_article2vec.json -z',
+				{
+					'd2v_embed': [250],
+					'learning_rate': [3e-3],
+					'hidden_size': [896, 1024, 1280],
+					'num_layers': [1, 2],
 				},
 			],
 		}
