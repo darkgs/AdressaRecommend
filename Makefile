@@ -13,17 +13,17 @@ endef
 
 # data_set in [adressa, glob]
 DATA_SET=adressa
-DATA_SET=glob
+#DATA_SET=glob
 
 # mode in [simple, one_week, one_month, three_month]
 MODE=simple
 MODE=one_week
 #MODE=one_month
-#MODE=three_month
+MODE=three_month
 
 D2V_EMBED=default
 D2V_EMBED=1000
-D2V_EMBED=250
+#D2V_EMBED=250
 
 BASE_PATH=cache/$(DATA_SET)/$(MODE)
 DATA_BASE_PATH=cache/$(DATA_SET)
@@ -140,6 +140,10 @@ stat_adressa_dataset: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.
 	$(info [Makefile] $@)
 	python3 src/stat_adressa_dataset.py -e $(D2V_EMBED) -u $(DATA_BASE_PATH)/article_to_vec.json -a $(BASE_PATH)/article_info.json 
 
+stat_rnn_input: $(BASE_PATH)/torch_input src/stat_rnn_input.py
+	$(info [Makefile] $@)
+	python3 src/stat_rnn_input.py -i $(BASE_PATH)/torch_input
+
 #run: d2v_rnn_torch
 #run: comp_pop
 #run: comp_lstm
@@ -148,6 +152,7 @@ stat_adressa_dataset: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.
 #run: comp_multicell
 #run: comp_yahoo
 #run: comp_naver
-run: comp_yahoo_lstm
+#run: comp_yahoo_lstm
+run: stat_rnn_input
 	$(info run)
 
