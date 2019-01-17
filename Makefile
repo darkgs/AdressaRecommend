@@ -19,7 +19,7 @@ DATA_SET=adressa
 MODE=simple
 MODE=one_week
 #MODE=one_month
-MODE=three_month
+#MODE=three_month
 
 D2V_EMBED=default
 D2V_EMBED=1000
@@ -151,8 +151,8 @@ stat_rnn_input: $(BASE_PATH)/torch_input src/stat_rnn_input.py
 #run: comp_lstm_2input
 #run: comp_multicell
 #run: comp_yahoo
-#run: comp_naver
+run: comp_naver
 #run: comp_yahoo_lstm
-run: stat_rnn_input
+#run: stat_rnn_input
 	$(info run)
 
