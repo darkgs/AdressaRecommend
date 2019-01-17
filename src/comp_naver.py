@@ -22,6 +22,7 @@ parser.add_option('-c', '--u2i_path', dest='u2i_path', type='string', default=No
 parser.add_option('-w', '--ws_path', dest='ws_path', type='string', default=None)
 parser.add_option('-s', action="store_true", dest='save_model', default=False)
 parser.add_option('-z', action="store_true", dest='search_mode', default=False)
+parser.add_option('-x', action="store_true", dest='cate_mrr_mode', default=True)
 
 parser.add_option('-t', '--trendy_count', dest='trendy_count', type='int', default=1)
 parser.add_option('-r', '--recency_count', dest='recency_count', type='int', default=1)
@@ -30,6 +31,7 @@ parser.add_option('-e', '--d2v_embed', dest='d2v_embed', type='string', default=
 parser.add_option('-l', '--learning_rate', dest='learning_rate', type='float', default=3e-3)
 parser.add_option('-a', '--hidden_size', dest='hidden_size', type='int', default=896)
 parser.add_option('-d', '--decay_rate', dest='decay_rate', type='float', default=0.5)
+parser.add_option('-y', '--cate_weight', dest='cate_weight', type='float', default=0.5)
 
 class NaverModel(nn.Module):
 	def __init__(self, embed_size, cate_dim, args):
@@ -54,7 +56,7 @@ class NaverModel(nn.Module):
 		self._device = device
 		return ret
 
-	def forward(self, x, _, cate, seq_lens):
+	def forward_with_cate(self, x, _, cate, seq_lens):
 		batch_size = x.size(0)
 		max_seq_length = x.size(1)
 		embed_size = x.size(2)
@@ -62,6 +64,7 @@ class NaverModel(nn.Module):
 		x = pack(x, seq_lens, batch_first=True)
 		cate = pack(cate, seq_lens, batch_first=True)
 		outputs = torch.zeros([max_seq_length, batch_size, self._hidden_size+self._cate_dim])
+		cate_pref = torch.zeros([max_seq_length, batch_size, self._cate_dim])
 
 		cursor = 0
 		sequence_lenths = x.batch_sizes.cpu().numpy()
@@ -78,24 +81,20 @@ class NaverModel(nn.Module):
 
 			hx, cx = self.lstm(x_step, (hx[:sequence_lenth], cx[:sequence_lenth]))
 			outputs[step][:sequence_lenth] = torch.cat([hx, cate_step], 1)
+			cate_pref[step][:sequence_lenth] = cate_step
 
 			cursor += sequence_lenth
 			prev_cate = cate_step
 
+		cate_pref = torch.transpose(cate_pref, 1, 0).to(self._device)
 		outputs = torch.transpose(outputs, 1, 0).to(self._device)
 		outputs = self.linear(outputs)
 
-#		outputs, _ = self.rnn(x)
-#		outputs, _ = unpack(outputs, batch_first=True)
-#		outputs = self.linear(outputs)
+		return outputs, cate_pref
 
+	def forward(self, x, _, cate, seq_lens):
+		outputs, _ = self.forward_with_cate(x, _, cate, seq_lens)
 		return outputs
-
-#		outputs = outputs.view(-1, embed_size)
-#		outputs = self.bn(outputs)
-#		outputs = outputs.view(batch_size, -1, embed_size)
-#
-#		return outputs
 
 
 def main():
@@ -112,6 +111,7 @@ def main():
 	url2info_path = options.u2i_path
 	ws_path = options.ws_path
 	search_mode = options.search_mode
+	cate_mrr_mode = options.cate_mrr_mode
 	model_ws_path = '{}/model/{}'.format(ws_path, option2str(options))
 
 	if not os.path.exists(ws_path):
@@ -140,6 +140,7 @@ def main():
 
 	predictor = AdressaRec(NaverModel, ws_path, torch_input_path, 
 			dict_url2vec, options, dict_url2info=dict_url2info)
+
 	best_hit_5, best_auc_10, best_auc_20, best_mrr_5, best_mrr_20 = predictor.do_train()
 
 	if search_mode:
