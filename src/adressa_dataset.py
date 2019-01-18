@@ -474,6 +474,10 @@ class AdressaRec(object):
 					'popular_weight': [],
 					'recent_weight': [],
 				},
+				'unpopular_miss': {
+					'popular_weight': [],
+					'recent_weight': [],
+				},
 			}
 
 		for i, data in enumerate(self._test_dataloader, 0):
@@ -561,6 +565,9 @@ class AdressaRec(object):
 						if pop_of_next >= 15 and hit_index < 3:
 							dict_attn_stat['unpopular_next']['popular_weight'].append(popular_score)
 							dict_attn_stat['unpopular_next']['recent_weight'].append(recent_score)
+						if pop_of_next >= 15 and hit_index >= 15:
+							dict_attn_stat['unpopular_miss']['popular_weight'].append(popular_score)
+							dict_attn_stat['unpopular_miss']['recent_weight'].append(recent_score)
 
 						dict_attn_stat['all']['popular_weight'].append(popular_score)
 						dict_attn_stat['all']['recent_weight'].append(recent_score)
@@ -581,7 +588,7 @@ class AdressaRec(object):
 						predict_mrr += 1.0 / float(hit_index + 1)
 
 		if attn_mode:
-			for next_key in ['all', 'popular_next', 'unpopular_next']:
+			for next_key in ['all', 'popular_next', 'unpopular_next', 'unpopular_miss']:
 				popular_score = np.mean(dict_attn_stat[next_key]['popular_weight'])
 				recent_score = np.mean(dict_attn_stat[next_key]['recent_weight'])
 				sum_score = popular_score + recent_score

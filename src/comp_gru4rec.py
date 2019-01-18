@@ -81,7 +81,7 @@ def main():
 	if not os.path.exists(ws_path):
 		os.system('mkdir -p {}'.format(ws_path))
 
-	os.system('rm -rf {}'.format(model_ws_path))
+#os.system('rm -rf {}'.format(model_ws_path))
 	os.system('mkdir -p {}'.format(model_ws_path))
 
 	# Save best result with param name
