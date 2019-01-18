@@ -130,7 +130,7 @@ comp_yahoo: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V
 
 comp_yahoo_lstm: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED) $(BASE_PATH)/yahoo_article2vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_yahoo_lstm.py
 	$(info [Makefile] $@)
-	python3 src/comp_yahoo_lstm.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u $(DATA_BASE_PATH)/article_to_vec.json -w $(BASE_PATH)/yahoo -y $(BASE_PATH)/yahoo_article2vec.json
+	python3 src/comp_yahoo_lstm.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u $(DATA_BASE_PATH)/article_to_vec.json -w $(BASE_PATH)/yahoo_lstm -y $(BASE_PATH)/yahoo_article2vec.json
 
 comp_naver: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED) $(BASE_PATH)/article_info.json src/adressa_dataset.py src/comp_naver.py
 	$(info [Makefile] $@)
@@ -149,9 +149,9 @@ stat_rnn_input: $(BASE_PATH)/torch_input src/stat_rnn_input.py
 #run: comp_lstm
 #run: comp_gru4rec
 #run: comp_lstm_2input
-#run: comp_multicell
+run: comp_multicell
 #run: comp_yahoo
-run: comp_naver
+#run: comp_naver
 #run: comp_yahoo_lstm
 #run: stat_rnn_input
 	$(info run)

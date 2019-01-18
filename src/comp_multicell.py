@@ -105,6 +105,12 @@ class MultiCellLSTM(nn.Module):
 		return ret
 
 	def forward(self, x1, x2, states):
+		_, states, attn_scores = self.forward_with_attn(x1, x2, states)
+		h_t, c1_t, c2_t = states
+
+		return h_t, (h_t, c1_t, c2_t)
+
+	def forward_with_attn(self, x1, x2, states):
 		h_t, c1_t, c2_t = states
 
 		# Attention
@@ -113,8 +119,7 @@ class MultiCellLSTM(nn.Module):
 		for i in range(attn_count):
 			attn_scores.append(torch.matmul(torch.cat([h_t, x1, x2[:,i,:]], 1), self._W_attn))
 		attn_scores = torch.softmax(torch.cat(attn_scores, dim=1), dim=1)
-		attn_scores = torch.unsqueeze(attn_scores, dim=1)
-		x2 = torch.squeeze(torch.bmm(attn_scores, x2), dim=1)
+		x2 = torch.squeeze(torch.bmm(torch.unsqueeze(attn_scores, dim=1), x2), dim=1)
 
 		#x2 = x1
 
@@ -155,7 +160,7 @@ class MultiCellLSTM(nn.Module):
 			else:
 				h_t = torch.tanh(o1_t * torch.tanh(c1_t) + o2_t * torch.tanh(c2_t))
 
-		return h_t, (h_t, c1_t, c2_t)
+		return h_t, (h_t, c1_t, c2_t), attn_scores
 
 
 class MultiCellModel(nn.Module):
@@ -163,9 +168,9 @@ class MultiCellModel(nn.Module):
 		super(MultiCellModel, self).__init__()
 
 		self._hidden_size = args.hidden_size
-		attn = args.trendy_count + args.recency_count
+		self._attn_count = args.trendy_count + args.recency_count
 
-		self.lstm = MultiCellLSTM(embed_size, self._hidden_size, attn, args.x2_dropout_rate)
+		self.lstm = MultiCellLSTM(embed_size, self._hidden_size, self._attn_count, args.x2_dropout_rate)
 #self.dropout = nn.Dropout(0.3)
 		self.linear = nn.Linear(self._hidden_size, embed_size)
 		self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
@@ -192,7 +197,10 @@ class MultiCellModel(nn.Module):
 		c2_0 = torch.zeros(batch_size, hidden_size).to(self._device)
 		return (h0, c1_0, c2_0)
 
-	def forward(self, x1, x2, _, seq_lens):
+		outputs, attns = self.forward_with_attn(x1, x2, _, seq_lens)
+		return outputs
+
+	def forward(self, x1, x2, _, seq_lens, attn_mode=False):
 		batch_size = x1.size(0)
 		max_seq_length = x1.size(1)
 		embed_size = x1.size(2)
@@ -200,6 +208,8 @@ class MultiCellModel(nn.Module):
 		x1 = pack(x1, seq_lens, batch_first=True)
 		x2 = pack(x2, seq_lens, batch_first=True)
 		outputs = torch.zeros([max_seq_length, batch_size, self._hidden_size])
+		if attn_mode:
+			attns = torch.zeros([max_seq_length, batch_size, self._attn_count])
 
 		cursor = 0
 		sequence_lenths = x1.batch_sizes.cpu().numpy()
@@ -210,19 +220,31 @@ class MultiCellModel(nn.Module):
 			x1_step = x1.data[cursor:cursor+sequence_lenth]
 			x2_step = x2.data[cursor:cursor+sequence_lenth]
 
-			hx, (_, cx1, cx2) = self.lstm(x1_step, x2_step, \
-					(hx[:sequence_lenth], cx1[:sequence_lenth], cx2[:sequence_lenth]))
+			if attn_mode:
+				hx, (_, cx1, cx2), attn_scores = self.lstm.forward_with_attn(x1_step, x2_step, \
+						(hx[:sequence_lenth], cx1[:sequence_lenth], cx2[:sequence_lenth]))
+			else:
+				hx, (_, cx1, cx2) = self.lstm(x1_step, x2_step, \
+						(hx[:sequence_lenth], cx1[:sequence_lenth], cx2[:sequence_lenth]))
+
 			outputs[step][:sequence_lenth] = hx
+			if attn_mode:
+				attns[step][:sequence_lenth] = attn_scores
 
 			cursor += sequence_lenth
 
 		outputs = torch.transpose(outputs, 1, 0).to(self._device)
+		if attn_mode:
+			attns = torch.transpose(attns, 1, 0).to(self._device)
 #		if self.training:
 #			outputs = self.dropout(outputs)
 
 		outputs = self.linear(outputs)
 
-		return outputs
+		if attn_mode:
+			return outputs, attns
+		else:
+			return outputs
 
 #		outputs = outputs.view(-1, embed_size)
 #		outputs = self.bn(outputs)
@@ -266,7 +288,15 @@ def main():
 	dict_url2vec = load_json(url2vec_path)
 	print('Loading url2vec : end')
 
+	attn_analysis = True
+
 	predictor = AdressaRec(MultiCellModel, model_ws_path, torch_input_path, dict_url2vec, options)
+
+	if attn_analysis:
+		predictor.load_model()
+		hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=20, attn_mode=True)
+		return
+
 	best_hit_5, best_auc_10, best_auc_20, best_mrr_5, best_mrr_20 = predictor.do_train()
 
 	if search_mode:

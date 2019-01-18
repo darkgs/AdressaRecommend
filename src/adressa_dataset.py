@@ -445,7 +445,8 @@ class AdressaRec(object):
 
 		return test_loss / sampling_count
 
-	def test_mrr_trendy(self, metric_count=20, candidate_count=20, max_sampling_count=2000, sim_cate=False):
+	def test_mrr_trendy(self, metric_count=20, candidate_count=20, max_sampling_count=2000,
+			sim_cate=False, attn_mode=False):
 		self._model.eval()
 
 		predict_count = 0
@@ -455,6 +456,18 @@ class AdressaRec(object):
 		predict_hit = 0
 
 		sampling_count = 0
+
+		if attn_mode:
+			dict_attn_stat = {
+				'popular_next': {
+					'popular_weight': [],
+					'recent_weight': [],
+				},
+				'unpopular_next': {
+					'popular_weight': [],
+					'recent_weight': [],
+				},
+			}
 
 		for i, data in enumerate(self._test_dataloader, 0):
 			if sampling_count >= max_sampling_count:
@@ -474,6 +487,9 @@ class AdressaRec(object):
 				if sim_cate:
 					outputs, cate_pref = self._model.forward_with_cate(input_x_s,
 							input_trendy, input_cate, seq_lens)
+				elif attn_mode:
+					outputs, attns = self._model(input_x_s, input_trendy, input_cate, seq_lens, attn_mode=True)
+					attns = attns.cpu().numpy()
 				else:
 					outputs = self._model(input_x_s, input_trendy, input_cate, seq_lens)
 
@@ -523,6 +539,25 @@ class AdressaRec(object):
 									candidates[x] != self._rnn_input.get_pad_idx(), \
 									scores.argsort()[::-1]))]).tolist()
 
+					if attn_mode and seq_idx > 0:
+						# self._args.trendy_count + self._args.recency_count
+						rank_of_next = candidates.index(next_idx)
+						hit_index = top_indices.index(next_idx)
+
+						attn_scores = attns[batch][seq_idx]
+						popular_score = np.mean(attn_scores[:self._args.trendy_count])
+						recent_score = np.mean(attn_scores[self._args.trendy_count:])
+		
+						next_key = None
+						if rank_of_next < 5 and hit_index < 5:
+							next_key = 'popular_next'
+						elif rank_of_next >= 5 and hit_index < 5:
+							next_key = 'unpopular_next'
+
+						if next_key != None:
+							dict_attn_stat[next_key]['popular_weight'].append(popular_score)
+							dict_attn_stat[next_key]['recent_weight'].append(recent_score)
+
 					if len(top_indices) < candidate_count:
 						continue
 
@@ -538,6 +573,11 @@ class AdressaRec(object):
 					if hit_index < metric_count:
 						predict_mrr += 1.0 / float(hit_index + 1)
 
+		if attn_mode:
+			for next_key in ['popular_next', 'unpopular_next']:
+				popular_score = np.mean(dict_attn_stat[next_key]['popular_weight'])
+				recent_score = np.mean(dict_attn_stat[next_key]['recent_weight'])
+				print(next_key, popular_score, recent_score)
 
 		return ((predict_hit / float(predict_count)), (predict_auc / float(predict_count)), (predict_mrr / float(predict_count))) if predict_count > 0 else (0.0, 0.0, 0.0)
 
