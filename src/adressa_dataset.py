@@ -446,7 +446,7 @@ class AdressaRec(object):
 		return test_loss / sampling_count
 
 	def test_mrr_trendy(self, metric_count=20, candidate_count=20, max_sampling_count=2000,
-			sim_cate=False, attn_mode=False):
+			sim_cate=False, attn_mode=False, attn_params=[5, 5, 5, 5]):
 		self._model.eval()
 
 		predict_count = 0
@@ -553,9 +553,9 @@ class AdressaRec(object):
 						recent_score = np.mean(attn_scores[self._args.trendy_count:])
 		
 						next_key = None
-						if rank_of_next < 5 and hit_index < 5:
+						if rank_of_next < attn_params[0] and hit_index < attn_params[1]:
 							next_key = 'popular_next'
-						elif rank_of_next >= 5 and hit_index < 5:
+						elif rank_of_next >= attn_params[2] and hit_index < attn_params[3]:
 							next_key = 'unpopular_next'
 
 						if next_key != None:
