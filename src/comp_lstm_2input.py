@@ -35,17 +35,17 @@ class SingleLSTM(nn.Module):
 	def __init__(self, embed_size, hidden_size):
 		super(SingleLSTM, self).__init__()
 
-		self._W_f = torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True)
-		self._b_f = torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True)
+		self._W_f = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
+		self._b_f = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
 
-		self._W_i = torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True)
-		self._b_i = torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True)
+		self._W_i = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
+		self._b_i = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
 
-		self._W_c = torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True)
-		self._b_c = torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True)
+		self._W_c = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
+		self._b_c = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
 
-		self._W_o = torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True)
-		self._b_o = torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True)
+		self._W_o = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
+		self._b_o = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
 
 		nn.init.xavier_normal_(self._W_f.data)
 		nn.init.xavier_normal_(self._W_i.data)
@@ -75,22 +75,22 @@ class SingleLSTM(nn.Module):
 
 		return h_t, (h_t, c_t)
 
-	def to(self, device):
-		ret = super(SingleLSTM, self).to(device)
-
-		self._W_f = self._W_f.to(device)
-		self._b_f = self._b_f.to(device)
-
-		self._W_i = self._W_i.to(device)
-		self._b_i = self._b_i.to(device)
-
-		self._W_c = self._W_c.to(device)
-		self._b_c = self._b_c.to(device)
-
-		self._W_o = self._W_o.to(device)
-		self._b_o = self._b_o.to(device)
-
-		return ret
+#	def to(self, device):
+#		ret = super(SingleLSTM, self).to(device)
+#
+#		self._W_f = self._W_f.to(device)
+#		self._b_f = self._b_f.to(device)
+#
+#		self._W_i = self._W_i.to(device)
+#		self._b_i = self._b_i.to(device)
+#
+#		self._W_c = self._W_c.to(device)
+#		self._b_c = self._b_c.to(device)
+#
+#		self._W_o = self._W_o.to(device)
+#		self._b_o = self._b_o.to(device)
+#
+#		return ret
 
 class SingleLSTMModel(nn.Module):
 	def __init__(self, embed_size, cate_dim, args):
@@ -103,14 +103,14 @@ class SingleLSTMModel(nn.Module):
 		self.linear = nn.Linear(self._hidden_size, embed_size)
 		self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
 
-		self._W_attn = torch.zeros([self._hidden_size + embed_size * 2, 1])
+		self._W_attn = nn.Parameter(torch.zeros([self._hidden_size + embed_size * 2, 1]), requires_grad=True)
 		nn.init.xavier_normal_(self._W_attn.data)
 
 	def to(self, device):
 		ret = super(SingleLSTMModel, self).to(device)
 
 		self.lstm = self.lstm.to(device)
-		self._W_attn = self._W_attn.to(device)
+#self._W_attn = self._W_attn.to(device)
 
 		self._device = device
 		return ret

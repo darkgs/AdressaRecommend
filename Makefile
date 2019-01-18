@@ -17,7 +17,7 @@ DATA_SET=adressa
 
 # mode in [simple, one_week, one_month, three_month]
 MODE=simple
-#MODE=one_week
+MODE=one_week
 #MODE=one_month
 #MODE=three_month
 
@@ -87,10 +87,6 @@ d2v_rnn_torch: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(
 $(BASE_PATH)/sequence_difference/$(D2V_EMBED): $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED) src/sequence_difference.py
 	$(info [Makefile] $@)
 	@python3 src/sequence_difference.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED) -o $@
-
-comp_multi_layer_lstm: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_multi_layer_lstm.py
-	$(info [Makefile] $@)
-	python3 src/comp_multi_layer_lstm.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED) -w $(BASE_PATH)/ml_lstm
 
 comp_pop: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_pop.py
 	$(info [Makefile] $@)
