@@ -35,27 +35,27 @@ class MultiCellLSTM(nn.Module):
 
 		self._x2_dropout_rate = x2_dropout_rate
 
-		self._W1_f = torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True)
-		self._b1_f = torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True)
-		self._W2_f = torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True)
-		self._b2_f = torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True)
+		self._W1_f = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
+		self._b1_f = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
+		self._W2_f = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
+		self._b2_f = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
 
-		self._W1_i = torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True)
-		self._b1_i = torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True)
-		self._W2_i = torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True)
-		self._b2_i = torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True)
+		self._W1_i = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
+		self._b1_i = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
+		self._W2_i = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
+		self._b2_i = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
 
-		self._W1_c = torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True)
-		self._b1_c = torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True)
-		self._W2_c = torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True)
-		self._b2_c = torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True)
+		self._W1_c = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
+		self._b1_c = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
+		self._W2_c = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
+		self._b2_c = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
 
-		self._W1_o = torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True)
-		self._b1_o = torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True)
-		self._W2_o = torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True)
-		self._b2_o = torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True)
+		self._W1_o = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
+		self._b1_o = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
+		self._W2_o = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
+		self._b2_o = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
 
-		self._W_attn = torch.zeros([hidden_size + embed_size * 2, 1])
+		self._W_attn = nn.Parameter(torch.zeros([hidden_size + embed_size * 2, 1]), requires_grad=True)
 
 		nn.init.xavier_normal_(self._W1_f.data)
 		nn.init.xavier_normal_(self._W1_i.data)
@@ -77,32 +77,32 @@ class MultiCellLSTM(nn.Module):
 	def eval(self):
 		self.train(False)
 
-	def to(self, device):
-		ret = super(MultiCellLSTM, self).to(device)
-
-		self._W1_f = self._W1_f.to(device)
-		self._b1_f = self._b1_f.to(device)
-		self._W2_f = self._W2_f.to(device)
-		self._b2_f = self._b2_f.to(device)
-
-		self._W1_i = self._W1_i.to(device)
-		self._b1_i = self._b1_i.to(device)
-		self._W2_i = self._W2_i.to(device)
-		self._b2_i = self._b2_i.to(device)
-
-		self._W1_c = self._W1_c.to(device)
-		self._b1_c = self._b1_c.to(device)
-		self._W2_c = self._W2_c.to(device)
-		self._b2_c = self._b2_c.to(device)
-
-		self._W1_o = self._W1_o.to(device)
-		self._b1_o = self._b1_o.to(device)
-		self._W2_o = self._W2_o.to(device)
-		self._b2_o = self._b2_o.to(device)
-
-		self._W_attn = self._W_attn.to(device)
-
-		return ret
+#	def to(self, device):
+#		ret = super(MultiCellLSTM, self).to(device)
+#
+#		self._W1_f = self._W1_f.to(device)
+#		self._b1_f = self._b1_f.to(device)
+#		self._W2_f = self._W2_f.to(device)
+#		self._b2_f = self._b2_f.to(device)
+#
+#		self._W1_i = self._W1_i.to(device)
+#		self._b1_i = self._b1_i.to(device)
+#		self._W2_i = self._W2_i.to(device)
+#		self._b2_i = self._b2_i.to(device)
+#
+#		self._W1_c = self._W1_c.to(device)
+#		self._b1_c = self._b1_c.to(device)
+#		self._W2_c = self._W2_c.to(device)
+#		self._b2_c = self._b2_c.to(device)
+#
+#		self._W1_o = self._W1_o.to(device)
+#		self._b1_o = self._b1_o.to(device)
+#		self._W2_o = self._W2_o.to(device)
+#		self._b2_o = self._b2_o.to(device)
+#
+#		self._W_attn = self._W_attn.to(device)
+#
+#		return ret
 
 	def forward(self, x1, x2, states):
 		_, states, attn_scores = self.forward_with_attn(x1, x2, states)
@@ -271,7 +271,7 @@ def main():
 	if not os.path.exists(ws_path):
 		os.system('mkdir -p {}'.format(ws_path))
 
-	os.system('rm -rf {}'.format(model_ws_path))
+#	os.system('rm -rf {}'.format(model_ws_path))
 	os.system('mkdir -p {}'.format(model_ws_path))
 
 	# Save best result with param name
@@ -288,7 +288,7 @@ def main():
 	dict_url2vec = load_json(url2vec_path)
 	print('Loading url2vec : end')
 
-	attn_analysis = True
+	attn_analysis = False
 
 	predictor = AdressaRec(MultiCellModel, model_ws_path, torch_input_path, dict_url2vec, options)
 
@@ -296,6 +296,7 @@ def main():
 		predictor.load_model()
 		hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=20, 
 					attn_mode=True)
+		print(hit_5, mrr_20)
 		return
 
 	best_hit_5, best_auc_10, best_auc_20, best_mrr_5, best_mrr_20 = predictor.do_train()

@@ -1,5 +1,5 @@
 
-import sys
+import os, sys
 import time
 
 import torch
@@ -313,18 +313,21 @@ class AdressaRec(object):
 				collate_fn=adressa_collate_train)
 
 		valid_dataloader = torch.utils.data.DataLoader(self._rnn_input.get_dataset(data_type='valid'),
-				batch_size=512, shuffle=True, num_workers=16,
+				batch_size=512, shuffle=False, num_workers=16,
 				collate_fn=adressa_collate_train)
 
 		test_dataloader = torch.utils.data.DataLoader(self._rnn_input.get_dataset(data_type='test'),
-				batch_size=64, shuffle=True, num_workers=16,
+				batch_size=64, shuffle=False, num_workers=16,
 				collate_fn=adressa_collate)
 
 		return train_dataloader, valid_dataloader, test_dataloader
 
 	def do_train(self, total_epoch=200, early_stop=10):
 
-		start_epoch, best_valid_loss = self.load_model()
+#start_epoch, best_valid_loss = self.load_model()
+		start_epoch = 0
+		best_valid_loss = sys.float_info.max
+
 		best_hit_5 = -1.0
 		best_mrr_5 = -1.0
 		best_mrr_20 = -1.0
@@ -474,8 +477,8 @@ class AdressaRec(object):
 			}
 
 		for i, data in enumerate(self._test_dataloader, 0):
-			if sampling_count >= max_sampling_count:
-				continue
+#			if sampling_count >= max_sampling_count:
+#				continue
 
 			input_x_s, input_y_s, input_trendy, input_candi, input_cate, input_cate_y, seq_lens, \
 				timestamp_starts, timestamp_ends, _, indices_y, indices_trendy, indices_candi = data
@@ -487,6 +490,8 @@ class AdressaRec(object):
 			input_cate_y = input_cate_y.to(self._device)
 			input_candi = input_candi.to(self._device)
 
+			outputs = None
+			attns = None
 			with torch.no_grad():
 				if sim_cate:
 					outputs, cate_pref = self._model.forward_with_cate(input_x_s,
@@ -580,6 +585,7 @@ class AdressaRec(object):
 				popular_score = np.mean(dict_attn_stat[next_key]['popular_weight'])
 				recent_score = np.mean(dict_attn_stat[next_key]['recent_weight'])
 				sum_score = popular_score + recent_score
+				print(len(dict_attn_stat[next_key]['popular_weight']), len(dict_attn_stat[next_key]['recent_weight']))
 				print(next_key, popular_score, recent_score)
 				print(popular_score/sum_score, recent_score/sum_score)
 
@@ -624,6 +630,9 @@ class AdressaRec(object):
 
 		return ((predict_hit / float(predict_count)), (predict_mrr / float(predict_count))) if predict_count > 0 else (0.0, 0.0)
 
+#	def state_dict(self):
+#		print(len(self._model.state_dict().items()))
+
 	def save_model(self, epoch, valid_loss):
 		dict_states = {
 			'epoch': epoch,
@@ -635,8 +644,6 @@ class AdressaRec(object):
 		torch.save(dict_states, self._saved_model_path)
 
 	def load_model(self):
-		return 0, sys.float_info.max
-
 		if not os.path.exists(self._saved_model_path):
 			return 0, sys.float_info.max
 
