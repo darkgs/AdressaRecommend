@@ -6,7 +6,7 @@ import subprocess
 from multiprocessing.pool import ThreadPool
 from threading import Semaphore
 
-visible_gpus = [0]
+visible_gpus = [0, 1, 3]
 visible_gpus_sema = Semaphore(1)
 
 total_works = 0
@@ -42,10 +42,10 @@ def worker_function(args):
 	print('Processing {}/{} on gpu {} - {}'.format(my_count, total_works, my_gpu, params))
 
 	command = 'bash -c \"'
-#	command += 'source activate news;'
+	command += 'source activate news;'
 	command += 'export CUDA_VISIBLE_DEVICES={};'.format(my_gpu)
 	command += 'python3 src/{} {};'.format(model_file, params)
-#	command += 'source deactivate'
+	command += 'source deactivate'
 	command += '\"'
 
 #subprocess.check_output(command, shell=True)
@@ -122,7 +122,8 @@ def parameter_search(dataset, target_name):
 					'd2v_embed': [1000],
 					'learning_rate': [3e-3],
 					'hidden_size': [896, 1024, 1280],
-					'decay_rate': [0.1, 0.2, 0.5],
+					'decay_rate': [0.1, 0.5],
+					'cate_weight': [0.3, 0.5, 0.7],
 				},
 			],
 			'yahoo_lstm': [
@@ -198,7 +199,8 @@ def parameter_search(dataset, target_name):
 					'd2v_embed': [1000],
 					'learning_rate': [3e-3],
 					'hidden_size': [896, 1024, 1280],
-					'decay_rate': [0.1, 0.2, 0.5],
+					'decay_rate': [0.1, 0.5],
+					'cate_weight': [0.3, 0.5, 0.7],
 				},
 			],
 			'yahoo_lstm': [
@@ -278,10 +280,10 @@ def main():
 	target_name = 'naver'
 	target_name = 'yahoo_lstm'
 
-	dataset = 'glob'
-	target_name = 'yahoo_lstm'
+	dataset = 'adressa'
+	target_name = 'naver'
 
-	parameter_search(dataset, target_name)
+#parameter_search(dataset, target_name)
 	show_result(dataset, target_name)
 
 if __name__ == '__main__':
