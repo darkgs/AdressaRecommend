@@ -294,19 +294,8 @@ def main():
 
 	if attn_analysis:
 		predictor.load_model()
-		for attn_params in [
-				[5, 5, 5, 5],
-				[3, 5, 5, 5],
-				[5, 5, 15, 5],
-				[3, 5, 15, 5],
-				[5, 3, 5, 3],
-				[3, 3, 5, 3],
-				[5, 3, 15, 3],
-				[3, 3, 15, 3],
-			]:
-			print(attn_params)
-			hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=20, 
-					attn_mode=True, attn_params=attn_params)
+		hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=20, 
+					attn_mode=True)
 		return
 
 	best_hit_5, best_auc_10, best_auc_20, best_mrr_5, best_mrr_20 = predictor.do_train()

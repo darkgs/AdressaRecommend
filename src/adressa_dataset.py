@@ -446,7 +446,7 @@ class AdressaRec(object):
 		return test_loss / sampling_count
 
 	def test_mrr_trendy(self, metric_count=20, candidate_count=20, max_sampling_count=2000,
-			sim_cate=False, attn_mode=False, attn_params=[5, 5, 5, 5]):
+			sim_cate=False, attn_mode=False):
 		self._model.eval()
 
 		predict_count = 0
@@ -515,8 +515,6 @@ class AdressaRec(object):
 					else:
 						candidates_cut = candidate_count - 1
 
-#					scores = -1.0 * torch.mean(((input_candi[batch][seq_idx])[:candidates_cut] - \
-#								outputs[batch][seq_idx]) ** 2, dim=1)
 					scores = 1.0 / torch.mean(((input_candi[batch][seq_idx])[:candidates_cut] - \
 								outputs[batch][seq_idx]) ** 2, dim=1)
 
@@ -524,8 +522,6 @@ class AdressaRec(object):
 
 					scores = scores.cpu().numpy()
 					if next_idx not in candidates:
-#						next_score = -1.0 * np.mean((np.array(self._rnn_input.idx2vec(next_idx)) - \
-#									outputs[batch][seq_idx].cpu().numpy()) ** 2)
 						next_score = 1.0 / np.mean((np.array(self._rnn_input.idx2vec(next_idx)) - \
 									outputs[batch][seq_idx].cpu().numpy()) ** 2)
 
@@ -545,7 +541,7 @@ class AdressaRec(object):
 
 					if attn_mode and seq_idx > 0:
 						# self._args.trendy_count + self._args.recency_count
-						rank_of_next = candidates.index(next_idx)
+						pop_of_next = candidates.index(next_idx)
 						hit_index = top_indices.index(next_idx)
 
 						attn_scores = attns[batch][seq_idx]
@@ -553,14 +549,14 @@ class AdressaRec(object):
 						recent_score = np.mean(attn_scores[self._args.trendy_count:])
 		
 						next_key = None
-						if rank_of_next < attn_params[0] and hit_index < attn_params[1]:
-							next_key = 'popular_next'
-						elif rank_of_next >= attn_params[2] and hit_index < attn_params[3]:
-							next_key = 'unpopular_next'
+#if pop_of_next < attn_params[0] and hit_index < attn_params[1]:
+						if pop_of_next < 3 and hit_index < 3 and hit_index < pop_of_next:
+							dict_attn_stat['popular_next']['popular_weight'].append(popular_score)
+							dict_attn_stat['popular_next']['recent_weight'].append(recent_score)
+						if pop_of_next >= 15 and hit_index < 3:
+							dict_attn_stat['unpopular_next']['popular_weight'].append(popular_score)
+							dict_attn_stat['unpopular_next']['recent_weight'].append(recent_score)
 
-						if next_key != None:
-							dict_attn_stat[next_key]['popular_weight'].append(popular_score)
-							dict_attn_stat[next_key]['recent_weight'].append(recent_score)
 						dict_attn_stat['all']['popular_weight'].append(popular_score)
 						dict_attn_stat['all']['recent_weight'].append(recent_score)
 
@@ -583,7 +579,9 @@ class AdressaRec(object):
 			for next_key in ['all', 'popular_next', 'unpopular_next']:
 				popular_score = np.mean(dict_attn_stat[next_key]['popular_weight'])
 				recent_score = np.mean(dict_attn_stat[next_key]['recent_weight'])
+				sum_score = popular_score + recent_score
 				print(next_key, popular_score, recent_score)
+				print(popular_score/sum_score, recent_score/sum_score)
 
 		return ((predict_hit / float(predict_count)), (predict_auc / float(predict_count)), (predict_mrr / float(predict_count))) if predict_count > 0 else (0.0, 0.0, 0.0)
 
