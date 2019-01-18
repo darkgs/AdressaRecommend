@@ -296,7 +296,7 @@ def main():
 		predictor.load_model()
 		hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=20, 
 					attn_mode=True)
-		print(hit_5, mrr_20)
+		print('mrr_20', mrr_20)
 		return
 
 	best_hit_5, best_auc_10, best_auc_20, best_mrr_5, best_mrr_20 = predictor.do_train()
