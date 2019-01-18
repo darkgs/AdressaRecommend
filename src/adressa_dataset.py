@@ -459,6 +459,10 @@ class AdressaRec(object):
 
 		if attn_mode:
 			dict_attn_stat = {
+				'all': {
+					'popular_weight': [],
+					'recent_weight': [],
+				},
 				'popular_next': {
 					'popular_weight': [],
 					'recent_weight': [],
@@ -557,6 +561,8 @@ class AdressaRec(object):
 						if next_key != None:
 							dict_attn_stat[next_key]['popular_weight'].append(popular_score)
 							dict_attn_stat[next_key]['recent_weight'].append(recent_score)
+						dict_attn_stat['all']['popular_weight'].append(popular_score)
+						dict_attn_stat['all']['recent_weight'].append(recent_score)
 
 					if len(top_indices) < candidate_count:
 						continue
@@ -574,7 +580,7 @@ class AdressaRec(object):
 						predict_mrr += 1.0 / float(hit_index + 1)
 
 		if attn_mode:
-			for next_key in ['popular_next', 'unpopular_next']:
+			for next_key in ['all', 'popular_next', 'unpopular_next']:
 				popular_score = np.mean(dict_attn_stat[next_key]['popular_weight'])
 				recent_score = np.mean(dict_attn_stat[next_key]['recent_weight'])
 				print(next_key, popular_score, recent_score)
