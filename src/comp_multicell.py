@@ -288,13 +288,13 @@ def main():
 	dict_url2vec = load_json(url2vec_path)
 	print('Loading url2vec : end')
 
-	attn_analysis = True
+	attn_analysis = False
 
 	predictor = AdressaRec(MultiCellModel, model_ws_path, torch_input_path, dict_url2vec, options)
 
 	if attn_analysis:
 		predictor.load_model()
-		hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=20, 
+		hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=50, 
 					attn_mode=True)
 		print('mrr_20', mrr_20)
 		return
