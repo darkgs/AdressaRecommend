@@ -349,7 +349,7 @@ class AdressaRec(object):
 				_, auc_10, mrr_5 = self.test_mrr_trendy(metric_count=5,
 						candidate_count=10, sim_cate=sim_cate)
 				hit_5, auc_20, mrr_20 = self.test_mrr_trendy(metric_count=20,
-						candidate_count=20, sim_cate=sim_cate)
+						candidate_count=50, sim_cate=sim_cate)
 		
 				best_hit_5 = max(best_hit_5, hit_5)
 
@@ -449,7 +449,7 @@ class AdressaRec(object):
 
 		return test_loss / sampling_count
 
-	def test_mrr_trendy(self, metric_count=20, candidate_count=20, max_sampling_count=2000,
+	def test_mrr_trendy(self, metric_count=20, candidate_count=50, max_sampling_count=2000,
 			sim_cate=False, attn_mode=False):
 		self._model.eval()
 
@@ -574,7 +574,7 @@ class AdressaRec(object):
 						next_key = None
 #if pop_of_next < attn_params[0] and hit_index < attn_params[1]:
 #if pop_of_next < 5 and hit_index < 2 and hit_index < pop_of_next:
-						if valid_candi_len == 20 and pop_of_next >= 5 and pop_of_next < 15 and hit_index < 5:
+						if valid_candi_len == 20 and 2 <= pop_of_next and pop_of_next < 5 and hit_index < 2:
 							dict_attn_stat['popular_next']['popular_weight'].append(popular_score)
 							dict_attn_stat['popular_next']['recent_weight'].append(recent_score)
 
