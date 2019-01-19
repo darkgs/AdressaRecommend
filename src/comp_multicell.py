@@ -35,25 +35,25 @@ class MultiCellLSTM(nn.Module):
 
 		self._x2_dropout_rate = x2_dropout_rate
 
-		self._W1_f = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
-		self._b1_f = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
-		self._W2_f = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
-		self._b2_f = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
+		self._W1_f = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32), requires_grad=True)
+		self._b1_f = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32), requires_grad=True)
+		self._W2_f = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32), requires_grad=True)
+		self._b2_f = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32), requires_grad=True)
 
-		self._W1_i = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
-		self._b1_i = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
-		self._W2_i = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
-		self._b2_i = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
+		self._W1_i = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32), requires_grad=True)
+		self._b1_i = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32), requires_grad=True)
+		self._W2_i = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32), requires_grad=True)
+		self._b2_i = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32), requires_grad=True)
 
-		self._W1_c = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
-		self._b1_c = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
-		self._W2_c = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
-		self._b2_c = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
+		self._W1_c = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32), requires_grad=True)
+		self._b1_c = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32), requires_grad=True)
+		self._W2_c = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32), requires_grad=True)
+		self._b2_c = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32), requires_grad=True)
 
-		self._W1_o = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
-		self._b1_o = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
-		self._W2_o = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
-		self._b2_o = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
+		self._W1_o = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32), requires_grad=True)
+		self._b1_o = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32), requires_grad=True)
+		self._W2_o = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32), requires_grad=True)
+		self._b2_o = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32), requires_grad=True)
 
 		self._W_attn = nn.Parameter(torch.zeros([hidden_size + embed_size * 2, 1]), requires_grad=True)
 
@@ -299,14 +299,12 @@ def main():
 		print('mrr_20', mrr_20)
 		return
 
-	best_hit_5, best_auc_10, best_auc_20, best_mrr_5, best_mrr_20 = predictor.do_train()
+	best_hit_5, best_auc_20, best_mrr_20 = predictor.do_train()
 
 	if search_mode:
 		with open(param_search_file_path, 'w') as f_out:
 			f_out.write(str(best_hit_5) + '\n')
-			f_out.write(str(best_auc_10) + '\n')
 			f_out.write(str(best_auc_20) + '\n')
-			f_out.write(str(best_mrr_5) + '\n')
 			f_out.write(str(best_mrr_20) + '\n')
 
 

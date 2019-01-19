@@ -107,14 +107,12 @@ def main():
 
 	predictor = AdressaRec(UserRepModel, ws_path, torch_input_path, 
 			dict_url2vec, options, dict_yahoo_url2vec=dict_yahoo_url2vec)
-	best_hit_5, best_auc_10, best_auc_20, best_mrr_5, best_mrr_20 = predictor.do_train()
+	best_hit_5, best_auc_20, best_mrr_20 = predictor.do_train()
 
 	if search_mode:
 		with open(param_search_file_path, 'w') as f_out:
 			f_out.write(str(best_hit_5) + '\n')
-			f_out.write(str(best_auc_10) + '\n')
 			f_out.write(str(best_auc_20) + '\n')
-			f_out.write(str(best_mrr_5) + '\n')
 			f_out.write(str(best_mrr_20) + '\n')
 
 

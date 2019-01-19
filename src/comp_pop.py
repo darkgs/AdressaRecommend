@@ -67,7 +67,7 @@ def main():
 	test_count = 2
 
 	for i in range(test_count):
-		hit_5, mrr_20 = predictor.pop(candidate_count=20)
+		hit_5, mrr_20 = predictor.pop()
 
 		print('{}th : hit_5({:.4f}) mrr_20({:.4f})'.format(i, hit_5, mrr_20))
 

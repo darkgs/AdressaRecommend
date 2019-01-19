@@ -36,17 +36,17 @@ class SingleLSTM(nn.Module):
 	def __init__(self, embed_size, hidden_size):
 		super(SingleLSTM, self).__init__()
 
-		self._W_f = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
-		self._b_f = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
+		self._W_f = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32), requires_grad=True)
+		self._b_f = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32), requires_grad=True)
 
-		self._W_i = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
-		self._b_i = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
+		self._W_i = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32), requires_grad=True)
+		self._b_i = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32), requires_grad=True)
 
-		self._W_c = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
-		self._b_c = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
+		self._W_c = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32), requires_grad=True)
+		self._b_c = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32), requires_grad=True)
 
-		self._W_o = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
-		self._b_o = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32, requires_grad=True), requires_grad=True)
+		self._W_o = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32), requires_grad=True)
+		self._b_o = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32), requires_grad=True)
 
 		nn.init.xavier_normal_(self._W_f.data)
 		nn.init.xavier_normal_(self._W_i.data)
@@ -197,14 +197,12 @@ def main():
 	print('Loading url2vec : end')
 
 	predictor = AdressaRec(SingleLSTMModel, ws_path, torch_input_path, dict_url2vec, options)
-	best_hit_5, best_auc_10, best_auc_20, best_mrr_5, best_mrr_20 = predictor.do_train()
+	best_hit_5, best_auc_20, best_mrr_20 = predictor.do_train()
 
 	if search_mode:
 		with open(param_search_file_path, 'w') as f_out:
 			f_out.write(str(best_hit_5) + '\n')
-			f_out.write(str(best_auc_10) + '\n')
 			f_out.write(str(best_auc_20) + '\n')
-			f_out.write(str(best_mrr_5) + '\n')
 			f_out.write(str(best_mrr_20) + '\n')
 
 

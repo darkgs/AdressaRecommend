@@ -329,9 +329,7 @@ class AdressaRec(object):
 		best_valid_loss = sys.float_info.max
 
 		best_hit_5 = -1.0
-		best_mrr_5 = -1.0
 		best_mrr_20 = -1.0
-		best_auc_10 = -1.0
 		best_auc_20 = -1.0
 
 		sim_cate = getattr(self._args, 'cate_mrr_mode', False)
@@ -346,27 +344,23 @@ class AdressaRec(object):
 
 				train_loss = self.train()
 				valid_loss = self.test()
-				_, auc_10, mrr_5 = self.test_mrr_trendy(metric_count=5,
-						candidate_count=10, sim_cate=sim_cate)
 				hit_5, auc_20, mrr_20 = self.test_mrr_trendy(metric_count=20,
 						candidate_count=50, sim_cate=sim_cate)
 		
 				best_hit_5 = max(best_hit_5, hit_5)
 
-				best_mrr_5 = max(best_mrr_5, mrr_5)
 				best_mrr_20 = max(best_mrr_20, mrr_20)
 
-				best_auc_10 = max(best_auc_10, auc_10)
 				best_auc_20 = max(best_auc_20, auc_20)
 
 				print('epoch {} - train loss({:.8f}) valid loss({:.8f})\n \
 	test hit_5({:.4f}) best hit_5({:.4f})\n \
-	test auc_10({:.4f}) test auc_20({:.4f}) best auc_10({:.4f}) best auc_20({:.4f})\n \
-	test mrr_5({:.4f}) test mrr_20({:.4f}) best mrr_5({:.4f}) best mrr_20({:.4f}) tooks {:.2f}'.format(
+	test auc_20({:.4f}) best auc_20({:.4f})\n \
+	test mrr_20({:.4f}) best mrr_20({:.4f}) tooks {:.2f}'.format(
 					epoch, train_loss, valid_loss, \
 					hit_5, best_hit_5, \
-					auc_10, auc_20, best_auc_10, best_auc_20, \
-					mrr_5, mrr_20, best_mrr_5, best_mrr_20, \
+					auc_20, best_auc_20, \
+					mrr_20, best_mrr_20, \
 					time.time() - start_time))
 
 #if self._args.save_model and best_mrr_20 == mrr_20:
@@ -380,7 +374,7 @@ class AdressaRec(object):
 				else:
 					endure += 1
 
-		return best_hit_5, best_auc_10, best_auc_20, best_mrr_5, best_mrr_20
+		return best_hit_5, best_auc_20, best_mrr_20
 
 	def train(self):
 		self._model.train()
@@ -574,25 +568,25 @@ class AdressaRec(object):
 						next_key = None
 #if pop_of_next < attn_params[0] and hit_index < attn_params[1]:
 #if pop_of_next < 5 and hit_index < 2 and hit_index < pop_of_next:
-						if valid_candi_len == 20 and 2 <= pop_of_next and pop_of_next < 5 and hit_index < 2:
+						if valid_candi_len == candidate_count and 2 <= pop_of_next and pop_of_next < 5 and hit_index < 2:
 							dict_attn_stat['popular_next']['popular_weight'].append(popular_score)
 							dict_attn_stat['popular_next']['recent_weight'].append(recent_score)
 
-						if valid_candi_len == 20 and pop_of_next >= 15 and hit_index < 5:
+						if valid_candi_len == candidate_count and pop_of_next >= 15 and hit_index < 5:
 							dict_attn_stat['unpopular_next']['popular_weight'].append(popular_score)
 							dict_attn_stat['unpopular_next']['recent_weight'].append(recent_score)
 
-						if valid_candi_len == 20 and pop_of_next >= 15 and hit_index >= 5:
+						if valid_candi_len == candidate_count and pop_of_next >= 15 and hit_index >= 5:
 							dict_attn_stat['unpopular_miss']['popular_weight'].append(popular_score)
 							dict_attn_stat['unpopular_miss']['recent_weight'].append(recent_score)
 
-						if valid_candi_len == 20 and (recent_score / (popular_score + recent_score)) > 0.52 and hit_index < 3:
+						if valid_candi_len == candidate_count and (recent_score / (popular_score + recent_score)) > 0.52 and hit_index < 3:
 							dict_attn_stat['recent_cases']['hit_index'].append(hit_index)
 							dict_attn_stat['recent_cases']['pop_of_next'].append(pop_of_next)
 							dict_attn_stat['recent_cases']['popular_weight'].append(popular_score)
 							dict_attn_stat['recent_cases']['recent_weight'].append(recent_score)
 
-						if valid_candi_len == 20 and (popular_score / (popular_score + recent_score)) > 0.52 and hit_index < 3:
+						if valid_candi_len == candidate_count and (popular_score / (popular_score + recent_score)) > 0.52 and hit_index < 3:
 							dict_attn_stat['popular_cases']['hit_index'].append(hit_index)
 							dict_attn_stat['popular_cases']['pop_of_next'].append(pop_of_next)
 							dict_attn_stat['popular_cases']['popular_weight'].append(popular_score)
@@ -635,7 +629,7 @@ class AdressaRec(object):
 
 		return ((predict_hit / float(predict_count)), (predict_auc / float(predict_count)), (predict_mrr / float(predict_count))) if predict_count > 0 else (0.0, 0.0, 0.0)
 
-	def pop(self, candidate_count=20):
+	def pop(self, metric_count=20, candidate_count=50):
 		predict_count = 0
 		predict_mrr = 0.0
 		predict_hit = 0
@@ -670,7 +664,8 @@ class AdressaRec(object):
 						predict_hit += 1
 
 					predict_count += 1
-					predict_mrr += 1.0 / float(top_indices.index(next_idx) + 1)
+					if hit_index < metric_count:
+						predict_mrr += 1.0 / float(top_indices.index(next_idx) + 1)
 
 		return ((predict_hit / float(predict_count)), (predict_mrr / float(predict_count))) if predict_count > 0 else (0.0, 0.0)
 
