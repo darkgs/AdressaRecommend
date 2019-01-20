@@ -261,11 +261,14 @@ def show_result(dataset, target_name):
 
 			with open(result_file_path, 'r') as f_ret:
 				lines = f_ret.readlines()
-				results.append(list(map(lambda x: float(x.strip()), lines)) + [file_name])
+				data = list(map(lambda x: float(x.strip()), lines))
+				if len(data) == 5:
+					data = [data[0]] + [data[2]] + [data[4]]
+				results.append(data + [file_name])
 
-	results.sort(key=lambda x:x[4], reverse=True)
+	results.sort(key=lambda x:x[2], reverse=True)
 
-	for hit_5, auc_10, auc_20, mrr_5, mrr_20, file_name in results:
+	for hit_5, auc_20, mrr_20, file_name in results:
 		print('hit_5({:.4f}) auc({:.4f}) mrr_20({:.4f}) : {}'.format(hit_5, auc_20, mrr_20, file_name))
 
 def main():

@@ -196,7 +196,17 @@ def main():
 	dict_url2vec = load_json(url2vec_path)
 	print('Loading url2vec : end')
 
+	test_mode = True
+
 	predictor = AdressaRec(SingleLSTMModel, ws_path, torch_input_path, dict_url2vec, options)
+
+	if test_mode:
+		predictor.load_model()
+		hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=50)
+		print('hit_5', hit_5)
+		print('mrr_20', mrr_20)
+		return
+
 	best_hit_5, best_auc_20, best_mrr_20 = predictor.do_train()
 
 	if search_mode:

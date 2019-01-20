@@ -521,6 +521,10 @@ class AdressaRec(object):
 #					continue
 
 				for seq_idx in range(seq_lens[batch]):
+
+					if seq_idx < 1:
+						continue
+
 					next_idx = indices_y[batch][seq_idx]
 					candidates = indices_candi[batch][seq_idx]
 
@@ -644,6 +648,10 @@ class AdressaRec(object):
 
 			for batch in range(batch_size):
 				for seq_idx in range(seq_lens[batch]):
+
+					if seq_idx < 1:
+						continue
+
 					next_idx = indices_y[batch][seq_idx]
 					candidates = indices_candi[batch][seq_idx]
 

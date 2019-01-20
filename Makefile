@@ -98,6 +98,14 @@ comp_multicell: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$
 	$(info [Makefile] $@)
 	python3 src/comp_multicell.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u $(DATA_BASE_PATH)/article_to_vec.json -w $(BASE_PATH)/multicell
 
+comp_multicell_no_dropout: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_multicell_no_dropout.py
+	$(info [Makefile] $@)
+	python3 src/comp_multicell_no_dropout.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u $(DATA_BASE_PATH)/article_to_vec.json -w $(BASE_PATH)/multicell_no_dropout
+
+comp_multicell_no_attention: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_multicell_no_attention.py
+	$(info [Makefile] $@)
+	python3 src/comp_multicell_no_attention.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u $(DATA_BASE_PATH)/article_to_vec.json -w $(BASE_PATH)/multicell_no_attention
+
 comp_lstm: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_lstm.py
 	$(info [Makefile] $@)
 	python3 src/comp_lstm.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u $(DATA_BASE_PATH)/article_to_vec.json -w $(BASE_PATH)/lstm
@@ -142,7 +150,7 @@ stat_rnn_input: $(BASE_PATH)/torch_input src/stat_rnn_input.py
 
 #run: d2v_rnn_torch
 #run: comp_pop
-run: comp_lstm
+#run: comp_lstm
 #run: comp_gru4rec
 #run: comp_lstm_2input
 #run: comp_multicell
@@ -150,5 +158,7 @@ run: comp_lstm
 #run: comp_naver
 #run: comp_yahoo_lstm
 #run: stat_rnn_input
+#run: comp_multicell_no_dropout
+run: comp_multicell_no_attention
 	$(info run)
 

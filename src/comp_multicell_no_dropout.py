@@ -26,14 +26,11 @@ parser.add_option('-r', '--recency_count', dest='recency_count', type='int', def
 parser.add_option('-e', '--d2v_embed', dest='d2v_embed', type='string', default='1000')
 parser.add_option('-l', '--learning_rate', dest='learning_rate', type='float', default=3e-3)
 parser.add_option('-a', '--hidden_size', dest='hidden_size', type='int', default=1440)
-parser.add_option('-d', '--x2_dropout_rate', dest='x2_dropout_rate', type='float', default=0.3)
 
 
 class MultiCellLSTM(nn.Module):
-	def __init__(self, embed_size, hidden_size, attn_count, x2_dropout_rate):
+	def __init__(self, embed_size, hidden_size, attn_count):
 		super(MultiCellLSTM, self).__init__()
-
-		self._x2_dropout_rate = x2_dropout_rate
 
 		self._W1_f = nn.Parameter(torch.zeros([hidden_size+embed_size, hidden_size], dtype=torch.float32), requires_grad=True)
 		self._b1_f = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32), requires_grad=True)
@@ -146,19 +143,13 @@ class MultiCellLSTM(nn.Module):
 		do_softmax = True
 		if do_softmax:
 			softmax_sum = torch.exp(o1_t) + torch.exp(o2_t)
-			if self.training and random.random() < self._x2_dropout_rate:
-				h_t = torch.sigmoid(o1_t) * torch.tanh(c1_t)
-			else:
-				h_t = torch.exp(o1_t) * torch.tanh(c1_t) / softmax_sum \
+			h_t = torch.exp(o1_t) * torch.tanh(c1_t) / softmax_sum \
 					  + torch.exp(o2_t) * torch.tanh(c2_t) / softmax_sum
 		else:
 			o1_t = torch.sigmoid(o1_t)
 			o2_t = torch.sigmoid(o2_t)
 
-			if self.training and random.random() < self._x2_dropout_rate:
-				h_t = o1_t * torch.tanh(c1_t)
-			else:
-				h_t = torch.tanh(o1_t * torch.tanh(c1_t) + o2_t * torch.tanh(c2_t))
+			h_t = torch.tanh(o1_t * torch.tanh(c1_t) + o2_t * torch.tanh(c2_t))
 
 		return h_t, (h_t, c1_t, c2_t), attn_scores
 
@@ -170,7 +161,7 @@ class MultiCellModel(nn.Module):
 		self._hidden_size = args.hidden_size
 		self._attn_count = args.trendy_count + args.recency_count
 
-		self.lstm = MultiCellLSTM(embed_size, self._hidden_size, self._attn_count, args.x2_dropout_rate)
+		self.lstm = MultiCellLSTM(embed_size, self._hidden_size, self._attn_count)
 #self.dropout = nn.Dropout(0.3)
 		self.linear = nn.Linear(self._hidden_size, embed_size)
 		self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
@@ -288,7 +279,7 @@ def main():
 	dict_url2vec = load_json(url2vec_path)
 	print('Loading url2vec : end')
 
-	attn_analysis = True
+	attn_analysis = False
 
 	predictor = AdressaRec(MultiCellModel, model_ws_path, torch_input_path, dict_url2vec, options)
 
@@ -296,7 +287,7 @@ def main():
 		predictor.load_model()
 		hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=50, 
 					attn_mode=True)
-		print('mrr_20', mrr_20)
+		print('hit_5', hit_5, 'mrr_20', mrr_20)
 		return
 
 	best_hit_5, best_auc_20, best_mrr_20 = predictor.do_train()
