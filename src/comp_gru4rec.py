@@ -103,6 +103,7 @@ def main():
 	predictor = AdressaRec(GRU4RecModel, ws_path, torch_input_path, dict_url2vec, options)
 
 	if test_mode:
+		print('test mode')
 		predictor.load_model()
 		hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=20)
 		print('hit_5', hit_5)

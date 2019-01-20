@@ -107,6 +107,7 @@ def main():
 			dict_url2vec, options, dict_yahoo_url2vec=dict_yahoo_url2vec)
 
 	if test_mode:
+		print('test_mode')
 		predictor.load_model()
 		hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=20)
 		print('hit_5', hit_5)
