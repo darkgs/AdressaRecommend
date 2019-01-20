@@ -158,7 +158,7 @@ stat_rnn_input: $(BASE_PATH)/torch_input src/stat_rnn_input.py
 #run: comp_naver
 #run: comp_yahoo_lstm
 #run: stat_rnn_input
-#run: comp_multicell_no_dropout
-run: comp_multicell_no_attention
+run: comp_multicell_no_dropout
+#run: comp_multicell_no_attention
 	$(info run)
 

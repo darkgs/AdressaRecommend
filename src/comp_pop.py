@@ -64,7 +64,7 @@ def main():
 
 	predictor = AdressaRec(SingleLSTMModel, ws_path, torch_input_path, dict_url2vec, options)
 
-	test_count = 2
+	test_count = 1
 
 	for i in range(test_count):
 		hit_5, mrr_20 = predictor.pop()

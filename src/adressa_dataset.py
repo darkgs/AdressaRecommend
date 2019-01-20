@@ -323,6 +323,7 @@ class AdressaRec(object):
 		return train_dataloader, valid_dataloader, test_dataloader
 
 	def do_train(self, total_epoch=200, early_stop=10):
+		print('start traninig!!')
 
 #start_epoch, best_valid_loss = self.load_model()
 		start_epoch = 0

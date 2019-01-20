@@ -105,8 +105,18 @@ def main():
 	dict_yahoo_url2vec = load_json(yahoo_url2vec_path)
 	print('Loading yahoo_url2vec : end')
 
+	test_mode = True
+
 	predictor = AdressaRec(UserRepModel, ws_path, torch_input_path, 
 			dict_url2vec, options, dict_yahoo_url2vec=dict_yahoo_url2vec)
+
+	if test_mode:
+		predictor.load_model()
+		hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=20)
+		print('hit_5', hit_5)
+		print('mrr_20', mrr_20)
+		return
+
 	best_hit_5, best_auc_20, best_mrr_20 = predictor.do_train()
 
 	if search_mode:
