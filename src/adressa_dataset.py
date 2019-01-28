@@ -445,7 +445,7 @@ class AdressaRec(object):
 		return test_loss / sampling_count
 
 	def test_mrr_trendy(self, metric_count=20, candidate_count=50, max_sampling_count=2000,
-			sim_cate=False, attn_mode=False):
+			sim_cate=False, attn_mode=False, length_mode=False):
 		self._model.eval()
 
 		predict_count = 0
@@ -488,6 +488,11 @@ class AdressaRec(object):
 				},
 			}
 
+		if length_mode:
+			data_by_length = []
+			for _ in range(20):
+				data_by_length.append([])
+
 		for i, data in enumerate(self._test_dataloader, 0):
 #			if not attn_mode and sampling_count >= max_sampling_count:
 #				continue
@@ -523,8 +528,8 @@ class AdressaRec(object):
 
 				for seq_idx in range(seq_lens[batch]):
 
-					if seq_idx < 1:
-						continue
+#					if seq_idx < 1:
+#						continue
 
 					next_idx = indices_y[batch][seq_idx]
 					candidates = indices_candi[batch][seq_idx]
@@ -614,6 +619,12 @@ class AdressaRec(object):
 
 					if hit_index < metric_count:
 						predict_mrr += 1.0 / float(hit_index + 1)
+		
+					if length_mode:
+						if hit_index < metric_count:
+							data_by_length[seq_lens[batch]].append(1.0 / float(hit_index + 1))
+						else:
+							data_by_length[seq_lens[batch]].append(0.0)
 
 		if attn_mode:
 			for next_key in ['all', 'popular_next', 'unpopular_next', 'unpopular_miss', 'popular_cases', 'recent_cases']:
@@ -631,6 +642,9 @@ class AdressaRec(object):
 					hit_index = np.mean(dict_attn_stat[next_key]['hit_index'])
 					pop_of_next = np.mean(dict_attn_stat[next_key]['pop_of_next'])
 					print('hit_index', hit_index, 'pop_of_next', pop_of_next)
+
+		if length_mode:
+			print(','.join([str(np.mean(values)) if len(values) > 0 else str(0.0) for values in data_by_length]))
 
 		return ((predict_hit / float(predict_count)), (predict_auc / float(predict_count)), (predict_mrr / float(predict_count))) if predict_count > 0 else (0.0, 0.0, 0.0)
 
