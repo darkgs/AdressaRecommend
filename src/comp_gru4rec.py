@@ -1,4 +1,5 @@
 
+import time
 import os, sys
 
 from optparse import OptionParser
@@ -99,11 +100,12 @@ def main():
 	print('Loading url2vec : end')
 
 	test_mode = True
+	if test_mode:
+		print('test mode')
 
 	predictor = AdressaRec(GRU4RecModel, ws_path, torch_input_path, dict_url2vec, options)
 
 	if test_mode:
-		print('test mode')
 		predictor.load_model()
 		time_start = time.time()
 		hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=20, length_mode=True)
