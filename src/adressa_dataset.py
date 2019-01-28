@@ -490,8 +490,10 @@ class AdressaRec(object):
 
 		if length_mode:
 			data_by_length = []
+			data_by_length_count = []
 			for _ in range(20):
-				data_by_length.append([])
+				data_by_length.append(0.0)
+				data_by_length_count.append(0)
 
 		for i, data in enumerate(self._test_dataloader, 0):
 #			if not attn_mode and sampling_count >= max_sampling_count:
@@ -622,9 +624,12 @@ class AdressaRec(object):
 		
 					if length_mode:
 						if hit_index < metric_count:
-							data_by_length[seq_lens[batch]].append(1.0 / float(hit_index + 1))
+							data_by_length[seq_lens[batch]] += 1.0 / float(hit_index + 1)
 						else:
 							data_by_length[seq_lens[batch]].append(0.0)
+						data_by_length_count[seq_lens[batch]] += 1
+
+
 
 		if attn_mode:
 			for next_key in ['all', 'popular_next', 'unpopular_next', 'unpopular_miss', 'popular_cases', 'recent_cases']:
@@ -644,7 +649,13 @@ class AdressaRec(object):
 					print('hit_index', hit_index, 'pop_of_next', pop_of_next)
 
 		if length_mode:
-			print(','.join([str(np.mean(values)) if len(values) > 0 else str(0.0) for values in data_by_length]))
+			length_mode_datas = []
+			for idx in range(len(data_by_length)):
+				if data_by_length_count[idx] > 0:
+					length_mode_datas.append(str(data_by_length[idx] / data_by_length_count[idx]))
+				else:
+					length_mode_datas.append(str(0.0))
+			print(','.join(length_mode_datas))
 
 		return ((predict_hit / float(predict_count)), (predict_auc / float(predict_count)), (predict_mrr / float(predict_count))) if predict_count > 0 else (0.0, 0.0, 0.0)
 

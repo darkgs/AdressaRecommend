@@ -105,9 +105,11 @@ def main():
 	if test_mode:
 		print('test mode')
 		predictor.load_model()
-		hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=20)
+		time_start = time.time()
+		hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=20, length_mode=True)
 		print('hit_5', hit_5)
 		print('mrr_20', mrr_20)
+		print('time tooks : {}'.format(time.time() - time_start))
 		return
 
 	best_hit_5, best_auc_20, best_mrr_20 = predictor.do_train()
