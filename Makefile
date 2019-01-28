@@ -150,8 +150,8 @@ stat_rnn_input: $(BASE_PATH)/torch_input src/stat_rnn_input.py
 
 #run: d2v_rnn_torch
 #run: comp_pop
-run: comp_lstm
-#run: comp_gru4rec
+#run: comp_lstm
+run: comp_gru4rec
 #run: comp_lstm_2input
 #run: comp_multicell
 #run: comp_yahoo
