@@ -280,7 +280,8 @@ def generate_torch_rnn_input():
 		dict_seq_datas[dataset_name] = merged_sequences[idx_st:idx_ed]
 
 	# shuffle and clip test set
-	dict_seq_datas['test'] = [ dict_seq_datas['test'][idx] for idx in np.random.permutation(len(dict_seq_datas['test'])).tolist()[:50000] ]
+#dict_seq_datas['test'] = [ dict_seq_datas['test'][idx] for idx in np.random.permutation(len(dict_seq_datas['test'])).tolist()[:200000] ]
+	dict_seq_datas['test'] = [ dict_seq_datas['test'][idx] for idx in np.random.permutation(len(dict_seq_datas['test'])).tolist() ]
 
 	# candidates
 	dict_time_idx = {}

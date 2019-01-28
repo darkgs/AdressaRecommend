@@ -19,7 +19,7 @@ DATA_SET=adressa
 MODE=simple
 MODE=one_week
 #MODE=one_month
-#MODE=three_month
+MODE=three_month
 
 D2V_EMBED=default
 D2V_EMBED=1000
