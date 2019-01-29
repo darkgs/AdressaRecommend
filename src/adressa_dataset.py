@@ -659,10 +659,17 @@ class AdressaRec(object):
 
 		return ((predict_hit / float(predict_count)), (predict_auc / float(predict_count)), (predict_mrr / float(predict_count))) if predict_count > 0 else (0.0, 0.0, 0.0)
 
-	def pop(self, metric_count=20, candidate_count=50):
+	def pop(self, metric_count=20, candidate_count=50, length_mode=False):
 		predict_count = 0
 		predict_mrr = 0.0
 		predict_hit = 0
+
+		if length_mode:
+			data_by_length = []
+			data_by_length_count = []
+			for _ in range(20):
+				data_by_length.append(0.0)
+				data_by_length_count.append(0)
 
 		for i, data in enumerate(self._test_dataloader, 0):
 			input_x_s, input_y_s, input_trendy, input_candi, input_cate, input_cate_y, seq_lens, \
@@ -675,8 +682,8 @@ class AdressaRec(object):
 			for batch in range(batch_size):
 				for seq_idx in range(seq_lens[batch]):
 
-					if seq_idx < 1:
-						continue
+#					if seq_idx < 1:
+#						continue
 
 					next_idx = indices_y[batch][seq_idx]
 					candidates = indices_candi[batch][seq_idx]
@@ -700,6 +707,22 @@ class AdressaRec(object):
 					predict_count += 1
 					if hit_index < metric_count:
 						predict_mrr += 1.0 / float(top_indices.index(next_idx) + 1)
+
+					if length_mode:
+						if hit_index < metric_count:
+							data_by_length[seq_lens[batch]] += 1.0 / float(hit_index + 1)
+						else:
+							data_by_length[seq_lens[batch]].append(0.0)
+						data_by_length_count[seq_lens[batch]] += 1
+
+		if length_mode:
+			length_mode_datas = []
+			for idx in range(len(data_by_length)):
+				if data_by_length_count[idx] > 0:
+					length_mode_datas.append(str(data_by_length[idx] / data_by_length_count[idx]))
+				else:
+					length_mode_datas.append(str(0.0))
+			print(','.join(length_mode_datas))
 
 		return ((predict_hit / float(predict_count)), (predict_mrr / float(predict_count))) if predict_count > 0 else (0.0, 0.0)
 

@@ -152,8 +152,8 @@ stat_rnn_input: $(BASE_PATH)/torch_input src/stat_rnn_input.py
 #run: comp_pop
 #run: comp_lstm
 #run: comp_gru4rec
-run: comp_lstm_2input
-#run: comp_multicell
+#run: comp_lstm_2input
+run: comp_multicell
 #run: comp_yahoo
 #run: comp_naver
 #run: comp_yahoo_lstm
