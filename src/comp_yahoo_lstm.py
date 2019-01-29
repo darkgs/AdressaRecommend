@@ -113,9 +113,14 @@ def main():
 		predictor.load_model()
 		time_start = time.time()
 		hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=20, length_mode=True)
-		print('hit_5', hit_5)
-		print('mrr_20', mrr_20)
+		print('candi 20 :: hit_5 : {}, mrr_20 : {}'.format(hit_5, mrr_20))
 		print('time tooks : {}'.format(time.time() - time_start))
+
+		for candi_count in [40, 60, 100]:
+			time_start = time.time()
+			hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=candi_count)
+			print('candi {} :: hit_5 : {}, mrr_20 : {}'.format(candi_count, hit_5, mrr_20))
+			print('time tooks : {}'.format(time.time() - time_start))
 		return
 
 	best_hit_5, best_auc_20, best_mrr_20 = predictor.do_train()

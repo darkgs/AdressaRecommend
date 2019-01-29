@@ -1,4 +1,5 @@
 
+import time
 import os
 
 from optparse import OptionParser
@@ -64,12 +65,11 @@ def main():
 
 	predictor = AdressaRec(SingleLSTMModel, ws_path, torch_input_path, dict_url2vec, options)
 
-	test_count = 1
-
-	for i in range(test_count):
-		hit_5, mrr_20 = predictor.pop()
-
-		print('{}th : hit_5({:.4f}) mrr_20({:.4f})'.format(i, hit_5, mrr_20))
+	for candi_count in [20, 40, 60, 100]:
+		time_start = time.time()
+		hit_5, mrr_20 = predictor.pop(metric_count=20, candidate_count=20)
+		print('candi {} :: hit_5 : {}, mrr_20 : {}'.format(candi_count, hit_5, mrr_20))
+		print('time tooks : {}'.format(time.time() - time_start))
 
 
 if __name__ == '__main__':
