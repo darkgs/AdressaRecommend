@@ -457,36 +457,11 @@ class AdressaRec(object):
 		sampling_count = 0
 
 		if attn_mode:
-			dict_attn_stat = {
-				'all': {
-					'popular_weight': [],
-					'recent_weight': [],
-				},
-				'popular_next': {
-					'popular_weight': [],
-					'recent_weight': [],
-				},
-				'unpopular_next': {
-					'popular_weight': [],
-					'recent_weight': [],
-				},
-				'unpopular_miss': {
-					'popular_weight': [],
-					'recent_weight': [],
-				},
-				'popular_cases': {
-					'hit_index': [],
-					'pop_of_next': [],
-					'popular_weight': [],
-					'recent_weight': [],
-				},
-				'recent_cases': {
-					'hit_index': [],
-					'pop_of_next': [],
-					'popular_weight': [],
-					'recent_weight': [],
-				},
-			}
+			data_by_attn = []
+			data_by_attn_count = []
+			for _ in range(20):
+				data_by_attn.append(0.0)
+				data_by_attn_count.append(0)
 
 		if length_mode:
 			data_by_length = []
@@ -567,7 +542,7 @@ class AdressaRec(object):
 									candidates[x] != self._rnn_input.get_pad_idx(), \
 									scores.argsort()[::-1]))]).tolist()
 
-					if attn_mode and seq_idx > 0:
+					if attn_mode:
 						valid_candi_len = len(list(filter(lambda x: x != self._rnn_input.get_pad_idx(), candidates)))
 						# self._args.trendy_count + self._args.recency_count
 						pop_of_next = candidates.index(next_idx)
@@ -576,36 +551,9 @@ class AdressaRec(object):
 						attn_scores = attns[batch][seq_idx]
 						popular_score = np.sum(attn_scores[:self._args.trendy_count])
 						recent_score = np.sum(attn_scores[self._args.trendy_count:])
-		
-						next_key = None
-#if pop_of_next < attn_params[0] and hit_index < attn_params[1]:
-#if pop_of_next < 5 and hit_index < 2 and hit_index < pop_of_next:
-						if valid_candi_len == candidate_count and 2 <= pop_of_next and pop_of_next < 5 and hit_index < 2:
-							dict_attn_stat['popular_next']['popular_weight'].append(popular_score)
-							dict_attn_stat['popular_next']['recent_weight'].append(recent_score)
 
-						if valid_candi_len == candidate_count and pop_of_next >= 15 and hit_index < 5:
-							dict_attn_stat['unpopular_next']['popular_weight'].append(popular_score)
-							dict_attn_stat['unpopular_next']['recent_weight'].append(recent_score)
-
-						if valid_candi_len == candidate_count and pop_of_next >= 15 and hit_index >= 5:
-							dict_attn_stat['unpopular_miss']['popular_weight'].append(popular_score)
-							dict_attn_stat['unpopular_miss']['recent_weight'].append(recent_score)
-
-						if valid_candi_len == candidate_count and (recent_score / (popular_score + recent_score)) > 0.52 and hit_index < 3:
-							dict_attn_stat['recent_cases']['hit_index'].append(hit_index)
-							dict_attn_stat['recent_cases']['pop_of_next'].append(pop_of_next)
-							dict_attn_stat['recent_cases']['popular_weight'].append(popular_score)
-							dict_attn_stat['recent_cases']['recent_weight'].append(recent_score)
-
-						if valid_candi_len == candidate_count and (popular_score / (popular_score + recent_score)) > 0.52 and hit_index < 3:
-							dict_attn_stat['popular_cases']['hit_index'].append(hit_index)
-							dict_attn_stat['popular_cases']['pop_of_next'].append(pop_of_next)
-							dict_attn_stat['popular_cases']['popular_weight'].append(popular_score)
-							dict_attn_stat['popular_cases']['recent_weight'].append(recent_score)
-
-						dict_attn_stat['all']['popular_weight'].append(popular_score)
-						dict_attn_stat['all']['recent_weight'].append(recent_score)
+						data_by_attn[pop_of_next] += recent_score
+						data_by_attn_count[pop_of_next] += 1
 
 					if len(top_indices) < candidate_count:
 						continue
@@ -632,21 +580,18 @@ class AdressaRec(object):
 
 
 		if attn_mode:
-			for next_key in ['all', 'popular_next', 'unpopular_next', 'unpopular_miss', 'popular_cases', 'recent_cases']:
-				popular_score = np.mean(dict_attn_stat[next_key]['popular_weight'])
-				recent_score = np.mean(dict_attn_stat[next_key]['recent_weight'])
+			attn_mode_datas = []
+			for idx in range(len(data_by_attn)):
+				if data_by_attn_count[idx] > 0:
+					attn_mode_datas.append(str(data_by_attn[idx] / data_by_attn_count[idx]))
+				else:
+					attn_mode_datas.append(str(0.0))
 
-				sum_score = popular_score + recent_score
-				print('====================')
-				print(next_key)
-				print('count', len(dict_attn_stat[next_key]['popular_weight']))
-				print(popular_score, recent_score)
-				print(popular_score/sum_score, recent_score/sum_score)
+			data_by_attn[pop_of_next] += recent_score
+			data_by_attn_count[pop_of_next] += 1
 
-				if next_key in ['popular_cases', 'recent_cases']:
-					hit_index = np.mean(dict_attn_stat[next_key]['hit_index'])
-					pop_of_next = np.mean(dict_attn_stat[next_key]['pop_of_next'])
-					print('hit_index', hit_index, 'pop_of_next', pop_of_next)
+			print('=========attn_mode=============')
+			print(','.join(attn_mode_datas))
 
 		if length_mode:
 			length_mode_datas = []
@@ -655,6 +600,7 @@ class AdressaRec(object):
 					length_mode_datas.append(str(data_by_length[idx] / data_by_length_count[idx]))
 				else:
 					length_mode_datas.append(str(0.0))
+			print('=========length_mode=============')
 			print(','.join(length_mode_datas))
 
 		return ((predict_hit / float(predict_count)), (predict_auc / float(predict_count)), (predict_mrr / float(predict_count))) if predict_count > 0 else (0.0, 0.0, 0.0)
