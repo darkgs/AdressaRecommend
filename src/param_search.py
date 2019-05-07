@@ -6,7 +6,7 @@ import subprocess
 from multiprocessing.pool import ThreadPool
 from threading import Semaphore
 
-visible_gpus = [0, 1, 3]
+visible_gpus = [0]
 visible_gpus_sema = Semaphore(1)
 
 total_works = 0
@@ -98,10 +98,12 @@ def parameter_search(dataset, target_name):
 				{
 					'd2v_embed': [1000],
 					'learning_rate': [3e-3],
-					'trendy_count': [5],
-					'recency_count': [3],
-					'hidden_size': [1024, 1208, 1440],
-					'x2_dropout_rate': [0.3, 0.5],
+					'trendy_count': [3, 5, 7],
+					'recency_count': [1, 3, 5],
+					'hidden_size': [1440],
+					'x2_dropout_rate': [0.3],
+#'hidden_size': [1024, 1208, 1440],
+#'x2_dropout_rate': [0.3, 0.5],
 				},
 			],
 			'yahoo': [
@@ -284,10 +286,10 @@ def main():
 	target_name = 'yahoo_lstm'
 
 	dataset = 'adressa'
-	target_name = 'naver'
+	target_name = 'multicell'
 
-#parameter_search(dataset, target_name)
-	show_result(dataset, target_name)
+	parameter_search(dataset, target_name)
+#show_result(dataset, target_name)
 
 if __name__ == '__main__':
 	main()
