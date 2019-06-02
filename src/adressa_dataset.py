@@ -346,7 +346,7 @@ class AdressaRec(object):
 				train_loss = self.train()
 				valid_loss = self.test()
 				hit_5, auc_20, mrr_20 = self.test_mrr_trendy(metric_count=20,
-						candidate_count=50, sim_cate=sim_cate)
+						candidate_count=20, sim_cate=sim_cate)
 		
 				best_hit_5 = max(best_hit_5, hit_5)
 

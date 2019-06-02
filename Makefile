@@ -12,8 +12,8 @@ fi
 endef
 
 # data_set in [adressa, glob]
-#DATA_SET=adressa
-DATA_SET=glob
+DATA_SET=adressa
+#DATA_SET=glob
 
 # mode in [simple, one_week, one_month, three_month]
 MODE=simple
@@ -149,7 +149,7 @@ stat_rnn_input: $(BASE_PATH)/torch_input src/stat_rnn_input.py
 	python3 src/stat_rnn_input.py -i $(BASE_PATH)/torch_input
 
 #run: d2v_rnn_torch
-#run: comp_pop
+run: comp_pop
 #run: comp_lstm
 #run: comp_gru4rec
 #run: comp_lstm_2input
@@ -160,6 +160,6 @@ stat_rnn_input: $(BASE_PATH)/torch_input src/stat_rnn_input.py
 #run: stat_rnn_input
 #run: comp_multicell_no_dropout
 #run: comp_multicell_no_attention
-run: stat_adressa_dataset
+#run: stat_adressa_dataset
 	$(info run)
 

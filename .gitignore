@@ -5,3 +5,4 @@ log.txt
 cache/
 report/
 cache_bak/
+*.txt

@@ -89,7 +89,7 @@ def parameter_search(dataset, target_name):
 				{
 					'd2v_embed': [1000],
 					'learning_rate': [3e-3],
-					'hidden_size': [682, 786, 896],
+					'hidden_size': [1440],
 				},
 			],
 			'multicell': [
@@ -177,10 +177,10 @@ def parameter_search(dataset, target_name):
 				{
 					'd2v_embed': [250],
 					'learning_rate': [3e-3],
-					'trendy_count': [5, 7],
-					'recency_count': [3, 5],
-					'hidden_size': [1280, 1440],
-					'x2_dropout_rate': [0.3, 0.5],
+					'trendy_count': [3, 5, 7],
+					'recency_count': [1, 3, 5],
+					'hidden_size': [1280],
+					'x2_dropout_rate': [0.3],
 				},
 			],
 			'yahoo': [
@@ -288,8 +288,8 @@ def main():
 	dataset = 'adressa'
 	target_name = 'multicell'
 
-	parameter_search(dataset, target_name)
-#show_result(dataset, target_name)
+#parameter_search(dataset, target_name)
+	show_result(dataset, target_name)
 
 if __name__ == '__main__':
 	main()
