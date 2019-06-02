@@ -573,8 +573,6 @@ class AdressaRec(object):
 					if length_mode:
 						if hit_index < metric_count:
 							data_by_length[seq_idx] += 1.0 / float(hit_index + 1)
-						else:
-							data_by_length[seq_idx].append(0.0)
 						data_by_length_count[seq_idx] += 1
 
 		if attn_mode:
