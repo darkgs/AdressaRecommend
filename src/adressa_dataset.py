@@ -214,7 +214,6 @@ class AdressaRNNInput(object):
 #		if (target_y != None) and (target_y not in [t for t, t_c in trendy_list]):
 #			trendy_list.append([target_y, 0])
 
-		print(len(recency_list))
 		recency_articles = [r for r, r_c in recency_list]
 		remains = []
 		for t, t_c in trendy_list:
