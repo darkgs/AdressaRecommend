@@ -135,10 +135,8 @@ class AdressaRNNInput(object):
 #							for timestamp in pad_time_indices]
 
 #### fresh candidates mode
-				idx_y.append(0)
-				candidate_infos = [self.get_mrr_recency_candidates(timestamp, self.get_pad_idx(), idx_y[i]) \
-							for i, timestamp in enumerate(pad_time_indices)]
-				idx_y = idx_y[:-1]
+				candidate_infos = [self.get_mrr_recency_candidates(timestamp, self.get_pad_idx()) \
+							for timestamp in pad_time_indices]
 ####
 
 				seq_candi = [[self.idx2vec(idx) for idx, count in candi] \
@@ -197,7 +195,7 @@ class AdressaRNNInput(object):
 
 		return trendy_list
 
-	def get_mrr_recency_candidates(self, cur_time=-1, padding=0, target_y=None):
+	def get_mrr_recency_candidates(self, cur_time=-1, padding=0):
 		candidates_max = 100
 
 		recency_candidates = []
@@ -682,7 +680,7 @@ class AdressaRec(object):
 					next_idx = indices_y[batch][seq_idx]
 					candidates = indices_candi[batch][seq_idx]
 
-					if next_idx not in candidates.tolist():
+					if next_idx not in candidates:
 						continue
 
 #					if next_idx not in candidates[:5]:
