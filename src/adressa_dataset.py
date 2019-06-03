@@ -131,8 +131,15 @@ class AdressaRNNInput(object):
 							 for trendy in trendy_infos][1:]
 				idx_trendy = [[idx for idx, count in trendy] for trendy in trendy_infos][1:]
 
-				candidate_infos = [self.get_mrr_candidates(timestamp, self.get_pad_idx()) \
-							for timestamp in pad_time_indices]
+#				candidate_infos = [self.get_mrr_candidates(timestamp, self.get_pad_idx()) \
+#							for timestamp in pad_time_indices]
+
+#### fresh candidates mode
+				idx_y.append(0)
+				candidate_infos = [self.get_mrr_recency_candidates(timestamp, self.get_pad_idx(), idx_y[i]) \
+							for i, timestamp in enumerate(pad_time_indices)]
+				idx_y = idx_y[:-1]
+####
 
 				seq_candi = [[self.idx2vec(idx) for idx, count in candi] \
 							for candi in candidate_infos][1:]
@@ -189,6 +196,48 @@ class AdressaRNNInput(object):
 		assert(len(trendy_list) == candidates_max)
 
 		return trendy_list
+
+	def get_mrr_recency_candidates(self, cur_time=-1, padding=0, target_y=None):
+		candidates_max = 100
+
+		recency_candidates = []
+
+		trendy_list = self._dict_rnn_input['trendy_idx'].get(str(cur_time), None)
+		recency_list = self._dict_rnn_input['recency_idx'].get(str(cur_time), None)
+
+		if trendy_list == None:
+			trendy_list = []
+
+		if recency_list == None:
+			recency_list = []
+
+#		if (target_y != None) and (target_y not in [t for t, t_c in trendy_list]):
+#			trendy_list.append([target_y, 0])
+
+		recency_articles = [r for r, r_c in recency_list]
+		remains = []
+		for t, t_c in trendy_list:
+			if t in recency_articles:
+				recency_candidates.append([t, t_c])
+			else:
+				remains.append(t)
+
+		for r in remains:
+			recency_candidates.append([r,0])
+
+#		fill_target = candidates_max - len(recency_list)
+#		if len(recency_candidates) < fill_target:
+#			recency_candidates += trendy_list[:fill_target]
+
+#		if len(recency_candidates) < candidates_max:
+#			recency_candidates += recency_list[:candidates_max - len(recency_candidates)]
+
+		if len(recency_candidates) < candidates_max:
+			recency_candidates += [[padding, 0]] * (candidates_max - len(recency_candidates))
+		elif len(recency_candidates) > candidates_max:
+			recency_candidates = recency_candidates[:candidates_max]
+
+		return recency_candidates
 
 	def get_candidates(self, start_time=-1, end_time=-1, idx_count=0):
 		if (start_time < 0) or (end_time < 0) or (idx_count <= 0):
@@ -629,6 +678,10 @@ class AdressaRec(object):
 
 					next_idx = indices_y[batch][seq_idx]
 					candidates = indices_candi[batch][seq_idx]
+
+					if next_idx not in candidates.tolist():
+						continue
+					print(next_idx, candidates)
 
 #					if next_idx not in candidates[:5]:
 #						continue

@@ -27,6 +27,7 @@ parser.add_option('-r', '--recency_count', dest='recency_count', type='int', def
 parser.add_option('-e', '--d2v_embed', dest='d2v_embed', type='string', default='1000')
 parser.add_option('-l', '--learning_rate', dest='learning_rate', type='float', default=3e-3)
 parser.add_option('-a', '--hidden_size', dest='hidden_size', type='int', default=1440)
+#parser.add_option('-a', '--hidden_size', dest='hidden_size', type='int', default=1280)
 parser.add_option('-d', '--x2_dropout_rate', dest='x2_dropout_rate', type='float', default=0.3)
 
 
@@ -302,6 +303,7 @@ def main():
 				attn_mode=True, length_mode=True)
 		print('candi 20 :: hit_5 : {}, mrr_20 : {}'.format(hit_5, mrr_20))
 		print('time tooks : {}'.format(time.time() - time_start))
+		return
 
 		for candi_count in [40, 60, 80, 100]:
 			time_start = time.time()
