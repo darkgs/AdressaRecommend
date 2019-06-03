@@ -214,6 +214,7 @@ class AdressaRNNInput(object):
 #		if (target_y != None) and (target_y not in [t for t, t_c in trendy_list]):
 #			trendy_list.append([target_y, 0])
 
+		print(len(recency_list))
 		recency_articles = [r for r, r_c in recency_list]
 		remains = []
 		for t, t_c in trendy_list:
@@ -493,7 +494,7 @@ class AdressaRec(object):
 
 		return test_loss / sampling_count
 
-	def test_mrr_trendy(self, metric_count=20, candidate_count=50, max_sampling_count=2000,
+	def test_mrr_trendy(self, metric_count=20, candidate_count=20, max_sampling_count=2000,
 			sim_cate=False, attn_mode=False, length_mode=False):
 		self._model.eval()
 
@@ -559,6 +560,9 @@ class AdressaRec(object):
 
 					next_idx = indices_y[batch][seq_idx]
 					candidates = indices_candi[batch][seq_idx]
+
+					if next_idx not in candidates:
+						continue
 
 					sampling_count += 1
 
@@ -681,7 +685,6 @@ class AdressaRec(object):
 
 					if next_idx not in candidates.tolist():
 						continue
-					print(next_idx, candidates)
 
 #					if next_idx not in candidates[:5]:
 #						continue
