@@ -800,6 +800,9 @@ class AdressaRec(object):
 			for batch in range(valid_count):
 				seq_idx = seq_lens[batch] - 1
 
+				next_idx = indices_y[batch][seq_idx]
+				candidates = indices_candi[batch][seq_idx]
+
 				top_indices = candidates[:candidate_count]
 				if next_idx not in top_indices:
 					top_indices = top_indices[:candidate_count-1] + [next_idx]
