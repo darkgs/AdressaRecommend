@@ -67,7 +67,7 @@ def main():
 
 	time_start = time.time()
 	hit_5, mrr_20 = predictor.pop(metric_count=20, candidate_count=20, length_mode=True)
-	print('candi {} :: hit_5 : {}, mrr_20 : {}'.format(20, hit_5, mrr_20))
+	print('history test :: hit_5 : mrr_20 : {}'.format(hit_5, mrr_20))
 	print('time tooks : {}'.format(time.time() - time_start))
 	return
 
