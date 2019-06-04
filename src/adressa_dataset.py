@@ -131,12 +131,12 @@ class AdressaRNNInput(object):
 							 for trendy in trendy_infos][1:]
 				idx_trendy = [[idx for idx, count in trendy] for trendy in trendy_infos][1:]
 
-#				candidate_infos = [self.get_mrr_candidates(timestamp, self.get_pad_idx()) \
-#							for timestamp in pad_time_indices]
+				candidate_infos = [self.get_mrr_candidates(timestamp, self.get_pad_idx()) \
+								  for timestamp in pad_time_indices]
 
 #### fresh candidates mode
-				candidate_infos = [self.get_mrr_recency_candidates(timestamp, self.get_pad_idx()) \
-							for timestamp in pad_time_indices]
+#				candidate_infos = [self.get_mrr_recency_candidates(timestamp, self.get_pad_idx()) \
+#							for timestamp in pad_time_indices]
 ####
 
 				seq_candi = [[self.idx2vec(idx) for idx, count in candi] \
@@ -209,9 +209,6 @@ class AdressaRNNInput(object):
 		if recency_list == None:
 			recency_list = []
 
-#		if (target_y != None) and (target_y not in [t for t, t_c in trendy_list]):
-#			trendy_list.append([target_y, 0])
-
 		recency_articles = [r for r, r_c in recency_list]
 		remains = []
 		for t, t_c in trendy_list:
@@ -222,13 +219,6 @@ class AdressaRNNInput(object):
 
 		for r in remains:
 			recency_candidates.append([r,0])
-
-#		fill_target = candidates_max - len(recency_list)
-#		if len(recency_candidates) < fill_target:
-#			recency_candidates += trendy_list[:fill_target]
-
-#		if len(recency_candidates) < candidates_max:
-#			recency_candidates += recency_list[:candidates_max - len(recency_candidates)]
 
 		if len(recency_candidates) < candidates_max:
 			recency_candidates += [[padding, 0]] * (candidates_max - len(recency_candidates))
@@ -558,8 +548,10 @@ class AdressaRec(object):
 					next_idx = indices_y[batch][seq_idx]
 					candidates = indices_candi[batch][seq_idx]
 
-					if next_idx not in candidates:
-						continue
+### recency candidate mode
+#					if next_idx not in candidates:
+#						continue
+### recency candidate mode : end
 
 					sampling_count += 1
 
@@ -680,8 +672,10 @@ class AdressaRec(object):
 					next_idx = indices_y[batch][seq_idx]
 					candidates = indices_candi[batch][seq_idx]
 
-					if next_idx not in candidates:
-						continue
+### recency candidate mode
+#					if next_idx not in candidates:
+#						continue
+### recency candidate mode end
 
 #					if next_idx not in candidates[:5]:
 #						continue
