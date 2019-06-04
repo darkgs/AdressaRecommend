@@ -597,7 +597,8 @@ class AdressaRec(object):
 					if hit_index < metric_count:
 						predict_mrr += 1.0 / float(hit_index + 1)
 
-					data_by_length[max_seq_len_data-step] += 1.0 / float(hit_index + 1)
+					if hit_index < metric_count:
+						data_by_length[max_seq_len_data-step] += 1.0 / float(hit_index + 1)
 					data_by_length_count[max_seq_len_data-step] += 1
 #print('===============================')
 
@@ -776,7 +777,66 @@ class AdressaRec(object):
 
 		return ((predict_hit / float(predict_count)), (predict_auc / float(predict_count)), (predict_mrr / float(predict_count))) if predict_count > 0 else (0.0, 0.0, 0.0)
 
-	def pop(self, metric_count=20, candidate_count=50, length_mode=False):
+	def pop_history_test(self, metric_count=20, candidate_count=20):
+		predict_count = 0
+		predict_mrr = 0.0
+		predict_hit = 0
+
+		max_seq_len_data = 6
+
+		data_by_length = []
+		data_by_length_count = []
+		for _ in range(20):
+			data_by_length.append(0.0)
+			data_by_length_count.append(0)
+
+		for i, data in enumerate(self._test_dataloader, 0):
+			input_x_s, input_y_s, input_trendy, input_candi, input_cate, input_cate_y, seq_lens, \
+				timestamp_starts, timestamp_ends, _, \
+				indices_y, indices_trendy, indices_candi = data
+
+			valid_count = 0
+			for seq_len in seq_lens.cpu().numpy():
+				if seq_len == max_seq_len_data:
+					valid_count += 1
+
+			batch_size = seq_lens.size(0)
+			seq_lens = seq_lens.cpu().numpy()
+
+			for batch in range(valid_count):
+				seq_idx = seq_lens[batch] - 1
+
+				top_indices = candidates[:candidate_count]
+				if next_idx not in top_indices:
+					top_indices = top_indices[:candidate_count-1] + [next_idx]
+
+				if len(top_indices) < candidate_count:
+					continue
+
+				hit_index = top_indices.index(next_idx)
+
+				if hit_index < 5:
+					predict_hit += 1
+
+				predict_count += 1
+				if hit_index < metric_count:
+					predict_mrr += 1.0 / float(top_indices.index(next_idx) + 1)
+
+				if hit_index < metric_count:
+					data_by_length[seq_lens[batch]] += 1.0 / float(hit_index + 1)
+				data_by_length_count[seq_lens[batch]] += 1
+
+		length_mode_datas = []
+		for idx in range(len(data_by_length)):
+			if data_by_length_count[idx] > 0:
+				length_mode_datas.append(str(data_by_length[idx] / data_by_length_count[idx]))
+			else:
+				length_mode_datas.append(str(0.0))
+		print(','.join(length_mode_datas))
+
+		return ((predict_hit / float(predict_count)), (predict_mrr / float(predict_count))) if predict_count > 0 else (0.0, 0.0)
+
+	def pop(self, metric_count=20, candidate_count=20, length_mode=False):
 		predict_count = 0
 		predict_mrr = 0.0
 		predict_hit = 0
