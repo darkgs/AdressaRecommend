@@ -66,12 +66,12 @@ def main():
 	predictor = AdressaRec(SingleLSTMModel, ws_path, torch_input_path, dict_url2vec, options)
 
 	time_start = time.time()
-	hit_5, mrr_20 = predictor.pop(metric_count=20, candidate_count=20, length_mode=True)
+	hit_5, mrr_20 = predictor.pop_history_test(metric_count=20, candidate_count=20, length_mode=True)
 	print('history test :: hit_5 : mrr_20 : {}'.format(hit_5, mrr_20))
 	print('time tooks : {}'.format(time.time() - time_start))
 	return
 
-	hit_5, mrr_20 = predictor.pop_history_test(metric_count=20, candidate_count=20)
+	hit_5, mrr_20 = predictor.pop(metric_count=20, candidate_count=20)
 	print('candi {} :: hit_5 : {}, mrr_20 : {}'.format(20, hit_5, mrr_20))
 	print('time tooks : {}'.format(time.time() - time_start))
 
