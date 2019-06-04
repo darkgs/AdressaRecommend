@@ -149,7 +149,12 @@ def main():
 	if test_mode:
 		predictor.load_model()
 		time_start = time.time()
-		hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=20, length_mode=True)
+
+		hit_5, _, mrr_20 = predictor.test_mrr_trendy_history_test(metric_count=20, candidate_count=20, sim_cate=True)
+		print('candi 20 :: hit_5 : {}, mrr_20 : {}'.format(hit_5, mrr_20))
+		return
+
+		hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=20, length_mode=True, sim_cate=True)
 		print('candi 20 :: hit_5 : {}, mrr_20 : {}'.format(hit_5, mrr_20))
 		print('time tooks : {}'.format(time.time() - time_start))
 
@@ -157,7 +162,7 @@ def main():
 
 		for candi_count in [40, 60, 80, 100]:
 			time_start = time.time()
-			hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=candi_count)
+			hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=candi_count, sim_cate=True)
 			print('candi {} :: hit_5 : {}, mrr_20 : {}'.format(candi_count, hit_5, mrr_20))
 			print('time tooks : {}'.format(time.time() - time_start))
 		return

@@ -481,6 +481,137 @@ class AdressaRec(object):
 
 		return test_loss / sampling_count
 
+	def test_mrr_trendy_history_test(self, metric_count=20, candidate_count=20, sim_cate=False):
+		self._model.eval()
+
+		predict_count = 0
+
+		predict_auc = 0.0
+		predict_mrr = 0.0
+		predict_hit = 0
+
+		max_seq_len_data = 19
+
+		data_by_length = []
+		data_by_length_count = []
+		for _ in range(20):
+			data_by_length.append(0.0)
+			data_by_length_count.append(0)
+
+		for i, data in enumerate(self._test_dataloader, 0):
+
+			input_x_s, input_y_s, input_trendy, input_candi, input_cate, input_cate_y, seq_lens, \
+				timestamp_starts, timestamp_ends, _, indices_y, indices_trendy, indices_candi = data
+
+			max_len = torch.max(seq_lens, 0)[0].item()
+			if max_len != max_seq_len_data:
+				continue
+
+			input_x_s = input_x_s.to(self._device)
+			input_y_s = input_y_s.to(self._device)
+			# [batch_size, seq_len, 100, embed_size]]
+			input_trendy = input_trendy.to(self._device)
+			input_cate = input_cate.to(self._device)
+			input_cate_y = input_cate_y.to(self._device)
+			input_candi = input_candi.to(self._device)
+
+			outputs = None
+			attns = None
+
+			valid_count = 0
+			for seq_len in seq_lens.cpu().numpy():
+				if seq_len == max_seq_len_data:
+					valid_count += 1
+
+			input_x_s = input_x_s[:valid_count, :, :]
+			input_trendy = input_trendy[:valid_count, :, :]
+			input_cate = input_cate[:valid_count, :, :]
+			seq_lens = seq_lens[:valid_count]
+			indices_y = indices_y[:valid_count]
+			indices_candi = indices_candi[:valid_count]
+
+			for step in range(max_len):
+#print('===============================')
+				cut = max_len - step
+				input_x_s = input_x_s[:, :cut, :]
+				input_trendy = input_trendy[:, :cut, :]
+				input_cate = input_cate[:, :cut, :]
+
+				indices_y = (np.array(indices_y)[:, :cut]).tolist()
+				indices_candi = (np.array(indices_candi)[:, :cut, :]).tolist()
+#print(input_x_s.shape, input_trendy.shape, input_cate.shape, seq_lens.shape,
+#np.array(indices_y).shape, np.array(indices_candi).shape)
+				if step > 0:
+					seq_lens = seq_lens - 1
+#print(seq_lens)
+				with torch.no_grad():
+					if sim_cate:
+						outputs, cate_pref = self._model.forward_with_cate(input_x_s,
+								input_trendy, input_cate, seq_lens)
+					else:
+						outputs = self._model(input_x_s, input_trendy, input_cate, seq_lens)
+#print(outputs.shape)
+
+				batch_size = seq_lens.size(0)
+				cpu_seq_lens = seq_lens.cpu().numpy()
+
+				for batch in range(batch_size):
+					seq_idx = seq_lens[batch] - 1
+
+					next_idx = indices_y[batch][seq_idx]
+					candidates = indices_candi[batch][seq_idx]
+
+					if next_idx in candidates[:candidate_count]:
+						candidates_cut = candidate_count
+					else:
+						candidates_cut = candidate_count - 1
+
+					scores = 1.0 / torch.mean(((input_candi[batch][seq_idx])[:candidates_cut] - \
+															outputs[batch][seq_idx]) ** 2, dim=1)
+
+					candidates = candidates[:candidates_cut]
+
+					scores = scores.cpu().numpy()
+					if next_idx not in candidates:
+						next_score = 1.0 / np.mean((np.array(self._rnn_input.idx2vec(next_idx)) - \
+															outputs[batch][seq_idx].cpu().numpy()) ** 2)
+						candidates = [next_idx] + candidates
+						scores = np.append(next_score, scores)
+
+					# Naver, additional score as the similarity with category
+					if sim_cate:
+						cate_candi = np.array([self._rnn_input.idx2cate(idx) for idx in candidates])
+						cate_scores = np.dot(cate_candi, np.array(cate_pref[batch][seq_idx]))
+
+						scores += self._args.cate_weight * scores * cate_scores
+
+					top_indices = (np.array(candidates)[list(filter(lambda x: \
+								candidates[x] != self._rnn_input.get_pad_idx(), \
+								scores.argsort()[::-1]))]).tolist()
+
+					hit_index = top_indices.index(next_idx)
+					predict_count += 1
+					if hit_index < 5:
+						predict_hit += 1
+					predict_auc += (candidate_count - 1 - hit_index) / (candidate_count - 1)
+					if hit_index < metric_count:
+						predict_mrr += 1.0 / float(hit_index + 1)
+
+					data_by_length[max_seq_len_data-step] += 1.0 / float(hit_index + 1)
+					data_by_length_count[max_seq_len_data-step] += 1
+#print('===============================')
+
+		length_mode_datas = []
+		for idx in range(len(data_by_length)):
+			if data_by_length_count[idx] > 0:
+				length_mode_datas.append(str(data_by_length[idx] / data_by_length_count[idx]))
+			else:
+				length_mode_datas.append(str(0.0))
+		print('=========length_mode=============')
+		print(','.join(length_mode_datas))
+
+		return ((predict_hit / float(predict_count)), (predict_auc / float(predict_count)), (predict_mrr / float(predict_count))) if predict_count > 0 else (0.0, 0.0, 0.0)
+
 	def test_mrr_trendy(self, metric_count=20, candidate_count=20, max_sampling_count=2000,
 			sim_cate=False, attn_mode=False, length_mode=False):
 		self._model.eval()
@@ -513,6 +644,7 @@ class AdressaRec(object):
 
 			input_x_s, input_y_s, input_trendy, input_candi, input_cate, input_cate_y, seq_lens, \
 				timestamp_starts, timestamp_ends, _, indices_y, indices_trendy, indices_candi = data
+
 			input_x_s = input_x_s.to(self._device)
 			input_y_s = input_y_s.to(self._device)
 			# [batch_size, seq_len, 100, embed_size]]
@@ -523,6 +655,7 @@ class AdressaRec(object):
 
 			outputs = None
 			attns = None
+
 			with torch.no_grad():
 				if sim_cate:
 					outputs, cate_pref = self._model.forward_with_cate(input_x_s,
