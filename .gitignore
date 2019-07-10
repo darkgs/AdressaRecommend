@@ -4,5 +4,5 @@ data
 log.txt
 cache/
 report/
-cache_bak/
+cache_bak_*/
 *.txt

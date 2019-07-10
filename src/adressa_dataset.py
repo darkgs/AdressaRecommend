@@ -490,7 +490,7 @@ class AdressaRec(object):
 		predict_mrr = 0.0
 		predict_hit = 0
 
-		max_seq_len_data = 19
+		max_seq_len_data = 6
 
 		data_by_length = []
 		data_by_length_count = []
