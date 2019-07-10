@@ -17,7 +17,7 @@ DATA_SET=adressa
 
 # mode in [simple, one_week, one_month, three_month]
 MODE=simple
-#MODE=one_week
+MODE=one_week
 #MODE=one_month
 #MODE=three_month
 
@@ -98,6 +98,10 @@ comp_multicell: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$
 	$(info [Makefile] $@)
 	python3 src/comp_multicell.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u $(DATA_BASE_PATH)/article_to_vec.json -w $(BASE_PATH)/multicell
 
+comp_multicell_attn: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_multicell_attn.py
+	$(info [Makefile] $@)
+	python3 src/comp_multicell_attn.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u $(DATA_BASE_PATH)/article_to_vec.json -w $(BASE_PATH)/multicell_attn
+
 comp_multicell_no_dropout: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_multicell_no_dropout.py
 	$(info [Makefile] $@)
 	python3 src/comp_multicell_no_dropout.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u $(DATA_BASE_PATH)/article_to_vec.json -w $(BASE_PATH)/multicell_no_dropout
@@ -150,10 +154,11 @@ stat_rnn_input: $(BASE_PATH)/torch_input src/stat_rnn_input.py
 
 #run: d2v_rnn_torch
 #run: comp_pop
-run: comp_lstm
+#run: comp_lstm
 #run: comp_gru4rec
 #run: comp_lstm_2input
 #run: comp_multicell
+run: comp_multicell_attn
 #run: comp_yahoo
 #run: comp_naver
 #run: comp_yahoo_lstm
