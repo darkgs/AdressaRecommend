@@ -95,7 +95,7 @@ def main():
 	dict_url2vec = load_json(url2vec_path)
 	print('Loading url2vec : end')
 
-	test_mode = True
+	test_mode = False
 	if test_mode:
 		print('test mode')
 

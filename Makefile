@@ -17,7 +17,7 @@ DATA_SET=adressa
 
 # mode in [simple, one_week, one_month, three_month]
 MODE=simple
-MODE=one_week
+#MODE=one_week
 #MODE=one_month
 #MODE=three_month
 
@@ -118,6 +118,10 @@ comp_lstm_2input: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json
 	$(info [Makefile] $@)
 	python3 src/comp_lstm_2input.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u $(DATA_BASE_PATH)/article_to_vec.json -w $(BASE_PATH)/lstm_2input
 
+comp_lstm_double: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_lstm_double.py
+	$(info [Makefile] $@)
+	python3 src/comp_lstm_double.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u $(DATA_BASE_PATH)/article_to_vec.json -w $(BASE_PATH)/lstm_double
+
 comp_gru4rec: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_gru4rec.py
 	$(info [Makefile] $@)
 	python3 src/comp_gru4rec.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u $(DATA_BASE_PATH)/article_to_vec.json -w $(BASE_PATH)/gru4rec
@@ -155,10 +159,11 @@ stat_rnn_input: $(BASE_PATH)/torch_input src/stat_rnn_input.py
 #run: d2v_rnn_torch
 #run: comp_pop
 #run: comp_lstm
+run: comp_lstm_double
 #run: comp_gru4rec
 #run: comp_lstm_2input
 #run: comp_multicell
-run: comp_multicell_attn
+#run: comp_multicell_attn
 #run: comp_yahoo
 #run: comp_naver
 #run: comp_yahoo_lstm
