@@ -71,7 +71,7 @@ def generate_glove_map():
         dict_a2g[word] = word_vector
 
     write_log('GloVe result dump : Start')
-    with option(output_path, 'wb') as f_out:
+    with open(output_path, 'wb') as f_out:
         pickle.dump(dict_a2g, f_out)
     write_log('GloVe result dump : End')
 
