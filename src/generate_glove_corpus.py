@@ -41,7 +41,8 @@ def generate_glove_corpus():
             continue
 
         words = []
-        for sentence in sentence_header + sentence_body:
+        #for sentence in sentence_header + sentence_body:
+        for sentence in sentence_header:
             for word in sentence.split(' '):
                 words.append(word)
 

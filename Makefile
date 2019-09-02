@@ -17,7 +17,7 @@ DATA_SET=adressa
 
 # mode in [simple, one_week, one_month, three_month]
 MODE=simple
-#MODE=one_week
+MODE=one_week
 #MODE=one_month
 #MODE=three_month
 
@@ -75,15 +75,15 @@ $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED): data/glob/articles_embedding
 	$(call asked_delete, $@)
 	python3 src/article_w2v.py -i $(DATA_BASE_PATH)/article_content.json -o $@ -e $(D2V_EMBED) -m cache/d2v_model/d2v_model_$(D2V_EMBED).model -d $(DATA_SET) -g data/glob/articles_embeddings.pickle
 
-$(DATA_BASE_PATH)/article_to_vec_glove.pickle_$(D2V_EMBED): $(DATA_BASE_PATH)/glove_corpus_$(DATA_SET).pickle $(DATA_BASE_PATH)/article_content.json src/article_glove.py
-	$(info [Makefile] $@)
-	$(call asked_delete, $@)
-	python3 src/article_glove.py -i $(DATA_BASE_PATH)/article_content.json -o $@ -e $(D2V_EMBED) -m cache/d2v_model/d2v_model_$(D2V_EMBED).model -d $(DATA_SET) -c $(DATA_BASE_PATH)/glove_corpus_$(DATA_SET).pickle
-
 $(DATA_BASE_PATH)/glove_corpus_$(DATA_SET).pickle: $(DATA_BASE_PATH)/article_content.json src/generate_glove_corpus.py
 	$(info [Makefile] $@)
 	$(call asked_delete, $@)
 	python3 src/generate_glove_corpus.py -i $(DATA_BASE_PATH)/article_content.json -o $@
+
+$(DATA_BASE_PATH)/article_to_vec_glove.pickle_$(D2V_EMBED): $(DATA_BASE_PATH)/glove_corpus_$(DATA_SET).pickle $(DATA_BASE_PATH)/article_content.json src/article_glove.py
+	$(info [Makefile] $@)
+	$(call asked_delete, $@)
+	python3 src/article_glove.py -i $(DATA_BASE_PATH)/article_content.json -o $@ -e $(D2V_EMBED) -m cache/d2v_model/d2v_model_$(D2V_EMBED).model -d $(DATA_SET) -c $(DATA_BASE_PATH)/glove_corpus_$(DATA_SET).pickle
 
 $(BASE_PATH)/torch_input: $(BASE_PATH)/data_for_all src/generate_torch_rnn_input.py
 	$(info [Makefile] $@)
@@ -181,6 +181,6 @@ stat_rnn_input: $(BASE_PATH)/torch_input src/stat_rnn_input.py
 #run: comp_multicell_no_dropout
 #run: comp_multicell_no_attention
 #run: stat_adressa_dataset
-run: $(DATA_BASE_PATH)/article_to_vec_glove.pickle_$(D2V_EMBED)
+run: $(DATA_BASE_PATH)/glove_corpus_$(DATA_SET).pickle
 	$(info run)
 
