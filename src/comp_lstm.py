@@ -33,102 +33,102 @@ parser.add_option('-b', '--num_layers', dest='num_layers', type='int', default=1
 
 
 class SingleLSTMModel(nn.Module):
-	def __init__(self, embed_size, cate_dim, args):
-		super(SingleLSTMModel, self).__init__()
+    def __init__(self, embed_size, cate_dim, args):
+        super(SingleLSTMModel, self).__init__()
 
-		hidden_size = args.hidden_size
-		num_layers = args.num_layers
+        hidden_size = args.hidden_size
+        num_layers = args.num_layers
 
-		self.rnn = nn.LSTM(embed_size, hidden_size, num_layers, batch_first=True)
-		self.linear = nn.Linear(hidden_size, embed_size)
-		self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
+        self.rnn = nn.LSTM(embed_size, hidden_size, num_layers, batch_first=True)
+        self.linear = nn.Linear(hidden_size, embed_size)
+        self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
 
-	def forward(self, x, _, __, seq_lens):
-		batch_size = x.size(0)
-		embed_size = x.size(2)
+    def forward(self, x, _, __, seq_lens):
+        batch_size = x.size(0)
+        embed_size = x.size(2)
 
-		x = pack(x, seq_lens, batch_first=True)
-		outputs, _ = self.rnn(x)
-		outputs, _ = unpack(outputs, batch_first=True)
-		outputs = self.linear(outputs)
+        x = pack(x, seq_lens, batch_first=True)
+        outputs, _ = self.rnn(x)
+        outputs, _ = unpack(outputs, batch_first=True)
+        outputs = self.linear(outputs)
 
-		return outputs
+        return outputs
 
-#		outputs = outputs.view(-1, embed_size)
-#		outputs = self.bn(outputs)
-#		outputs = outputs.view(batch_size, -1, embed_size)
+#        outputs = outputs.view(-1, embed_size)
+#        outputs = self.bn(outputs)
+#        outputs = outputs.view(batch_size, -1, embed_size)
 #
-#		return outputs
+#        return outputs
 
 
 def main():
-	options, args = parser.parse_args()
+    options, args = parser.parse_args()
 
-	if (options.input == None) or (options.d2v_embed == None) or \
-					   (options.u2v_path == None) or (options.ws_path == None):
-		return
+    if (options.input == None) or (options.d2v_embed == None) or \
+                       (options.u2v_path == None) or (options.ws_path == None):
+        return
 
-	torch_input_path = options.input
-	embedding_dimension = int(options.d2v_embed)
-	url2vec_path = '{}_{}'.format(options.u2v_path, embedding_dimension)
-	ws_path = options.ws_path
-	search_mode = options.search_mode
-	model_ws_path = '{}/model/{}'.format(ws_path, option2str(options))
+    torch_input_path = options.input
+    embedding_dimension = int(options.d2v_embed)
+    url2vec_path = '{}_{}'.format(options.u2v_path, embedding_dimension)
+    ws_path = options.ws_path
+    search_mode = options.search_mode
+    model_ws_path = '{}/model/{}'.format(ws_path, option2str(options))
 
-	if not os.path.exists(ws_path):
-		os.system('mkdir -p {}'.format(ws_path))
+    if not os.path.exists(ws_path):
+        os.system('mkdir -p {}'.format(ws_path))
 
 #os.system('rm -rf {}'.format(model_ws_path))
-	os.system('mkdir -p {}'.format(model_ws_path))
+    os.system('mkdir -p {}'.format(model_ws_path))
 
-	# Save best result with param name
-	param_search_path = ws_path + '/param_search'
-	if not os.path.exists(param_search_path):
-		os.system('mkdir -p {}'.format(param_search_path))
-	param_search_file_path = '{}/{}'.format(param_search_path, option2str(options))
+    # Save best result with param name
+    param_search_path = ws_path + '/param_search'
+    if not os.path.exists(param_search_path):
+        os.system('mkdir -p {}'.format(param_search_path))
+    param_search_file_path = '{}/{}'.format(param_search_path, option2str(options))
 
-	if search_mode and os.path.exists(param_search_file_path):
-		print('Param search mode already exist : {}'.format(param_search_file_path))
-		return
+    if search_mode and os.path.exists(param_search_file_path):
+        print('Param search mode already exist : {}'.format(param_search_file_path))
+        return
 
-	print('Loading url2vec : start')
-	dict_url2vec = load_json(url2vec_path)
-	print('Loading url2vec : end')
+    print('Loading url2vec : start')
+    dict_url2vec = load_json(url2vec_path)
+    print('Loading url2vec : end')
 
-	test_mode = False
-	if test_mode:
-		print('test mode')
+    test_mode = False
+    if test_mode:
+        print('test mode')
 
-	predictor = AdressaRec(SingleLSTMModel, ws_path, torch_input_path, dict_url2vec, options)
+    predictor = AdressaRec(SingleLSTMModel, ws_path, torch_input_path, dict_url2vec, options)
 
-	if test_mode:
-		predictor.load_model()
-		time_start = time.time()
-		hit_5, _, mrr_20 = predictor.test_mrr_trendy_history_test(metric_count=20, candidate_count=20)
-		print('hitory_test :: hit_5 : {}, mrr_20 : {}'.format(hit_5, mrr_20))
-		return
+    if test_mode:
+        predictor.load_model()
+        time_start = time.time()
+        hit_5, _, mrr_20 = predictor.test_mrr_trendy_history_test(metric_count=20, candidate_count=20)
+        print('hitory_test :: hit_5 : {}, mrr_20 : {}'.format(hit_5, mrr_20))
+        return
 
-		hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=20, length_mode=True)
-		print('candi 20 :: hit_5 : {}, mrr_20 : {}'.format(hit_5, mrr_20))
-		print('time tooks : {}'.format(time.time() - time_start))
-		return
+        hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=20, length_mode=True)
+        print('candi 20 :: hit_5 : {}, mrr_20 : {}'.format(hit_5, mrr_20))
+        print('time tooks : {}'.format(time.time() - time_start))
+        return
 
-		for candi_count in [40, 60, 80, 100]:
-			time_start = time.time()
-			hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=candi_count)
-			print('candi {} :: hit_5 : {}, mrr_20 : {}'.format(candi_count, hit_5, mrr_20))
-			print('time tooks : {}'.format(time.time() - time_start))
-		return
+        for candi_count in [40, 60, 80, 100]:
+            time_start = time.time()
+            hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=candi_count)
+            print('candi {} :: hit_5 : {}, mrr_20 : {}'.format(candi_count, hit_5, mrr_20))
+            print('time tooks : {}'.format(time.time() - time_start))
+        return
 
-	best_hit_5, best_auc_20, best_mrr_20 = predictor.do_train()
+    best_hit_5, best_auc_20, best_mrr_20 = predictor.do_train()
 
-	if search_mode:
-		with open(param_search_file_path, 'w') as f_out:
-			f_out.write(str(best_hit_5) + '\n')
-			f_out.write(str(best_auc_20) + '\n')
-			f_out.write(str(best_mrr_20) + '\n')
+    if search_mode:
+        with open(param_search_file_path, 'w') as f_out:
+            f_out.write(str(best_hit_5) + '\n')
+            f_out.write(str(best_auc_20) + '\n')
+            f_out.write(str(best_mrr_20) + '\n')
 
 
 if __name__ == '__main__':
-	main()
+    main()
 

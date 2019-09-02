@@ -75,6 +75,16 @@ $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED): data/glob/articles_embedding
 	$(call asked_delete, $@)
 	python3 src/article_w2v.py -i $(DATA_BASE_PATH)/article_content.json -o $@ -e $(D2V_EMBED) -m cache/d2v_model/d2v_model_$(D2V_EMBED).model -d $(DATA_SET) -g data/glob/articles_embeddings.pickle
 
+$(DATA_BASE_PATH)/article_to_vec_glove.pickle_$(D2V_EMBED): $(DATA_BASE_PATH)/glove_corpus_$(DATA_SET).pickle $(DATA_BASE_PATH)/article_content.json src/article_glove.py
+	$(info [Makefile] $@)
+	$(call asked_delete, $@)
+	python3 src/article_glove.py -i $(DATA_BASE_PATH)/article_content.json -o $@ -e $(D2V_EMBED) -m cache/d2v_model/d2v_model_$(D2V_EMBED).model -d $(DATA_SET) -c $(DATA_BASE_PATH)/glove_corpus_$(DATA_SET).pickle
+
+$(DATA_BASE_PATH)/glove_corpus_$(DATA_SET).pickle: $(DATA_BASE_PATH)/article_content.json src/generate_glove_corpus.py
+	$(info [Makefile] $@)
+	$(call asked_delete, $@)
+	python3 src/generate_glove_corpus.py -i $(DATA_BASE_PATH)/article_content.json -o $@
+
 $(BASE_PATH)/torch_input: $(BASE_PATH)/data_for_all src/generate_torch_rnn_input.py
 	$(info [Makefile] $@)
 	$(call asked_delete, $@)
@@ -159,7 +169,7 @@ stat_rnn_input: $(BASE_PATH)/torch_input src/stat_rnn_input.py
 #run: d2v_rnn_torch
 #run: comp_pop
 #run: comp_lstm
-run: comp_lstm_double
+#run: comp_lstm_double
 #run: comp_gru4rec
 #run: comp_lstm_2input
 #run: comp_multicell
@@ -171,5 +181,6 @@ run: comp_lstm_double
 #run: comp_multicell_no_dropout
 #run: comp_multicell_no_attention
 #run: stat_adressa_dataset
+run: $(DATA_BASE_PATH)/article_to_vec_glove.pickle_$(D2V_EMBED)
 	$(info run)
 
