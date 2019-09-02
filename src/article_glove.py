@@ -16,14 +16,12 @@ parser = OptionParser()
 parser.add_option('-i', '--input', dest='input', type='string', default=None)
 parser.add_option('-o', '--output', dest='output', type='string', default=None)
 parser.add_option('-e', '--d2v_embed', dest='d2v_embed', type='string', default='1000')
-parser.add_option('-m', '--model_path', dest='model_path', type='string', default=None)
 parser.add_option('-d', '--dataset', dest='dataset', type='string', default=None)
 parser.add_option('-c', '--corpus_path', dest='corpus_path', type='string', default=None)
 
 article_info_path = None
 output_path = None
 embedding_dimension = None
-model_path = None
 
 
 def write_log(log):
@@ -31,8 +29,7 @@ def write_log(log):
 
 
 def generate_glove_map():
-    global article_info_path, output_path, embedding_dimension, \
-            model_path, corpus_path
+    global article_info_path, output_path, embedding_dimension, corpus_path
 
     write_log('GloVe Load article info : Start')
     with open(article_info_path, 'r') as f_art:
@@ -77,18 +74,16 @@ def generate_glove_map():
 
 def main():
     global article_info_path, output_path, \
-            embedding_dimension, model_path, corpus_path
+            embedding_dimension, corpus_path
 
     options, args = parser.parse_args()
     if (options.output == None) or (options.input == None) or \
-            (options.model_path == None) or (options.dataset == None) or \
-            (options.corpus_path == None):
+            (options.dataset == None) or (options.corpus_path == None):
         return
 
     article_info_path = options.input
     output_path = options.output
     embedding_dimension = int(options.d2v_embed)
-    model_path = options.model_path
     dataset = options.dataset
     corpus_path = options.corpus_path
 

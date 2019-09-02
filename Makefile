@@ -84,7 +84,7 @@ $(DATA_BASE_PATH)/glove_corpus_$(DATA_SET).pickle: $(DATA_BASE_PATH)/article_con
 $(DATA_BASE_PATH)/article_to_vec_glove.pickle_$(D2V_EMBED): $(DATA_BASE_PATH)/glove_corpus_$(DATA_SET).pickle $(DATA_BASE_PATH)/article_content.json src/article_glove.py
 	$(info [Makefile] $@)
 	$(call asked_delete, $@)
-	python3 src/article_glove.py -i $(DATA_BASE_PATH)/article_content.json -o $@ -e $(D2V_EMBED) -m cache/d2v_model/d2v_model_$(D2V_EMBED).model -d $(DATA_SET) -c $(DATA_BASE_PATH)/glove_corpus_$(DATA_SET).pickle
+	python3 src/article_glove.py -i $(DATA_BASE_PATH)/article_content.json -o $@ -e $(D2V_EMBED) -d $(DATA_SET) -c $(DATA_BASE_PATH)/glove_corpus_$(DATA_SET).pickle
 
 $(BASE_PATH)/torch_input: $(BASE_PATH)/data_for_all src/generate_torch_rnn_input.py
 	$(info [Makefile] $@)
@@ -182,6 +182,6 @@ stat_rnn_input: $(BASE_PATH)/torch_input src/stat_rnn_input.py
 #run: comp_multicell_no_dropout
 #run: comp_multicell_no_attention
 #run: stat_adressa_dataset
-run: $(DATA_BASE_PATH)/glove_corpus_$(DATA_SET).pickle
+run: $(DATA_BASE_PATH)/article_to_vec_glove.pickle_$(D2V_EMBED)
 	$(info run)
 
