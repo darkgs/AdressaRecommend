@@ -45,7 +45,8 @@ def generate_glove_map():
         if (sentence_header == None) or (sentence_body == None):
             continue
 
-        for sentence in sentence_header + sentence_body:
+        #for sentence in sentence_header + sentence_body:
+        for sentence in sentence_header:
             for word in sentence.split(' '):
                 words.update([word])
 
@@ -57,7 +58,7 @@ def generate_glove_map():
 
     write_log('GloVe learning : Start')
     glove = Glove(no_components=embedding_dimension, learning_rate=0.05)
-    glove.fit(corpus.matrix, epochs=60, no_threads=30, verbose=True)
+    glove.fit(corpus.matrix, epochs=1, no_threads=4, verbose=True)
     glove.add_dictionary(corpus.dictionary)
     write_log('GloVe learning : End')
 
