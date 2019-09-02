@@ -60,7 +60,7 @@ def generate_glove_map():
 
     write_log('GloVe learning : Start')
     glove = Glove(no_components=embedding_dimension, learning_rate=0.05)
-    glove.fit(corpus.matrix, epochs=30, no_threads=30, verbose=True)
+    glove.fit(corpus.matrix, epochs=60, no_threads=30, verbose=True)
     glove.add_dictionary(corpus.dictionary)
     write_log('GloVe learning : End')
 
