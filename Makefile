@@ -17,13 +17,13 @@ DATA_SET=adressa
 
 # mode in [simple, one_week, one_month, three_month]
 MODE=simple
-MODE=one_week
+#MODE=one_week
 #MODE=one_month
 #MODE=three_month
 
 D2V_EMBED=default
 D2V_EMBED=1000
-D2V_EMBED=300
+#D2V_EMBED=300
 #D2V_EMBED=250
 
 BASE_PATH=cache/$(DATA_SET)/$(MODE)
@@ -85,6 +85,11 @@ $(DATA_BASE_PATH)/article_to_vec_glove.pickle_$(D2V_EMBED): $(DATA_BASE_PATH)/gl
 	$(info [Makefile] $@)
 	$(call asked_delete, $@)
 	python3 src/article_glove.py -i $(DATA_BASE_PATH)/article_content.json -o $@ -e $(D2V_EMBED) -d $(DATA_SET) -c $(DATA_BASE_PATH)/glove_corpus_$(DATA_SET).pickle
+
+$(DATA_BASE_PATH)/url2words_glove_$(D2V_EMBED).pickle: $(DATA_BASE_PATH)/article_to_vec_glove.pickle_$(D2V_EMBED) $(DATA_BASE_PATH)/article_content.json src/generate_url2words.py
+	$(info [Makefile] $@)
+	$(call asked_delete, $@)
+	python3 src/generate_url2words.py -i $(DATA_BASE_PATH)/article_content.json -o $@ -e $(D2V_EMBED) -g $(DATA_BASE_PATH)/article_to_vec_glove.pickle_$(D2V_EMBED)
 
 $(BASE_PATH)/torch_input: $(BASE_PATH)/data_for_all src/generate_torch_rnn_input.py
 	$(info [Makefile] $@)
@@ -159,6 +164,10 @@ comp_naver: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V
 	$(info [Makefile] $@)
 	python3 src/comp_naver.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u $(DATA_BASE_PATH)/article_to_vec.json -c $(BASE_PATH)/article_info.json -w $(BASE_PATH)/naver
 
+comp_npa: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED) $(DATA_BASE_PATH)/url2words_glove_$(D2V_EMBED).pickle
+	$(info [Makefile] $@)
+	python3 src/comp_npa.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u $(DATA_BASE_PATH)/article_to_vec.json -w $(BASE_PATH)/npa -g $(DATA_BASE_PATH)/url2words_glove_$(D2V_EMBED).pickle
+
 stat_adressa_dataset: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED) src/stat_adressa_dataset.py
 	$(info [Makefile] $@)
 	python3 src/stat_adressa_dataset.py -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u $(DATA_BASE_PATH)/article_to_vec.json -w $(BASE_PATH)/stat_adress
@@ -182,6 +191,6 @@ stat_rnn_input: $(BASE_PATH)/torch_input src/stat_rnn_input.py
 #run: comp_multicell_no_dropout
 #run: comp_multicell_no_attention
 #run: stat_adressa_dataset
-run: $(DATA_BASE_PATH)/article_to_vec_glove.pickle_$(D2V_EMBED)
+run: comp_npa
 	$(info run)
 

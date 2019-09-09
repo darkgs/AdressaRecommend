@@ -307,7 +307,7 @@ def main():
     dataset = 'adressa'
     target_name = 'lstm_double'
 
-    parameter_search(dataset, target_name)
+#    parameter_search(dataset, target_name)
     show_result(dataset, target_name)
 
 if __name__ == '__main__':

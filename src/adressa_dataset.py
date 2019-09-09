@@ -28,7 +28,8 @@ class AdressaDataset(Dataset):
         return self._data_len
 
 class AdressaRNNInput(object):
-    def __init__(self, rnn_input_json_path, dict_url2vec, args, dict_yahoo_url2vec=None, dict_url2info=None):
+    def __init__(self, rnn_input_json_path, dict_url2vec, args, \
+            dict_yahoo_url2vec=None, dict_url2info=None, dict_glove=None):
         self._dict_url2vec = dict_url2vec
         self._dict_yahoo_url2vec = dict_yahoo_url2vec
 
@@ -39,6 +40,11 @@ class AdressaRNNInput(object):
         self._recency_count = args.recency_count
 
         self._dataset = {}
+
+        self._dict_glove = dict_glove
+
+        word_dim = len(next(iter(self._dict_glove['word_idx2vec'].values())))
+        self._word_pad_vec = [ np.array([0.0] * word_dim) ]
 
     def get_url2cate(self, dict_url2info, dict_url2vec):
         if dict_url2info == None:
@@ -134,6 +140,9 @@ class AdressaRNNInput(object):
                 candidate_infos = [self.get_mrr_candidates(timestamp, self.get_pad_idx()) \
                                   for timestamp in pad_time_indices]
 
+                if self.is_glove():
+                    [self.idx2words_vec(idx) for idx in pad_indices]
+
 #### fresh candidates mode
 #                candidate_infos = [self.get_mrr_recency_candidates(timestamp, self.get_pad_idx()) \
 #                            for timestamp in pad_time_indices]
@@ -142,7 +151,7 @@ class AdressaRNNInput(object):
                 seq_candi = [[self.idx2vec(idx) for idx, count in candi] \
                             for candi in candidate_infos][1:]
                 idx_candi = [[idx for idx, count in candi] for candi in candidate_infos][1:]
-                
+
                 datas.append(
                     (seq_x, seq_y, seq_cate, seq_cate_y, seq_len, idx_x, idx_y, seq_trendy, idx_trendy, \
                      seq_candi, idx_candi, timestamp_start, timestamp_end)
@@ -157,6 +166,16 @@ class AdressaRNNInput(object):
             return self._dict_url2vec[self._dict_rnn_input['idx2url'][str(idx)]]
         else:
             return self._dict_yahoo_url2vec[self._dict_rnn_input['idx2url'][str(idx)]]
+
+    def is_glove(self):
+        return not (self._dict_glove == None)
+
+    def idx2words_vec(self, idx):
+        url = self._dict_rnn_input['idx2url'][str(idx)]
+        if url == 'url_pad':
+            return self._word_pad_vec
+        word_indices = self._dict_glove['url2word_idx'][url]
+        return [ self._dict_glove['word_idx2vec'][word_idx] for word_idx in word_indices ]
 
     def get_pad_idx(self):
         return self._dict_rnn_input['pad_idx']
@@ -313,7 +332,7 @@ def adressa_collate(batch):
 
 class AdressaRec(object):
     def __init__(self, model_class, ws_path, torch_input_path, \
-            dict_url2vec, args, dict_yahoo_url2vec=None, dict_url2info=None):
+            dict_url2vec, args, dict_yahoo_url2vec=None, dict_url2info=None, dict_glove=None):
         super(AdressaRec, self).__init__()
 
         print("AdressaRec generating ...")
@@ -327,7 +346,8 @@ class AdressaRec(object):
 
         dict_rnn_input_path = '{}/torch_rnn_input.dict'.format(torch_input_path)
         self._rnn_input = AdressaRNNInput(dict_rnn_input_path, dict_url2vec, \
-                args, dict_yahoo_url2vec=dict_yahoo_url2vec, dict_url2info=dict_url2info)
+                args, dict_yahoo_url2vec=dict_yahoo_url2vec, dict_url2info=dict_url2info, \
+                dict_glove=dict_glove)
 
         self._train_dataloader, self._valid_dataloader, self._test_dataloader = \
                                 self.get_dataloader(dict_url2vec)
