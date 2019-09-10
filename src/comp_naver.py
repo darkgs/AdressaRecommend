@@ -35,147 +35,147 @@ parser.add_option('-d', '--decay_rate', dest='decay_rate', type='float', default
 parser.add_option('-y', '--cate_weight', dest='cate_weight', type='float', default=0.7)
 
 class NaverModel(nn.Module):
-	def __init__(self, embed_size, cate_dim, args):
-		super(NaverModel, self).__init__()
+    def __init__(self, embed_size, cate_dim, args):
+        super(NaverModel, self).__init__()
 
-		self._hidden_size = args.hidden_size
-		self._cate_dim = cate_dim
-		self._cate_decay_rate = args.decay_rate
+        self._hidden_size = args.hidden_size
+        self._cate_dim = cate_dim
+        self._cate_decay_rate = args.decay_rate
 
-		self.lstm = nn.LSTMCell(embed_size, self._hidden_size)
-		self.linear = nn.Linear(self._hidden_size+self._cate_dim, embed_size)
+        self.lstm = nn.LSTMCell(embed_size, self._hidden_size)
+        self.linear = nn.Linear(self._hidden_size+self._cate_dim, embed_size)
 #self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
 
-	def get_start_states(self, batch_size, hidden_size):
-		h0 = torch.zeros(batch_size, hidden_size).to(self._device)
-		c_0 = torch.zeros(batch_size, hidden_size).to(self._device)
-		return (h0, c_0)
+    def get_start_states(self, batch_size, hidden_size):
+        h0 = torch.zeros(batch_size, hidden_size).to(self._device)
+        c_0 = torch.zeros(batch_size, hidden_size).to(self._device)
+        return (h0, c_0)
 
-	def to(self, device):
-		ret = super(NaverModel, self).to(device)
+    def to(self, device):
+        ret = super(NaverModel, self).to(device)
 
-		self._device = device
-		return ret
+        self._device = device
+        return ret
 
-	def forward_with_cate(self, x, _, cate, seq_lens):
-		batch_size = x.size(0)
-		max_seq_length = x.size(1)
-		embed_size = x.size(2)
+    def forward_with_cate(self, x, _, cate, seq_lens):
+        batch_size = x.size(0)
+        max_seq_length = x.size(1)
+        embed_size = x.size(2)
 
-		x = pack(x, seq_lens, batch_first=True)
-		cate = pack(cate, seq_lens, batch_first=True)
-		outputs = torch.zeros([max_seq_length, batch_size, self._hidden_size+self._cate_dim])
-		cate_pref = torch.zeros([max_seq_length, batch_size, self._cate_dim])
+        x = pack(x, seq_lens, batch_first=True)
+        cate = pack(cate, seq_lens, batch_first=True)
+        outputs = torch.zeros([max_seq_length, batch_size, self._hidden_size+self._cate_dim])
+        cate_pref = torch.zeros([max_seq_length, batch_size, self._cate_dim])
 
-		cursor = 0
-		sequence_lenths = x.batch_sizes.cpu().numpy()
-		hx, cx = self.get_start_states(batch_size, self._hidden_size)
+        cursor = 0
+        sequence_lenths = x.batch_sizes.cpu().numpy()
+        hx, cx = self.get_start_states(batch_size, self._hidden_size)
 
-		for step in range(sequence_lenths.shape[0]):
-			sequence_lenth = sequence_lenths[step]
+        for step in range(sequence_lenths.shape[0]):
+            sequence_lenth = sequence_lenths[step]
 
-			x_step = x.data[cursor:cursor+sequence_lenth]
-			cate_step = cate.data[cursor:cursor+sequence_lenth]
-			if step > 0:
-				cate_step = prev_cate[:sequence_lenth] * self._cate_decay_rate + \
-							cate_step * (1.0 - self._cate_decay_rate)
+            x_step = x.data[cursor:cursor+sequence_lenth]
+            cate_step = cate.data[cursor:cursor+sequence_lenth]
+            if step > 0:
+                cate_step = prev_cate[:sequence_lenth] * self._cate_decay_rate + \
+                            cate_step * (1.0 - self._cate_decay_rate)
 
-			hx, cx = self.lstm(x_step, (hx[:sequence_lenth], cx[:sequence_lenth]))
-			outputs[step][:sequence_lenth] = torch.cat([hx, cate_step], 1)
-			cate_pref[step][:sequence_lenth] = cate_step
+            hx, cx = self.lstm(x_step, (hx[:sequence_lenth], cx[:sequence_lenth]))
+            outputs[step][:sequence_lenth] = torch.cat([hx, cate_step], 1)
+            cate_pref[step][:sequence_lenth] = cate_step
 
-			cursor += sequence_lenth
-			prev_cate = cate_step
+            cursor += sequence_lenth
+            prev_cate = cate_step
 
-		cate_pref = torch.transpose(cate_pref, 1, 0).to(self._device)
-		outputs = torch.transpose(outputs, 1, 0).to(self._device)
-		outputs = self.linear(outputs)
+        cate_pref = torch.transpose(cate_pref, 1, 0).to(self._device)
+        outputs = torch.transpose(outputs, 1, 0).to(self._device)
+        outputs = self.linear(outputs)
 
-		return outputs, cate_pref
+        return outputs, cate_pref
 
-	def forward(self, x, _, cate, seq_lens):
-		outputs, _ = self.forward_with_cate(x, _, cate, seq_lens)
-		return outputs
+    def forward(self, x, _, cate, seq_lens):
+        outputs, _ = self.forward_with_cate(x, _, cate, seq_lens)
+        return outputs
 
 
 def main():
-	options, args = parser.parse_args()
+    options, args = parser.parse_args()
 
-	if (options.input == None) or (options.d2v_embed == None) or \
-					   (options.u2v_path == None) or (options.u2i_path == None) or \
-					   (options.ws_path == None):
-		return
+    if (options.input == None) or (options.d2v_embed == None) or \
+                       (options.u2v_path == None) or (options.u2i_path == None) or \
+                       (options.ws_path == None):
+        return
 
-	torch_input_path = options.input
-	embedding_dimension = int(options.d2v_embed)
-	url2vec_path = '{}_{}'.format(options.u2v_path, embedding_dimension)
-	url2info_path = options.u2i_path
-	ws_path = options.ws_path
-	search_mode = options.search_mode
-	cate_mrr_mode = options.cate_mrr_mode
-	model_ws_path = '{}/model/{}'.format(ws_path, option2str(options))
+    torch_input_path = options.input
+    embedding_dimension = int(options.d2v_embed)
+    url2vec_path = '{}_{}'.format(options.u2v_path, embedding_dimension)
+    url2info_path = options.u2i_path
+    ws_path = options.ws_path
+    search_mode = options.search_mode
+    cate_mrr_mode = options.cate_mrr_mode
+    model_ws_path = '{}/model/{}'.format(ws_path, option2str(options))
 
-	if not os.path.exists(ws_path):
-		os.system('mkdir -p {}'.format(ws_path))
+    if not os.path.exists(ws_path):
+        os.system('mkdir -p {}'.format(ws_path))
 
 #os.system('rm -rf {}'.format(model_ws_path))
-	os.system('mkdir -p {}'.format(model_ws_path))
+    os.system('mkdir -p {}'.format(model_ws_path))
 
-	# Save best result with param name
-	param_search_path = ws_path + '/param_search'
-	if not os.path.exists(param_search_path):
-		os.system('mkdir -p {}'.format(param_search_path))
-	param_search_file_path = '{}/{}'.format(param_search_path, option2str(options))
+    # Save best result with param name
+    param_search_path = ws_path + '/param_search'
+    if not os.path.exists(param_search_path):
+        os.system('mkdir -p {}'.format(param_search_path))
+    param_search_file_path = '{}/{}'.format(param_search_path, option2str(options))
 
-	if search_mode and os.path.exists(param_search_file_path):
-		print('Param search mode already exist : {}'.format(param_search_file_path))
-		return
+    if search_mode and os.path.exists(param_search_file_path):
+        print('Param search mode already exist : {}'.format(param_search_file_path))
+        return
 
-	print('Loading url2vec : start')
-	dict_url2vec = load_json(url2vec_path)
-	print('Loading url2vec : end')
+    print('Loading url2vec : start')
+    dict_url2vec = load_json(url2vec_path)
+    print('Loading url2vec : end')
 
-	print('Loading url2info : start')
-	dict_url2info = load_json(url2info_path)
-	print('Loading url2info : end')
+    print('Loading url2info : start')
+    dict_url2info = load_json(url2info_path)
+    print('Loading url2info : end')
 
-	test_mode = True
-	if test_mode:
-		print('test mode')
+    test_mode = False
+    if test_mode:
+        print('test mode')
 
-	predictor = AdressaRec(NaverModel, ws_path, torch_input_path, 
-			dict_url2vec, options, dict_url2info=dict_url2info)
+    predictor = AdressaRec(NaverModel, ws_path, torch_input_path, 
+            dict_url2vec, options, dict_url2info=dict_url2info)
 
-	if test_mode:
-		predictor.load_model()
-		time_start = time.time()
+    if test_mode:
+        predictor.load_model()
+        time_start = time.time()
 
-		hit_5, _, mrr_20 = predictor.test_mrr_trendy_history_test(metric_count=20, candidate_count=20, sim_cate=True)
-		print('candi 20 :: hit_5 : {}, mrr_20 : {}'.format(hit_5, mrr_20))
-		return
+        hit_5, _, mrr_20 = predictor.test_mrr_trendy_history_test(metric_count=20, candidate_count=20, sim_cate=True)
+        print('candi 20 :: hit_5 : {}, mrr_20 : {}'.format(hit_5, mrr_20))
+        return
 
-		hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=20, length_mode=True, sim_cate=True)
-		print('candi 20 :: hit_5 : {}, mrr_20 : {}'.format(hit_5, mrr_20))
-		print('time tooks : {}'.format(time.time() - time_start))
+        hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=20, length_mode=True, sim_cate=True)
+        print('candi 20 :: hit_5 : {}, mrr_20 : {}'.format(hit_5, mrr_20))
+        print('time tooks : {}'.format(time.time() - time_start))
 
-		return
+        return
 
-		for candi_count in [40, 60, 80, 100]:
-			time_start = time.time()
-			hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=candi_count, sim_cate=True)
-			print('candi {} :: hit_5 : {}, mrr_20 : {}'.format(candi_count, hit_5, mrr_20))
-			print('time tooks : {}'.format(time.time() - time_start))
-		return
+        for candi_count in [40, 60, 80, 100]:
+            time_start = time.time()
+            hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=candi_count, sim_cate=True)
+            print('candi {} :: hit_5 : {}, mrr_20 : {}'.format(candi_count, hit_5, mrr_20))
+            print('time tooks : {}'.format(time.time() - time_start))
+        return
 
-	best_hit_5, best_auc_20, best_mrr_20 = predictor.do_train()
+    best_hit_5, best_auc_20, best_mrr_20 = predictor.do_train()
 
-	if search_mode:
-		with open(param_search_file_path, 'w') as f_out:
-			f_out.write(str(best_hit_5) + '\n')
-			f_out.write(str(best_auc_20) + '\n')
-			f_out.write(str(best_mrr_20) + '\n')
+    if search_mode:
+        with open(param_search_file_path, 'w') as f_out:
+            f_out.write(str(best_hit_5) + '\n')
+            f_out.write(str(best_auc_20) + '\n')
+            f_out.write(str(best_mrr_20) + '\n')
 
 
 if __name__ == '__main__':
-	main()
+    main()
 

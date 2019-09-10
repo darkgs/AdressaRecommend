@@ -15,6 +15,7 @@ import numpy as np
 from ad_util import load_json
 from ad_util import weights_init
 
+
 class AdressaDataset(Dataset):
     def __init__(self, dict_dataset):
 
@@ -27,42 +28,58 @@ class AdressaDataset(Dataset):
     def __len__(self):
         return self._data_len
 
-class AdressaRNNInput(object):
-    def __init__(self, rnn_input_json_path, dict_url2vec, args, \
-            dict_yahoo_url2vec=None, dict_url2info=None, dict_glove=None):
-        self._dict_url2vec = dict_url2vec
-        self._dict_yahoo_url2vec = dict_yahoo_url2vec
 
-        self._cate_dim, self._dict_url2cate = self.get_url2cate(dict_url2info, dict_url2vec)
+class RecInputCategory(object):
+    def __init__(self, *args, **kwargs):
+        print("RecInputCategory Start")
+        super().__init__(*args, **kwargs)
+        print("RecInputCategory Start 2")
 
-        self._dict_rnn_input = load_json(rnn_input_json_path)
-        self._trendy_count = args.trendy_count
-        self._recency_count = args.recency_count
+        dict_url2vec = kwargs.get('url2vec', {})
+        dict_url2info = kwargs.get('url2info', {})
 
-        self._dataset = {}
+        if (not dict_url2vec) or (not dict_url2info):
+            self._cate_dim = 0
+            self._dict_url2cate = {}
+            print('a')
+            return
 
-        self._dict_glove = dict_glove
+        # cate:string => idx:int
+        dict_cate2idx = self.get_cate2idx(dict_url2info)
 
-        word_dim = len(next(iter(self._dict_glove['word_idx2vec'].values())))
-        self._word_pad_vec = [ np.array([0.0] * word_dim) ]
+        # _cate_dim - dimension of an one-hot vector representing category
+        # _dict_rul2cate - url:string => catevec:one hot vector
+        self._cate_dim, self._dict_url2cate = \
+                self.get_url2cate(dict_url2vec, dict_url2info, dict_cate2idx)
 
-    def get_url2cate(self, dict_url2info, dict_url2vec):
-        if dict_url2info == None:
-            return 0, None
+        print('b'.format(self._cate_dim))
+        print("RecInputCategory End")
 
+    def idx2cate(self, idx):
+        if (self._cate_dim == 0) or (not self._dict_url2cate):
+            return [0.0]
+
+        return self._dict_url2cate[self._dict_rnn_input['idx2url'][str(idx)]]
+
+    def get_cate2idx(self, dict_url2info):
         categories = set([])
 
         for url, dict_info in dict_url2info.items():
-            category = dict_info.get("category0", None)
+            category = dict_info.get('category0', '')
 
-            if category == None:
+            if not category:
                 continue
 
             categories.update([category])
 
         categories = sorted(list(categories))
-        cate_dim = len(categories)
 
+        return {cate:idx for idx, cate in enumerate(categories)}
+
+    def get_url2cate(self, dict_url2vec, dict_url2info, dict_cate2idx):
+        cate_dim = len(dict_cate2idx)
+
+        # pre-allocated one-hot vectors
         cate_one_hots = []
         for i in range(cate_dim):
             cate_one_hot = [0.0] * cate_dim
@@ -79,110 +96,70 @@ class AdressaRNNInput(object):
             if category == None:
                 one_hot_idx = cate_dim
             else:
-                one_hot_idx = categories.index(category)
+                one_hot_idx = dict_cate2idx[category]
 
             dict_url2cate[url] = cate_one_hots[one_hot_idx]
 
         return cate_dim, dict_url2cate
 
-    def idx2cate(self, idx):
-        if self._cate_dim <= 0 or self._dict_url2cate == None:
-            return [0.0]
 
-        return self._dict_url2cate[self._dict_rnn_input['idx2url'][str(idx)]]
+class RecInputWordEmbed(object):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    def get_dataset(self, data_type='test'):
-        if data_type not in ['train', 'valid', 'test']:
-            data_type = 'test'
+        dict_glove = kwargs.get('glove', {})
 
-        trendy_count = self._trendy_count
+        if not dict_glove:
+            return
 
-        max_seq = 20
-        if self._dataset.get(data_type, None) == None:
-            def pad_sequence(sequence, padding):
-                len_diff = max_seq - len(sequence)
+        ##
+        self._dict_glove = dict_glove
 
-                if len_diff < 0:
-                    return sequence[:max_seq]
-                elif len_diff == 0:
-                    return sequence
-
-                padded_sequence = sequence.copy()
-                padded_sequence += [padding] * len_diff
-
-                return padded_sequence
-
-            datas = []
-
-            for timestamp_start, timestamp_end, sequence, time_sequence in \
-                    self._dict_rnn_input['dataset'][data_type]:
-                pad_indices = [idx for idx in pad_sequence(sequence, self.get_pad_idx())]
-                pad_time_indices = [idx for idx in pad_sequence(time_sequence, -1)]
-#                pad_seq = [normalize([self.idx2vec(idx)], norm='l2')[0] for idx in pad_indices]
-                pad_seq = [self.idx2vec(idx) for idx in pad_indices]
-
-                seq_len = min(len(sequence), max_seq) - 1
-                seq_x = pad_seq[:-1]
-                seq_y = pad_seq[1:]
-                seq_cate = [self.idx2cate(idx) for idx in pad_indices][:-1]
-                seq_cate_y = [self.idx2cate(idx) for idx in pad_indices][1:]
-
-                idx_x = pad_indices[:-1]
-                idx_y = pad_indices[1:]
-
-                trendy_infos = [self.get_trendy(timestamp, self.get_pad_idx()) \
-                         for timestamp in pad_time_indices]
-
-                seq_trendy = [[self.idx2vec(idx) for idx, count in trendy] \
-                             for trendy in trendy_infos][1:]
-                idx_trendy = [[idx for idx, count in trendy] for trendy in trendy_infos][1:]
-
-                candidate_infos = [self.get_mrr_candidates(timestamp, self.get_pad_idx()) \
-                                  for timestamp in pad_time_indices]
-
-                if self.is_glove():
-                    [self.idx2words_vec(idx) for idx in pad_indices]
-
-#### fresh candidates mode
-#                candidate_infos = [self.get_mrr_recency_candidates(timestamp, self.get_pad_idx()) \
-#                            for timestamp in pad_time_indices]
-####
-
-                seq_candi = [[self.idx2vec(idx) for idx, count in candi] \
-                            for candi in candidate_infos][1:]
-                idx_candi = [[idx for idx, count in candi] for candi in candidate_infos][1:]
-
-                datas.append(
-                    (seq_x, seq_y, seq_cate, seq_cate_y, seq_len, idx_x, idx_y, seq_trendy, idx_trendy, \
-                     seq_candi, idx_candi, timestamp_start, timestamp_end)
-                )
-
-            self._dataset[data_type] = AdressaDataset(datas)
-
-        return self._dataset[data_type]
-
-    def idx2vec(self, idx):
-        if self._dict_yahoo_url2vec == None:
-            return self._dict_url2vec[self._dict_rnn_input['idx2url'][str(idx)]]
-        else:
-            return self._dict_yahoo_url2vec[self._dict_rnn_input['idx2url'][str(idx)]]
-
-    def is_glove(self):
-        return not (self._dict_glove == None)
+        word_dim = 0
+        if self._dict_glove:
+            word_dim = len(next(iter(self._dict_glove['word_idx2vec'].values())))
+        self._word_pad_vec = [ np.array([0.0] * word_dim) ]
 
     def idx2words_vec(self, idx):
         url = self._dict_rnn_input['idx2url'][str(idx)]
         if url == 'url_pad':
-            return self._word_pad_vec
+            return [self._word_pad_vec]
         word_indices = self._dict_glove['url2word_idx'][url]
         return [ self._dict_glove['word_idx2vec'][word_idx] for word_idx in word_indices ]
 
+
+class RecInput(object):
+    def __init__(self, *args, **kwargs):
+        print("RecInput init : Start")
+        super().__init__(*args, **kwargs)
+
+        dict_url2vec = kwargs.get('url2vec', {})
+        dict_rec_input = kwargs.get('rec_input', {})
+        options = kwargs.get('options', {})
+    
+        assert(dict_rec_input and dict_url2vec)
+
+        self._dict_url2vec = dict_url2vec
+        self._dict_rec_input = dict_rec_input
+
+        self._trendy_count = options.trendy_count
+        self._recency_count = options.recency_count
+
+        print("RecInput init : End")
+
     def get_pad_idx(self):
-        return self._dict_rnn_input['pad_idx']
+        return self._dict_rec_input['pad_idx']
+
+    def idx2vec(self, idx):
+        return self._dict_url2vec[self._dict_rec_input['idx2url'][str(idx)]]
+#        if self._dict_yahoo_url2vec == None:
+#            return self._dict_url2vec[self._dict_rnn_input['idx2url'][str(idx)]]
+#        else:
+#            return self._dict_yahoo_url2vec[self._dict_rnn_input['idx2url'][str(idx)]]
 
     def get_trendy(self, cur_time=-1, padding=0):
-        trendy_list = self._dict_rnn_input['trendy_idx'].get(str(cur_time), None)
-        recency_list = self._dict_rnn_input['recency_idx'].get(str(cur_time), None)
+        trendy_list = self._dict_rec_input['trendy_idx'].get(str(cur_time), None)
+        recency_list = self._dict_rec_input['recency_idx'].get(str(cur_time), None)
 
         x2_list = []
 
@@ -197,10 +174,10 @@ class AdressaRNNInput(object):
 
         return trendy_list[:self._trendy_count] + recency_list[:self._recency_count]
 
-    def get_mrr_candidates(self, cur_time=-1, padding=0):
+    def get_candidates(self, cur_time=-1, padding=0):
         candidates_max = 100
 
-        trendy_list = self._dict_rnn_input['trendy_idx'].get(str(cur_time), None)
+        trendy_list = self._dict_rec_input['trendy_idx'].get(str(cur_time), None)
 
         if trendy_list == None:
             trendy_list = [[padding, 0]] * candidates_max
@@ -214,13 +191,70 @@ class AdressaRNNInput(object):
 
         return trendy_list
 
+    def get_candidates_(self, start_time=-1, end_time=-1, idx_count=0):
+        if (start_time < 0) or (end_time < 0) or (idx_count <= 0):
+            return []
+
+        #    entry of : dict_rec_input['time_idx']
+        #    (timestamp) :
+        #    {
+        #        prev_time: (timestamp)
+        #        next_time: (timestamp)
+        #        'indices': { idx:count, ... }
+        #    }
+
+        # swap if needed
+        if start_time > end_time:
+            tmp_time = start_time
+            start_time = end_time
+            end_time = tmp_time
+
+        cur_time = start_time
+
+        dict_merged = {}
+        while(cur_time < end_time):
+            cur_time = self._dict_rec_input['time_idx'][str(cur_time)]['next_time']
+            for idx, count in self._dict_rec_input['time_idx'][str(cur_time)]['indices'].items():
+                dict_merged[idx] = dict_merged.get(idx, 0) + count
+
+        steps = 0
+        time_from_start = start_time
+        time_from_end = end_time
+        while(len(dict_merged.keys()) < idx_count):
+            if time_from_start == None and time_from_end == None:
+                break
+
+            if steps % 3 == 0:
+                if time_from_end == None:
+                    steps += 1
+                    continue
+                cur_time = self._dict_rec_input['time_idx'][str(time_from_end)]['next_time']
+                time_from_end = cur_time
+            else:
+                if time_from_start == None:
+                    steps += 1
+                    continue
+                cur_time = self._dict_rec_input['time_idx'][str(time_from_start)]['prev_time']
+                time_from_start = cur_time
+
+            if cur_time == None:
+                continue
+
+            for idx, count in self._dict_rec_input['time_idx'][str(cur_time)]['indices'].items():
+                dict_merged[idx] = dict_merged.get(idx, 0) + count
+
+        ret_sorted = sorted(dict_merged.items(), key=lambda x:x[1], reverse=True)
+        if len(ret_sorted) > idx_count:
+            ret_sorted = ret_sorted[:idx_count]
+        return list(map(lambda x: int(x[0]), ret_sorted))
+
     def get_mrr_recency_candidates(self, cur_time=-1, padding=0):
         candidates_max = 100
 
         recency_candidates = []
 
-        trendy_list = self._dict_rnn_input['trendy_idx'].get(str(cur_time), None)
-        recency_list = self._dict_rnn_input['recency_idx'].get(str(cur_time), None)
+        trendy_list = self._dict_rec_input['trendy_idx'].get(str(cur_time), None)
+        recency_list = self._dict_rec_input['recency_idx'].get(str(cur_time), None)
 
         if trendy_list == None:
             trendy_list = []
@@ -246,62 +280,91 @@ class AdressaRNNInput(object):
 
         return recency_candidates
 
-    def get_candidates(self, start_time=-1, end_time=-1, idx_count=0):
-        if (start_time < 0) or (end_time < 0) or (idx_count <= 0):
-            return []
 
-        #    entry of : dict_rnn_input['time_idx']
-        #    (timestamp) :
-        #    {
-        #        prev_time: (timestamp)
-        #        next_time: (timestamp)
-        #        'indices': { idx:count, ... }
-        #    }
+class AdressaRNNInput(RecInputCategory, RecInput):
+    def __init__(self, rec_input_json_path, dict_url2vec, options, \
+            dict_url2info={}, dict_glove={}):
 
-        # swap if needed
-        if start_time > end_time:
-            tmp_time = start_time
-            start_time = end_time
-            end_time = tmp_time
+        # initialize parants
+        super_kwargs = {
+            'rec_input': load_json(rec_input_json_path),
+            'options': options,
+            'url2vec': dict_url2vec,
+            'url2info': dict_url2info,
+        }
 
-        cur_time = start_time
+        super().__init__(**super_kwargs)
 
-        dict_merged = {}
-        while(cur_time < end_time):
-            cur_time = self._dict_rnn_input['time_idx'][str(cur_time)]['next_time']
-            for idx, count in self._dict_rnn_input['time_idx'][str(cur_time)]['indices'].items():
-                dict_merged[idx] = dict_merged.get(idx, 0) + count
+        # datasets will be updated lazily
+        self._dataset = {}
 
-        steps = 0
-        time_from_start = start_time
-        time_from_end = end_time
-        while(len(dict_merged.keys()) < idx_count):
-            if time_from_start == None and time_from_end == None:
-                break
+    def get_dataset(self, data_type='test'):
+        if data_type not in ['train', 'valid', 'test']:
+            data_type = 'test'
 
-            if steps % 3 == 0:
-                if time_from_end == None:
-                    steps += 1
-                    continue
-                cur_time = self._dict_rnn_input['time_idx'][str(time_from_end)]['next_time']
-                time_from_end = cur_time
-            else:
-                if time_from_start == None:
-                    steps += 1
-                    continue
-                cur_time = self._dict_rnn_input['time_idx'][str(time_from_start)]['prev_time']
-                time_from_start = cur_time
+        trendy_count = self._trendy_count
 
-            if cur_time == None:
-                continue
+        max_seq = 20
+        if self._dataset.get(data_type, None) == None:
+            def pad_sequence(sequence, padding):
+                len_diff = max_seq - len(sequence)
 
-            for idx, count in self._dict_rnn_input['time_idx'][str(cur_time)]['indices'].items():
-                dict_merged[idx] = dict_merged.get(idx, 0) + count
+                if len_diff < 0:
+                    return sequence[:max_seq]
+                elif len_diff == 0:
+                    return sequence
 
-        ret_sorted = sorted(dict_merged.items(), key=lambda x:x[1], reverse=True)
-        if len(ret_sorted) > idx_count:
-            ret_sorted = ret_sorted[:idx_count]
-        return list(map(lambda x: int(x[0]), ret_sorted))
+                padded_sequence = sequence.copy()
+                padded_sequence += [padding] * len_diff
+
+                return padded_sequence
+
+            datas = []
+
+            for timestamp_start, timestamp_end, sequence, time_sequence in \
+                    self._dict_rec_input['dataset'][data_type]:
+                pad_indices = [idx for idx in pad_sequence(sequence, self.get_pad_idx())]
+                pad_time_indices = [idx for idx in pad_sequence(time_sequence, -1)]
+#                pad_seq = [normalize([self.idx2vec(idx)], norm='l2')[0] for idx in pad_indices]
+                pad_seq = [self.idx2vec(idx) for idx in pad_indices]
+
+                seq_len = min(len(sequence), max_seq) - 1
+                seq_x = pad_seq[:-1]
+                seq_y = pad_seq[1:]
+                seq_cate = [self.idx2cate(idx) for idx in pad_indices][:-1]
+                seq_cate_y = [self.idx2cate(idx) for idx in pad_indices][1:]
+
+                idx_x = pad_indices[:-1]
+                idx_y = pad_indices[1:]
+
+                trendy_infos = [self.get_trendy(timestamp, self.get_pad_idx()) \
+                         for timestamp in pad_time_indices]
+
+                seq_trendy = [[self.idx2vec(idx) for idx, count in trendy] \
+                             for trendy in trendy_infos][1:]
+                idx_trendy = [[idx for idx, count in trendy] for trendy in trendy_infos][1:]
+
+                candidate_infos = [self.get_candidates(timestamp, self.get_pad_idx()) \
+                                  for timestamp in pad_time_indices]
+
+#### fresh candidates mode
+#                candidate_infos = [self.get_mrr_recency_candidates(timestamp, self.get_pad_idx()) \
+#                            for timestamp in pad_time_indices]
+####
+
+                seq_candi = [[self.idx2vec(idx) for idx, count in candi] \
+                            for candi in candidate_infos][1:]
+                idx_candi = [[idx for idx, count in candi] for candi in candidate_infos][1:]
+
+                datas.append(
+                    (seq_x, seq_y, seq_cate, seq_cate_y, seq_len, idx_x, idx_y, seq_trendy, idx_trendy, \
+                     seq_candi, idx_candi, timestamp_start, timestamp_end)
+                )
+
+            self._dataset[data_type] = AdressaDataset(datas)
+
+        return self._dataset[data_type]
+
 
 
 def adressa_collate_train(batch):
@@ -332,27 +395,27 @@ def adressa_collate(batch):
 
 class AdressaRec(object):
     def __init__(self, model_class, ws_path, torch_input_path, \
-            dict_url2vec, args, dict_yahoo_url2vec=None, dict_url2info=None, dict_glove=None):
+            dict_url2vec, options, dict_url2info=None, dict_glove=None):
         super(AdressaRec, self).__init__()
 
         print("AdressaRec generating ...")
 
         self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self._ws_path = ws_path
-        self._args = args
+        self._options = options
 
         dim_article = len(next(iter(dict_url2vec.values())))
-        learning_rate = args.learning_rate
+        learning_rate = options.learning_rate
 
         dict_rnn_input_path = '{}/torch_rnn_input.dict'.format(torch_input_path)
         self._rnn_input = AdressaRNNInput(dict_rnn_input_path, dict_url2vec, \
-                args, dict_yahoo_url2vec=dict_yahoo_url2vec, dict_url2info=dict_url2info, \
+                options, dict_url2info=dict_url2info, \
                 dict_glove=dict_glove)
 
         self._train_dataloader, self._valid_dataloader, self._test_dataloader = \
                                 self.get_dataloader(dict_url2vec)
 
-        self._model = model_class(dim_article, self._rnn_input._cate_dim, args).to(self._device)
+        self._model = model_class(dim_article, self._rnn_input._cate_dim, options).to(self._device)
         self._model.apply(weights_init)
 
 #self._optimizer = torch.optim.SGD(self._model.parameters(), lr=learning_rate, momentum=0.9)
@@ -390,7 +453,7 @@ class AdressaRec(object):
         best_mrr_20 = -1.0
         best_auc_20 = -1.0
 
-        sim_cate = getattr(self._args, 'cate_mrr_mode', False)
+        sim_cate = getattr(self._options, 'cate_mrr_mode', False)
 
         if start_epoch < total_epoch:
             endure = 0
@@ -422,7 +485,7 @@ class AdressaRec(object):
                     time.time() - start_time))
 
 #if self._args.save_model and best_mrr_20 == mrr_20:
-                if self._args.save_model and valid_loss < best_valid_loss:
+                if self._options.save_model and valid_loss < best_valid_loss:
                     self.save_model(epoch, valid_loss)
                     print('Model saved! - test mrr_20({}) best mrr_20({})'.format(mrr_20, best_mrr_20))
 
@@ -603,7 +666,7 @@ class AdressaRec(object):
                         cate_candi = np.array([self._rnn_input.idx2cate(idx) for idx in candidates])
                         cate_scores = np.dot(cate_candi, np.array(cate_pref[batch][seq_idx]))
 
-                        scores += self._args.cate_weight * scores * cate_scores
+                        scores += self._options.cate_weight * scores * cate_scores
 
                     top_indices = (np.array(candidates)[list(filter(lambda x: \
                                 candidates[x] != self._rnn_input.get_pad_idx(), \
@@ -732,7 +795,7 @@ class AdressaRec(object):
                         cate_candi = np.array([self._rnn_input.idx2cate(idx) for idx in candidates])
                         cate_scores = np.dot(cate_candi, np.array(cate_pref[batch][seq_idx]))
 
-                        scores += self._args.cate_weight * scores * cate_scores
+                        scores += self._options.cate_weight * scores * cate_scores
             
                     top_indices = (np.array(candidates)[list(filter(lambda x: \
                                     candidates[x] != self._rnn_input.get_pad_idx(), \
@@ -740,13 +803,13 @@ class AdressaRec(object):
 
                     if attn_mode:
                         valid_candi_len = len(list(filter(lambda x: x != self._rnn_input.get_pad_idx(), candidates)))
-                        # self._args.trendy_count + self._args.recency_count
+                        # self._options.trendy_count + self._options.recency_count
                         pop_of_next = candidates.index(next_idx)
                         hit_index = top_indices.index(next_idx)
 
                         attn_scores = attns[batch][seq_idx]
-                        popular_score = np.sum(attn_scores[:self._args.trendy_count])
-                        recent_score = np.sum(attn_scores[self._args.trendy_count:])
+                        popular_score = np.sum(attn_scores[:self._options.trendy_count])
+                        recent_score = np.sum(attn_scores[self._options.trendy_count:])
 
                         data_by_attn[pop_of_next] += recent_score
                         data_by_attn_count[pop_of_next] += 1
