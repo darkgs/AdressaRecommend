@@ -29,19 +29,11 @@ class AdressaDataset(Dataset):
         return self._data_len
 
 
-class RecInputCategory(object):
-    def __init__(self, *args, **kwargs):
-        print("RecInputCategory Start")
-        super().__init__(*args, **kwargs)
-        print("RecInputCategory Start 2")
-
-        dict_url2vec = kwargs.get('url2vec', {})
-        dict_url2info = kwargs.get('url2info', {})
-
+class RecInputCategoryMixin(object):
+    def load_category(self, dict_url2vec={}, dict_url2info={}):
         if (not dict_url2vec) or (not dict_url2info):
             self._cate_dim = 0
             self._dict_url2cate = {}
-            print('a')
             return
 
         # cate:string => idx:int
@@ -52,14 +44,12 @@ class RecInputCategory(object):
         self._cate_dim, self._dict_url2cate = \
                 self.get_url2cate(dict_url2vec, dict_url2info, dict_cate2idx)
 
-        print('b'.format(self._cate_dim))
-        print("RecInputCategory End")
-
-    def idx2cate(self, idx):
+    def url2cate(self, url):
         if (self._cate_dim == 0) or (not self._dict_url2cate):
             return [0.0]
 
-        return self._dict_url2cate[self._dict_rnn_input['idx2url'][str(idx)]]
+        return self._dict_url2cate[url]
+        #return self._dict_url2cate[self._dict_rec_input['idx2url'][str(idx)]]
 
     def get_cate2idx(self, dict_url2info):
         categories = set([])
@@ -128,15 +118,8 @@ class RecInputWordEmbed(object):
         return [ self._dict_glove['word_idx2vec'][word_idx] for word_idx in word_indices ]
 
 
-class RecInput(object):
-    def __init__(self, *args, **kwargs):
-        print("RecInput init : Start")
-        super().__init__(*args, **kwargs)
-
-        dict_url2vec = kwargs.get('url2vec', {})
-        dict_rec_input = kwargs.get('rec_input', {})
-        options = kwargs.get('options', {})
-    
+class RecInputMixin(object):
+    def load_rec_input(self, dict_url2vec={}, dict_rec_input={}, options={}):
         assert(dict_rec_input and dict_url2vec)
 
         self._dict_url2vec = dict_url2vec
@@ -145,13 +128,14 @@ class RecInput(object):
         self._trendy_count = options.trendy_count
         self._recency_count = options.recency_count
 
-        print("RecInput init : End")
-
     def get_pad_idx(self):
         return self._dict_rec_input['pad_idx']
 
+    def idx2url(self, idx):
+        return self._dict_rec_input['idx2url'][str(idx)]
+
     def idx2vec(self, idx):
-        return self._dict_url2vec[self._dict_rec_input['idx2url'][str(idx)]]
+        return self._dict_url2vec[self.idx2url(idx)]
 #        if self._dict_yahoo_url2vec == None:
 #            return self._dict_url2vec[self._dict_rnn_input['idx2url'][str(idx)]]
 #        else:
@@ -281,90 +265,89 @@ class RecInput(object):
         return recency_candidates
 
 
-class AdressaRNNInput(RecInputCategory, RecInput):
+class AdressaRNNInput(RecInputCategoryMixin, RecInputMixin):
     def __init__(self, rec_input_json_path, dict_url2vec, options, \
             dict_url2info={}, dict_glove={}):
 
-        # initialize parants
-        super_kwargs = {
-            'rec_input': load_json(rec_input_json_path),
-            'options': options,
-            'url2vec': dict_url2vec,
-            'url2info': dict_url2info,
-        }
+        # initialize mixins
+        self.load_rec_input(dict_url2vec=dict_url2vec,
+                dict_rec_input=load_json(rec_input_json_path), options=options)
 
-        super().__init__(**super_kwargs)
+        self.load_category(dict_url2vec=dict_url2vec,
+                dict_url2info=dict_url2info)
 
         # datasets will be updated lazily
         self._dataset = {}
+
+    def idx2cate(self, idx):
+        return self.url2cate(self.idx2url(idx))
 
     def get_dataset(self, data_type='test'):
         if data_type not in ['train', 'valid', 'test']:
             data_type = 'test'
 
-        trendy_count = self._trendy_count
-
         max_seq = 20
-        if self._dataset.get(data_type, None) == None:
-            def pad_sequence(sequence, padding):
-                len_diff = max_seq - len(sequence)
 
-                if len_diff < 0:
-                    return sequence[:max_seq]
-                elif len_diff == 0:
-                    return sequence
+        if hasattr(self._dataset, data_type):
+            return self._dataset[data_type]
 
-                padded_sequence = sequence.copy()
-                padded_sequence += [padding] * len_diff
+        def pad_sequence(sequence, padding):
+            len_diff = max_seq - len(sequence)
 
-                return padded_sequence
+            if len_diff < 0:
+                return sequence[:max_seq]
+            elif len_diff == 0:
+                return sequence
 
-            datas = []
+            padded_sequence = sequence + [padding] * len_diff
 
-            for timestamp_start, timestamp_end, sequence, time_sequence in \
-                    self._dict_rec_input['dataset'][data_type]:
-                pad_indices = [idx for idx in pad_sequence(sequence, self.get_pad_idx())]
-                pad_time_indices = [idx for idx in pad_sequence(time_sequence, -1)]
+            return padded_sequence
+
+        datas = []
+
+        for timestamp_start, timestamp_end, sequence, time_sequence in \
+                self._dict_rec_input['dataset'][data_type]:
+            pad_indices = [idx for idx in pad_sequence(sequence, self.get_pad_idx())]
+            pad_time_indices = [idx for idx in pad_sequence(time_sequence, -1)]
 #                pad_seq = [normalize([self.idx2vec(idx)], norm='l2')[0] for idx in pad_indices]
-                pad_seq = [self.idx2vec(idx) for idx in pad_indices]
+            pad_seq = [self.idx2vec(idx) for idx in pad_indices]
 
-                seq_len = min(len(sequence), max_seq) - 1
-                seq_x = pad_seq[:-1]
-                seq_y = pad_seq[1:]
-                seq_cate = [self.idx2cate(idx) for idx in pad_indices][:-1]
-                seq_cate_y = [self.idx2cate(idx) for idx in pad_indices][1:]
+            seq_len = min(len(sequence), max_seq) - 1
+            seq_x = pad_seq[:-1]
+            seq_y = pad_seq[1:]
+            seq_cate = [self.idx2cate(idx) for idx in pad_indices][:-1]
+            seq_cate_y = [self.idx2cate(idx) for idx in pad_indices][1:]
 
-                idx_x = pad_indices[:-1]
-                idx_y = pad_indices[1:]
+            idx_x = pad_indices[:-1]
+            idx_y = pad_indices[1:]
 
-                trendy_infos = [self.get_trendy(timestamp, self.get_pad_idx()) \
-                         for timestamp in pad_time_indices]
+            trendy_infos = [self.get_trendy(timestamp, self.get_pad_idx()) \
+                    for timestamp in pad_time_indices]
 
-                seq_trendy = [[self.idx2vec(idx) for idx, count in trendy] \
-                             for trendy in trendy_infos][1:]
-                idx_trendy = [[idx for idx, count in trendy] for trendy in trendy_infos][1:]
+            seq_trendy = [[self.idx2vec(idx) for idx, count in trendy] \
+                    for trendy in trendy_infos][1:]
+            idx_trendy = [[idx for idx, count in trendy] for trendy in trendy_infos][1:]
 
-                candidate_infos = [self.get_candidates(timestamp, self.get_pad_idx()) \
-                                  for timestamp in pad_time_indices]
+            candidate_infos = [self.get_candidates(timestamp, self.get_pad_idx()) \
+                    for timestamp in pad_time_indices]
 
 #### fresh candidates mode
 #                candidate_infos = [self.get_mrr_recency_candidates(timestamp, self.get_pad_idx()) \
 #                            for timestamp in pad_time_indices]
 ####
 
-                seq_candi = [[self.idx2vec(idx) for idx, count in candi] \
-                            for candi in candidate_infos][1:]
-                idx_candi = [[idx for idx, count in candi] for candi in candidate_infos][1:]
+            seq_candi = [[self.idx2vec(idx) for idx, count in candi] \
+                    for candi in candidate_infos][1:]
+            idx_candi = [[idx for idx, count in candi] for candi in candidate_infos][1:]
 
-                datas.append(
-                    (seq_x, seq_y, seq_cate, seq_cate_y, seq_len, idx_x, idx_y, seq_trendy, idx_trendy, \
-                     seq_candi, idx_candi, timestamp_start, timestamp_end)
-                )
+            datas.append(
+                (seq_x, seq_y, seq_cate, seq_cate_y, seq_len, idx_x, idx_y, seq_trendy, idx_trendy, \
+                    seq_candi, idx_candi, timestamp_start, timestamp_end)
+            )
 
-            self._dataset[data_type] = AdressaDataset(datas)
+        self._dataset[data_type] = AdressaDataset(datas)
 
         return self._dataset[data_type]
-
 
 
 def adressa_collate_train(batch):
@@ -469,9 +452,7 @@ class AdressaRec(object):
                         candidate_count=20, sim_cate=sim_cate)
         
                 best_hit_5 = max(best_hit_5, hit_5)
-
                 best_mrr_20 = max(best_mrr_20, mrr_20)
-
                 best_auc_20 = max(best_auc_20, auc_20)
 
                 print('epoch {} - train loss({:.8f}) valid loss({:.8f})\n \
