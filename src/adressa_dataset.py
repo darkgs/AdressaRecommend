@@ -331,11 +331,6 @@ class AdressaRNNInput(RecInputCategoryMixin, RecInputMixin):
             candidate_infos = [self.get_candidates(timestamp, self.get_pad_idx()) \
                     for timestamp in pad_time_indices]
 
-#### fresh candidates mode
-#                candidate_infos = [self.get_mrr_recency_candidates(timestamp, self.get_pad_idx()) \
-#                            for timestamp in pad_time_indices]
-####
-
             seq_candi = [[self.idx2vec(idx) for idx, count in candi] \
                     for candi in candidate_infos][1:]
             idx_candi = [[idx for idx, count in candi] for candi in candidate_infos][1:]
@@ -478,6 +473,12 @@ class AdressaRec(object):
 
         return best_hit_5, best_auc_20, best_mrr_20
 
+    def to_device(self, data):
+        if isinstance(data, torch.Tensor):
+            return data.to(self._device)
+        else:
+            return data
+
     def train(self):
         self._model.train()
         train_loss = 0.0
@@ -486,26 +487,16 @@ class AdressaRec(object):
         for batch_idx, train_input in enumerate(self._train_dataloader):
             input_x_s, input_y_s, input_trendy, input_cate, input_cate_y, seq_lens, \
                 timestamp_starts, timestamp_ends, \
-                indices_x, indices_y, indices_trendy = train_input
-            input_x_s = input_x_s.to(self._device)
-            input_y_s = input_y_s.to(self._device)
-            input_trendy = input_trendy.to(self._device)
-            input_cate = input_cate.to(self._device)
+                indices_x, indices_y, indices_trendy = [self.to_device(input_) for input_ in train_input]
 
             self._model.zero_grad()
             self._optimizer.zero_grad()
-
-#outputs = self._model(input_x_s, input_trendy, seq_lens)
-#unpacked_y_s, _ = unpack(pack(input_y_s, seq_lens, batch_first=True), batch_first=True)
-
-#loss = self._criterion(outputs, unpacked_y_s)
 
             outputs = self._model(input_x_s, input_trendy, input_cate, seq_lens)
             packed_outputs = pack(outputs, seq_lens, batch_first=True).data
             packed_y_s = pack(input_y_s, seq_lens, batch_first=True).data
 
             loss = self._criterion(F.softmax(packed_outputs, dim=1), F.softmax(packed_y_s, dim=1))
-#loss = self._criterion(packed_outputs, packed_y_s)
             loss.backward()
             self._optimizer.step()
 
@@ -521,11 +512,7 @@ class AdressaRec(object):
 
         for batch_idx, test_input in enumerate(self._valid_dataloader):
             input_x_s, input_y_s, input_trendy, input_cate, input_cate_y, seq_lens, \
-                            _, _, _, _, _ = test_input
-            input_x_s = input_x_s.to(self._device)
-            input_y_s = input_y_s.to(self._device)
-            input_trendy = input_trendy.to(self._device)
-            input_cate = input_cate.to(self._device)
+                            _, _, _, _, _ = [self.to_device(i_) for i_ in test_input]
 
             batch_size = input_x_s.shape[0]
 
@@ -565,19 +552,20 @@ class AdressaRec(object):
         for i, data in enumerate(self._test_dataloader, 0):
 
             input_x_s, input_y_s, input_trendy, input_candi, input_cate, input_cate_y, seq_lens, \
-                timestamp_starts, timestamp_ends, _, indices_y, indices_trendy, indices_candi = data
+                timestamp_starts, timestamp_ends, _, indices_y, indices_trendy, indices_candi = \
+                [self.to_device(i_) for i_ in data]
 
             max_len = torch.max(seq_lens, 0)[0].item()
             if max_len != max_seq_len_data:
                 continue
 
-            input_x_s = input_x_s.to(self._device)
-            input_y_s = input_y_s.to(self._device)
-            # [batch_size, seq_len, 100, embed_size]]
-            input_trendy = input_trendy.to(self._device)
-            input_cate = input_cate.to(self._device)
-            input_cate_y = input_cate_y.to(self._device)
-            input_candi = input_candi.to(self._device)
+#            input_x_s = input_x_s.to(self._device)
+#            input_y_s = input_y_s.to(self._device)
+#            # [batch_size, seq_len, 100, embed_size]]
+#            input_trendy = input_trendy.to(self._device)
+#            input_cate = input_cate.to(self._device)
+#            input_cate_y = input_cate_y.to(self._device)
+#            input_candi = input_candi.to(self._device)
 
             outputs = None
             attns = None
@@ -708,7 +696,8 @@ class AdressaRec(object):
 #                continue
 
             input_x_s, input_y_s, input_trendy, input_candi, input_cate, input_cate_y, seq_lens, \
-                timestamp_starts, timestamp_ends, _, indices_y, indices_trendy, indices_candi = data
+                timestamp_starts, timestamp_ends, _, indices_y, indices_trendy, indices_candi = \
+                [self.to_device(i_) for i_ in data]
 
             input_x_s = input_x_s.to(self._device)
             input_y_s = input_y_s.to(self._device)
@@ -851,7 +840,8 @@ class AdressaRec(object):
         for i, data in enumerate(self._test_dataloader, 0):
             input_x_s, input_y_s, input_trendy, input_candi, input_cate, input_cate_y, seq_lens, \
                 timestamp_starts, timestamp_ends, _, \
-                indices_y, indices_trendy, indices_candi = data
+                indices_y, indices_trendy, indices_candi = \
+                [self.to_device(i_) for i_ in data]
 
             valid_count = 0
             for seq_len in seq_lens.cpu().numpy():
@@ -900,7 +890,8 @@ class AdressaRec(object):
         for i, data in enumerate(self._test_dataloader, 0):
             input_x_s, input_y_s, input_trendy, input_candi, input_cate, input_cate_y, seq_lens, \
                 timestamp_starts, timestamp_ends, _, \
-                indices_y, indices_trendy, indices_candi = data
+                indices_y, indices_trendy, indices_candi = \
+                [self.to_device(i_) for i_ in data]
 
             batch_size = seq_lens.size(0)
             seq_lens = seq_lens.cpu().numpy()
