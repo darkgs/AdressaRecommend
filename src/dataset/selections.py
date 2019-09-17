@@ -98,6 +98,7 @@ class SelectRecInput(RecInputMixin):
     def get_dataset(self, data_type):
         return self._dataset[data_type]
 
+
 def selection_collate(batch):
     # [padded_indices, seq_len,
     #   padded_seq_vector,
@@ -190,18 +191,41 @@ class SelectRec(object):
                 print('Early stop!')
                 break
 
-            train_loss = self.train()
+            train_loss, _, _ = self.forward('train')
+            valid_loss, _, _ = self.forward('valid')
+            _, metric_hit, metric_mrr = self.forward('test')
 
-            print('epoch {} - train loss({:.8f})\n \
-                    tooks {:.2f}'.format(epoch, train_loss, time.time() - start_time))
+            print('epoch {} - train loss({:.8f}) valid loss ({:.8f})'
+                    .format(epoch, train_loss, valid_loss))
+            print('hit_5({:.4f}) mrr_20({:.4f}) tooks {:.2f}'
+                    .format(metric_hit, metric_mrr, time.time() - start_time))
 
+            if best_valid_loss > valid_loss:
+                best_valid_loss = valid_loss
+                endure = 0
+            else:
+                endure += 1
 
-    def train(self):
-        self._model.train()
-        train_loss = 0.0
-        batch_count = len(self._dataloader['train'])
+    def forward(self, data_type):
+        assert(data_type in ['train', 'valid', 'test'])
 
-        for batch_idx, batch_input in enumerate(self._dataloader['train']):
+        if data_type == 'train':
+            self._model.train()
+        elif (data_type == 'valid') or (data_type == 'test'):
+            self._model.eval()
+        else:
+            assert('Never Reach Here' and False)
+
+        # loss
+        total_loss = 0.0
+        data_count = len(self._dataloader[data_type].dataset)
+
+        # metric
+        total_hit = 0.0
+        total_mrr = 0.0
+
+        # batch evaluation
+        for batch_idx, batch_input in enumerate(self._dataloader[data_type]):
             input_vector, \
             target_vector, \
             candidate_vector, \
@@ -216,10 +240,47 @@ class SelectRec(object):
             outputs = self._model(input_vector)
             loss = self._criterion(F.softmax(outputs, dim=1), F.softmax(target_vector, dim=1))
 
-            loss.backward()
-            self._optimizer.step()
+            if data_type == 'train':
+                loss.backward()
+                self._optimizer.step()
 
-            train_loss += loss.item()
+            if data_type == 'test':
+                hit, mrr = self.evaluation(5, 20, outputs, target_vector, candidate_vector)
 
-        return train_loss / batch_count
+                total_hit += hit
+                total_mrr += mrr
+
+            total_loss += loss.item()
+
+        return total_loss / data_count, total_hit / data_count, total_mrr / data_count
+
+    def evaluation(self, hit_count, mrr_count, predict, target_vector, candidates, candidate_count=20):
+        # candidates
+        candidates = candidates[:,:candidate_count,:]
+
+        target_vector = torch.unsqueeze(target_vector, dim=1)
+        candidates = torch.cat([candidates, target_vector], dim=1)
+
+        # score
+        scores = torch.squeeze(
+                torch.bmm(candidates, torch.unsqueeze(predict, dim=2)),
+                dim=2)
+        _, indices = torch.sort(scores, dim=1)
+
+        ranks = indices[:,candidate_count].to(dtype=torch.float32)
+
+        # hit
+        hit = torch.where(
+                    ranks < hit_count,
+                    torch.ones(*ranks.shape, dtype=torch.float32).to(self._device),
+                    torch.zeros(*ranks.shape, dtype=torch.float32).to(self._device))
+
+        # mrr
+        mrr = torch.where(
+                    ranks < mrr_count,
+                    1.0 / (ranks + 1.0),
+                    torch.zeros(*ranks.shape, dtype=torch.float32).to(self._device))
+
+        return torch.sum(hit).item(), torch.sum(mrr).item()
+
 
