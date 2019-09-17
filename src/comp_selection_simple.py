@@ -56,35 +56,6 @@ class SimpleAVGModel(nn.Module):
         return step
 
 
-class SingleLSTMModel(nn.Module):
-    def __init__(self, embed_size, cate_dim, args):
-        super(SingleLSTMModel, self).__init__()
-
-        hidden_size = args.hidden_size
-        num_layers = args.num_layers
-
-        self.rnn = nn.LSTM(embed_size, hidden_size, num_layers, batch_first=True)
-        self.linear = nn.Linear(hidden_size, embed_size)
-        self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
-
-    def forward(self, x, _, __, seq_lens):
-        batch_size = x.size(0)
-        embed_size = x.size(2)
-
-        x = pack(x, seq_lens, batch_first=True)
-        outputs, _ = self.rnn(x)
-        outputs, _ = unpack(outputs, batch_first=True)
-        outputs = self.linear(outputs)
-
-        return outputs
-
-#        outputs = outputs.view(-1, embed_size)
-#        outputs = self.bn(outputs)
-#        outputs = outputs.view(batch_size, -1, embed_size)
-#
-#        return outputs
-
-
 def main():
     options, args = parser.parse_args()
 
@@ -99,34 +70,6 @@ def main():
 
     sr = SelectRec(path_rec_input, path_url2vec, SimpleAVGModel, options)
     sr.do_train(total_epoch=1)
-    return
-
-    torch_input_path = options.input
-    embedding_dimension = int(options.d2v_embed)
-    url2vec_path = '{}_{}'.format(options.u2v_path, embedding_dimension)
-    ws_path = options.ws_path
-    search_mode = options.search_mode
-    model_ws_path = '{}/model/{}'.format(ws_path, option2str(options))
-
-    if not os.path.exists(ws_path):
-        os.system('mkdir -p {}'.format(ws_path))
-
-#os.system('rm -rf {}'.format(model_ws_path))
-    os.system('mkdir -p {}'.format(model_ws_path))
-
-    print('Loading url2vec : start')
-    dict_url2vec = load_json(url2vec_path)
-    print('Loading url2vec : end')
-
-    print('Loading glove : start')
-    with open(options.glove, 'rb') as f_glove:
-        dict_glove = pickle.load(f_glove)
-    print('Loading glove : end')
-
-    predictor = AdressaRec(SingleLSTMModel, ws_path, torch_input_path, dict_url2vec, options,
-            dict_glove=dict_glove)
-
-    best_hit_5, best_auc_20, best_mrr_20 = predictor.do_train()
 
 
 if __name__ == '__main__':

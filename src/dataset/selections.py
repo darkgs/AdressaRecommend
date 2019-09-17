@@ -4,6 +4,8 @@ sys.path.append(os.path.abspath(os.path.join(__file__, os.pardir)))
 
 import time
 
+import pickle
+
 import numpy as np
 
 import torch
@@ -12,8 +14,10 @@ import torch.nn.functional as F
 from torch.utils.data.dataset import Dataset  # For custom datasets
 
 from dataset.mixins import RecInputMixin
+from dataset.mixins import WordEmbedMixin
 
 from utils import *
+
 
 class SelectDataset(Dataset):
     def __init__(self, dict_dataset):
@@ -27,7 +31,7 @@ class SelectDataset(Dataset):
         return self._data_len
 
 
-class SelectRecInput(RecInputMixin):
+class SelectRecInput(RecInputMixin, WordEmbedMixin):
     def __init__(self, path_rec_input, path_url2vec, options):
         #
         self._options = options
@@ -40,6 +44,14 @@ class SelectRecInput(RecInputMixin):
 
         # padding
         self._pad_idx = dict_rec_input['pad_idx']
+
+        # load glove: word embedding
+        with open(options.word_embed_path, 'rb') as f_pickle:
+            dict_glove = pickle.load(f_pickle)
+
+        # word_embedding
+        self.load_word_embed_input(dict_url2wi=dict_glove['url2word_idx'],
+                dict_wi2vec=dict_glove['word_idx2vec'], options=options)
 
         # rec_input mixin
         self.load_rec_input(dict_url2vec=dict_url2vec,

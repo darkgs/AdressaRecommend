@@ -141,3 +141,19 @@ class RecInputMixin(object):
             recency_candidates = recency_candidates[:candidates_max]
 
         return recency_candidates
+
+
+class WordEmbedMixin(object):
+    def load_word_embed_input(self, dict_url2wi={}, dict_wi2vec={}, options={}):
+        assert(dict_url2wi and dict_wi2vec)
+
+        self._dict_url2wi = dict_url2wi
+        self._dict_wi2vec = dict_wi2vec
+
+    def url2wi(self, url):
+        return self._dict_url2wi[url]
+
+    def wi2vec(self, word_idx):
+        return self._dict_wi2vec[word_idx]
+
+
