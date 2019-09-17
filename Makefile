@@ -185,12 +185,12 @@ stat_rnn_input: $(BASE_PATH)/torch_input src/stat_rnn_input.py
 #run: comp_multicell
 #run: comp_multicell_attn
 #run: comp_yahoo
-run: comp_naver
+#run: comp_naver
 #run: comp_yahoo_lstm
 #run: stat_rnn_input
 #run: comp_multicell_no_dropout
 #run: comp_multicell_no_attention
 #run: stat_adressa_dataset
-#run: comp_npa
+run: comp_npa
 	$(info run)
 

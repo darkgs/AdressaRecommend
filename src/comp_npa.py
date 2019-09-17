@@ -13,6 +13,7 @@ from torch.nn.utils.rnn import pack_padded_sequence as pack
 from torch.nn.utils.rnn import pad_packed_sequence as unpack
 
 from adressa_dataset import AdressaRec
+from dataset.selections import SelectRec
 
 from ad_util import load_json
 from ad_util import option2str
@@ -31,8 +32,28 @@ parser.add_option('-e', '--d2v_embed', dest='d2v_embed', type='string', default=
 parser.add_option('-l', '--learning_rate', dest='learning_rate', type='float', default=3e-3)
 parser.add_option('-g', '--glove', dest='glove', type='string', default=None)
 
-parser.add_option('-a', '--hidden_size', dest='hidden_size', type='int', default=1280)
-parser.add_option('-b', '--num_layers', dest='num_layers', type='int', default=1)
+parser.add_option('-a', '--word_dim', dest='word_dim', type='int', default=1000)
+parser.add_option('-b', '--num_prev_watch', dest='num_prev_watch', type='int', default=5)
+
+
+class SimpleAVGModel(nn.Module):
+    def __init__(self, options):
+        super(__class__, self).__init__()
+
+        embed_dim = int(options.d2v_embed)
+        num_prev_watch = options.num_prev_watch
+
+        self.mlp = nn.Linear(embed_dim, embed_dim)
+
+    def forward(self, x):
+        # x: [batch, num_prev_watch, embed_size]
+
+        step = x
+        step =torch.mean(step, 1, keepdim=False)
+        step = self.mlp(step)
+
+        # output: [batch, embed_size]
+        return step
 
 
 class SingleLSTMModel(nn.Module):
@@ -72,6 +93,14 @@ def main():
             (options.glove == None):
         return
 
+    path_rec_input = '{}/torch_rnn_input.dict'.format(options.input)
+    embedding_dimension = int(options.d2v_embed)
+    path_url2vec = '{}_{}'.format(options.u2v_path, embedding_dimension)
+
+    sr = SelectRec(path_rec_input, path_url2vec, SimpleAVGModel, options)
+    sr.do_train(total_epoch=1)
+    return
+
     torch_input_path = options.input
     embedding_dimension = int(options.d2v_embed)
     url2vec_path = '{}_{}'.format(options.u2v_path, embedding_dimension)
@@ -85,16 +114,6 @@ def main():
 #os.system('rm -rf {}'.format(model_ws_path))
     os.system('mkdir -p {}'.format(model_ws_path))
 
-    # Save best result with param name
-    param_search_path = ws_path + '/param_search'
-    if not os.path.exists(param_search_path):
-        os.system('mkdir -p {}'.format(param_search_path))
-    param_search_file_path = '{}/{}'.format(param_search_path, option2str(options))
-
-    if search_mode and os.path.exists(param_search_file_path):
-        print('Param search mode already exist : {}'.format(param_search_file_path))
-        return
-
     print('Loading url2vec : start')
     dict_url2vec = load_json(url2vec_path)
     print('Loading url2vec : end')
@@ -104,39 +123,10 @@ def main():
         dict_glove = pickle.load(f_glove)
     print('Loading glove : end')
 
-    test_mode = False
-    if test_mode:
-        print('test mode')
-
     predictor = AdressaRec(SingleLSTMModel, ws_path, torch_input_path, dict_url2vec, options,
             dict_glove=dict_glove)
 
-    if test_mode:
-        predictor.load_model()
-        time_start = time.time()
-        hit_5, _, mrr_20 = predictor.test_mrr_trendy_history_test(metric_count=20, candidate_count=20)
-        print('hitory_test :: hit_5 : {}, mrr_20 : {}'.format(hit_5, mrr_20))
-        return
-
-        hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=20, length_mode=True)
-        print('candi 20 :: hit_5 : {}, mrr_20 : {}'.format(hit_5, mrr_20))
-        print('time tooks : {}'.format(time.time() - time_start))
-        return
-
-        for candi_count in [40, 60, 80, 100]:
-            time_start = time.time()
-            hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=candi_count)
-            print('candi {} :: hit_5 : {}, mrr_20 : {}'.format(candi_count, hit_5, mrr_20))
-            print('time tooks : {}'.format(time.time() - time_start))
-        return
-
     best_hit_5, best_auc_20, best_mrr_20 = predictor.do_train()
-
-    if search_mode:
-        with open(param_search_file_path, 'w') as f_out:
-            f_out.write(str(best_hit_5) + '\n')
-            f_out.write(str(best_auc_20) + '\n')
-            f_out.write(str(best_mrr_20) + '\n')
 
 
 if __name__ == '__main__':
