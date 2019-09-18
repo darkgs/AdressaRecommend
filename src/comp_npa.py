@@ -32,7 +32,7 @@ parser.add_option('-e', '--d2v_embed', dest='d2v_embed', type='string', default=
 parser.add_option('-l', '--learning_rate', dest='learning_rate', type='float', default=3e-3)
 parser.add_option('-g', '--word_embed_path', dest='word_embed_path', type='string', default=None)
 
-parser.add_option('-a', '--word_dim', dest='word_dim', type='int', default=1000)
+parser.add_option('-a', '--num_words', dest='num_words', type='int', default=20)
 parser.add_option('-b', '--num_prev_watch', dest='num_prev_watch', type='int', default=5)
 
 
@@ -45,15 +45,33 @@ class SimpleAVGModel(nn.Module):
 
         self.mlp = nn.Linear(embed_dim, embed_dim)
 
-    def forward(self, x):
-        # x: [batch, num_prev_watch, embed_size]
+    def news_encoder(self, words):
+        step = words
+        step = torch.mean(step, 1, keepdim=False)
 
-        step = x
-        step =torch.mean(step, 1, keepdim=False)
-        step = self.mlp(step)
+        return step
+
+    def forward(self, x, y, z):
+        # x: [batch, num_prev_watch, word_count, word_embed_size]
+        prev_watches = []
+        for i in range(x.shape[1]):
+            prev_watches.append(self.news_encoder(x[:,i,:,:]))
+        prev_watches = torch.stack(prev_watches, dim=1)
+
+        prev_watches = torch.mean(prev_watches, 1, keepdim=False)
+        prev_watches = self.mlp(prev_watches)
+
+        # y: [batch, word_count, word_embed_size]
+        target_embed = self.news_encoder(y)
+
+        # z: [batch, num_candidate, word_count, word_embed_size]
+        candidate_embed = []
+        for i in range(z.shape[1]):
+            candidate_embed.append(self.news_encoder(z[:,i,:,:]))
+        candidate_embed = torch.stack(candidate_embed, dim=1)
 
         # output: [batch, embed_size]
-        return step
+        return prev_watches, target_embed, candidate_embed
 
 
 class SingleLSTMModel(nn.Module):

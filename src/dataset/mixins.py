@@ -1,4 +1,6 @@
 
+import numpy as np
+
 class RecInputMixin(object):
     def load_rec_input(self, dict_url2vec={}, dict_rec_input={}, options={}):
         assert(dict_rec_input and dict_url2vec)
@@ -150,10 +152,32 @@ class WordEmbedMixin(object):
         self._dict_url2wi = dict_url2wi
         self._dict_wi2vec = dict_wi2vec
 
-    def url2wi(self, url):
-        return self._dict_url2wi[url]
+        word_embed_size = len(next(iter(self._dict_wi2vec.values())))
+        self._word_padding = [0.] * word_embed_size
 
-    def wi2vec(self, word_idx):
-        return self._dict_wi2vec[word_idx]
+    def url2wi_vecs(self, url):
+        return np.stack([self._dict_wi2vec[wi] for wi in self._dict_url2wi[url]], axis=0)
+
+    def url2wi_vecs_with_padding(self, url, fixed_size):
+        def pad_words(words, count, padding):
+            diff = count - words.shape[0]
+
+            if diff > 0:
+                np_padding = np.array([padding] * diff)
+                words = np.concatenate([words, np_padding], axis=0)
+
+            return words[:count,:]
+
+        if (url == 'url_pad'):
+            return np.stack([self.get_word_vec_padding()] * fixed_size, axis=0)
+
+        return pad_words(
+                np.stack([self._dict_wi2vec[wi] for wi in self._dict_url2wi[url]], axis=0),
+                fixed_size,
+                self.get_word_vec_padding())
+
+
+    def get_word_vec_padding(self):
+        return self._word_padding
 
 

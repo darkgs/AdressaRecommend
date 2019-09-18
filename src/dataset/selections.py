@@ -90,19 +90,34 @@ class SelectRecInput(RecInputMixin, WordEmbedMixin):
                 input_indices = sequence[i:i+num_prev_watch]
                 target_idx = sequence[i+num_prev_watch]
 
-                input_vector = [self.idx2vec(idx) for idx in input_indices]
-                target_vector = self.idx2vec(target_idx)
+                #input_vector = [self.idx2vec(idx) for idx in input_indices]
+                #target_vector = self.idx2vec(target_idx)
 
                 candidates = self.get_candidates(
                         time_sequence[i+num_prev_watch], self.get_pad_idx())
 
-                candidate_indices = [idx for idx, count in candidates]
-                candidate_vector = [self.idx2vec(idx) for idx, count in candidates]
+                candidate_indices = [idx if idx != target_idx else self.get_pad_idx() \
+                        for idx, count in candidates][:20]
+                #candidate_vector = [self.idx2vec(idx) for idx, count in candidates]
+
+                # Glove embedding of title words
+                word_vectors = np.stack([
+                            self.url2wi_vecs_with_padding(
+                                self.idx2url(idx),
+                                self._options.num_words)
+                        for idx in input_indices], axis=0)
+                target_word_vectors = self.url2wi_vecs_with_padding(
+                        self.idx2url(target_idx),
+                        self._options.num_words)
+
+                candidate_word_vectors = np.stack([
+                            self.url2wi_vecs_with_padding(
+                                self.idx2url(idx),
+                                self._options.num_words)
+                        for idx in candidate_indices], axis=0)
 
                 datas.append(
-                    (input_indices, input_vector,
-                    target_idx, target_vector,
-                    candidate_indices, candidate_vector)
+                    (word_vectors, target_word_vectors, candidate_word_vectors)
                 )
 
         return SelectDataset(datas)
@@ -117,14 +132,16 @@ def selection_collate(batch):
     #   padded_trend_indices, padded_trend_vector,
     #   padded_candidate_indices, padded_candidate_vector]
 
-    input_indices, input_vector, \
-        target_idx, target_vector, \
-        candidate_indices, candidate_vector = zip(*batch)
+#    input_vector, target_vector, candidate_vector, \
+    word_vectors, target_word_vectors, candidate_word_vectors, \
+            = zip(*batch)
 
-    return torch.FloatTensor(input_vector), \
-            torch.FloatTensor(target_vector), \
-            torch.FloatTensor(candidate_vector), \
-            input_indices, target_idx, candidate_indices
+#    return torch.FloatTensor(input_vector), \
+#            torch.FloatTensor(target_vector), \
+#            torch.FloatTensor(candidate_vector), \
+    return torch.FloatTensor(word_vectors), \
+            torch.FloatTensor(target_word_vectors), \
+            torch.FloatTensor(candidate_word_vectors)
 
 
 class SelectRec(object):
@@ -238,26 +255,31 @@ class SelectRec(object):
 
         # batch evaluation
         for batch_idx, batch_input in enumerate(self._dataloader[data_type]):
-            input_vector, \
-            target_vector, \
-            candidate_vector, \
-            input_indices, target_idx, candidate_indices = \
+#            input_vector, \
+#            target_vector, \
+#            candidate_vector, \
+            word_vectors, \
+            target_word_vectors, \
+            candidate_word_vectors = \
                 [self.to_device(input_item) for input_item in batch_input]
 
             self._model.zero_grad()
             self._optimizer.zero_grad()
 
-            input_vector = self.to_device(input_vector)
+            outputs, target_embed, candidate_embed = \
+                    self._model(word_vectors, target_word_vectors, candidate_word_vectors)
 
-            outputs = self._model(input_vector)
-            loss = self._criterion(F.softmax(outputs, dim=1), F.softmax(target_vector, dim=1))
+            # outputs: [47, 300], target_embed: [47, 300], candidate_embed: [47, 100, 300]
+            loss = self.calc_loss(outputs, target_embed, candidate_embed)
+
+            #loss = self._criterion(F.softmax(outputs, dim=1), F.softmax(target_embed, dim=1))
 
             if data_type == 'train':
                 loss.backward()
                 self._optimizer.step()
 
             if data_type == 'test':
-                hit, mrr = self.evaluation(5, 20, outputs, target_vector, candidate_vector)
+                hit, mrr = self.evaluation(5, 20, outputs, target_embed, candidate_embed)
 
                 total_hit += hit
                 total_mrr += mrr
@@ -265,6 +287,22 @@ class SelectRec(object):
             total_loss += loss.item()
 
         return total_loss / data_count, total_hit / data_count, total_mrr / data_count
+
+    def calc_loss(self, predict, target_embed, candidates, negative_sampling=4):
+        candidate_count = candidates.shape[1]
+        neg_permute_indices = np.random.permutation(candidate_count).tolist()
+
+        candidate_samples = candidates[:,neg_permute_indices[:negative_sampling],:]
+
+        # [batch, negative_sampling+1, embed_size]
+        sampling = torch.cat([candidate_samples, torch.unsqueeze(target_embed, dim=1)], dim=1)
+
+        scores = torch.squeeze(torch.bmm(sampling, torch.unsqueeze(predict, dim=2)), dim=2)
+        y = F.softmax(scores, dim=1)
+
+        loss = -1.*torch.sum(torch.log(y[:,-1]))
+
+        return loss
 
     def evaluation(self, hit_count, mrr_count, predict, target_vector, candidates, candidate_count=20):
         # candidates

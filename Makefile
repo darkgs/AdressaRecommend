@@ -17,13 +17,13 @@ DATA_SET=adressa
 
 # mode in [simple, one_week, one_month, three_month]
 MODE=simple
-#MODE=one_week
+MODE=one_week
 #MODE=one_month
 #MODE=three_month
 
 D2V_EMBED=default
 D2V_EMBED=1000
-#D2V_EMBED=300
+D2V_EMBED=300
 #D2V_EMBED=250
 
 BASE_PATH=cache/$(DATA_SET)/$(MODE)
