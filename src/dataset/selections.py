@@ -83,8 +83,8 @@ class SelectRecInput(RecInputMixin, WordEmbedMixin):
             if len(sequence) < (num_prev_watch + 1):
                 continue
 
-            if len(sequence) > (num_prev_watch + 10):
-                sequence = sequence[-(num_prev_watch+10):]
+            if len(sequence) > (num_prev_watch + 1):
+                sequence = sequence[-(num_prev_watch+1):]
 
             for i in range(len(sequence) - num_prev_watch):
                 input_indices = sequence[i:i+num_prev_watch]
@@ -101,20 +101,21 @@ class SelectRecInput(RecInputMixin, WordEmbedMixin):
                 #candidate_vector = [self.idx2vec(idx) for idx, count in candidates]
 
                 # Glove embedding of title words
-                word_vectors = np.stack([
+                word_vectors = [
                             self.url2wi_vecs_with_padding(
                                 self.idx2url(idx),
                                 self._options.num_words)
-                        for idx in input_indices], axis=0)
+                        for idx in input_indices]
+
                 target_word_vectors = self.url2wi_vecs_with_padding(
                         self.idx2url(target_idx),
                         self._options.num_words)
 
-                candidate_word_vectors = np.stack([
+                candidate_word_vectors = [
                             self.url2wi_vecs_with_padding(
                                 self.idx2url(idx),
                                 self._options.num_words)
-                        for idx in candidate_indices], axis=0)
+                        for idx in candidate_indices]
 
                 datas.append(
                     (word_vectors, target_word_vectors, candidate_word_vectors)

@@ -160,22 +160,20 @@ class WordEmbedMixin(object):
 
     def url2wi_vecs_with_padding(self, url, fixed_size):
         def pad_words(words, count, padding):
-            diff = count - words.shape[0]
+            diff = count - len(words)
 
             if diff > 0:
-                np_padding = np.array([padding] * diff)
-                words = np.concatenate([words, np_padding], axis=0)
+                words += [padding] * diff
 
-            return words[:count,:]
+            return words[:count]
 
         if (url == 'url_pad'):
-            return np.stack([self.get_word_vec_padding()] * fixed_size, axis=0)
+            return [self.get_word_vec_padding()] * fixed_size
 
         return pad_words(
-                np.stack([self._dict_wi2vec[wi] for wi in self._dict_url2wi[url]], axis=0),
+                [self._dict_wi2vec[wi] for wi in self._dict_url2wi[url]],
                 fixed_size,
                 self.get_word_vec_padding())
-
 
     def get_word_vec_padding(self):
         return self._word_padding

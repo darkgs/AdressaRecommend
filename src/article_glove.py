@@ -58,14 +58,15 @@ def generate_glove_map():
 
     write_log('GloVe learning : Start')
     glove = Glove(no_components=embedding_dimension, learning_rate=0.05)
-    glove.fit(corpus.matrix, epochs=1, no_threads=4, verbose=True)
+    glove.fit(corpus.matrix, epochs=400, no_threads=4, verbose=True)
     glove.add_dictionary(corpus.dictionary)
     write_log('GloVe learning : End')
 
     dict_a2g = {}
     for word in words:
-        word_vector = np.array(glove.word_vectors[glove.dictionary[word]])
-        assert(word_vector.shape[0] == embedding_dimension)
+        #word_vector = np.array(glove.word_vectors[glove.dictionary[word]])
+        word_vector = glove.word_vectors[glove.dictionary[word]].tolist()
+        assert(len(word_vector) == embedding_dimension)
         dict_a2g[word] = word_vector
 
     write_log('GloVe result dump : Start')

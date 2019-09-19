@@ -45,8 +45,22 @@ class SimpleAVGModel(nn.Module):
 
         self.mlp = nn.Linear(embed_dim, embed_dim)
 
+        self.news_cnn = nn.Conv2d(1, 300, [3, embed_dim], stride=1, padding=[1, 0])
+        self.cnn_relu = nn.ReLU()
+
     def news_encoder(self, words):
         step = words
+
+        ##### cnn layer
+        # step: [batch, num_words, embed_dim]
+        step = torch.unsqueeze(step, dim=1)
+        # step: [batch, 1, num_words, embed_dim]
+        step = self.cnn_relu(self.news_cnn(step))
+        # step: [batch, 300, num_words, 1]
+        step = torch.transpose(torch.squeeze(step, dim=3), 2, 1)
+        # step: [batch, num_words, 300]
+
+        ##### personal attention
         step = torch.mean(step, 1, keepdim=False)
 
         return step
