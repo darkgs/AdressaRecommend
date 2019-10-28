@@ -46,7 +46,7 @@ class NeRTModel(nn.Module):
         self._W_attn = nn.Parameter(torch.zeros([hidden_size, 1], dtype=torch.float32), requires_grad=True)
         self._b_attn = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32), requires_grad=True)
 
-        self._mha = nn.MultiheadAttention(embed_size, 20)
+        self._mha = nn.MultiheadAttention(embed_size, 20 if (embed_size % 20) == 0 else 10)
         self._mlp_mha = nn.Linear(embed_size, hidden_size)
 
         nn.init.xavier_normal_(self._W_attn.data)
