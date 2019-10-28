@@ -37,17 +37,16 @@ class NeRTModel(nn.Module):
         hidden_size = args.hidden_size
         num_layers = args.num_layers
 
-        self.rnn = nn.LSTM(embed_size, hidden_size, num_layers, batch_first=True)
+        self.rnn = nn.LSTM(embed_size, int(hidden_size/2), num_layers, batch_first=True, bidirectional=True)
+        #self.rnn = nn.LSTM(embed_size, hidden_size, num_layers, batch_first=True)
         self.mlp = nn.Linear(hidden_size*2, embed_size)
-        #self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
 
         self._dropout = nn.Dropout(0.3)
 
-        self._W_attn = nn.Parameter(torch.zeros([hidden_size, 1], dtype=torch.float32), requires_grad=True)
-        self._b_attn = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32), requires_grad=True)
+        self._W_attn = nn.Parameter(torch.zeros([hidden_size*2, 1], dtype=torch.float32), requires_grad=True)
+        self._b_attn = nn.Parameter(torch.zeros([1], dtype=torch.float32), requires_grad=True)
 
         self._mha = nn.MultiheadAttention(embed_size, 20 if (embed_size % 20) == 0 else 10)
-        #self._mha = nn.MultiheadAttention(embed_size, 1)
         self._mlp_mha = nn.Linear(embed_size, hidden_size)
 
         nn.init.xavier_normal_(self._W_attn.data)
@@ -82,12 +81,25 @@ class NeRTModel(nn.Module):
 
         sequence_lenths = x1.batch_sizes.cpu().numpy()
         cursor = 0
+        prev_x1s = []
         for step in range(sequence_lenths.shape[0]):
             sequence_lenth = sequence_lenths[step]
 
             x1_step = x1.data[cursor:cursor+sequence_lenth]
             x2_step = x2[cursor:cursor+sequence_lenth]
 
+            prev_x1s.append(x1_step)
+
+            prev_x1s = [prev_x1[:sequence_lenth] for prev_x1 in prev_x1s]
+
+            prev_hs = torch.stack(prev_x1s, dim=1)
+            attn_score = []
+            for prev in range(prev_hs.size(1)):
+                attn_input = torch.cat((prev_hs[:,prev,:], x2_step), dim=1)
+                attn_score.append(torch.matmul(attn_input, self._W_attn) + self._b_attn)
+            attn_score = torch.softmax(torch.stack(attn_score, dim=1), dim=1)
+            x1_step = torch.squeeze(torch.bmm(torch.transpose(attn_score, 1, 2), prev_hs), dim=1)
+            
             x_step = torch.cat((x1_step, x2_step), dim=1)
             x_step = self.mlp(x_step)
 
