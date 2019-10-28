@@ -158,7 +158,7 @@ def main():
     predictor = AdressaRec(SingleLSTMModel, ws_path, torch_input_path, dict_url2vec, options,
             dict_glove=dict_glove)
 
-    best_hit_5, best_auc_20, best_mrr_20 = predictor.do_train()
+    best_hit_5, best_auc_20, best_mrr_20 = predictor.do_train(total_epoch=200)
 
 
 if __name__ == '__main__':

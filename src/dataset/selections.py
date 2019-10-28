@@ -76,15 +76,14 @@ class SelectRecInput(RecInputMixin, WordEmbedMixin):
         num_prev_watch = self._options.num_prev_watch
 
         datas = []
-
         for timestamp_start, timestamp_end, sequence, time_sequence \
                 in dict_raw_dataset[data_type]:
 
             if len(sequence) < (num_prev_watch + 1):
                 continue
 
-            if len(sequence) > (num_prev_watch + 1):
-                sequence = sequence[-(num_prev_watch+1):]
+            if len(sequence) > (num_prev_watch + 6):
+                sequence = sequence[-(num_prev_watch+6):]
 
             for i in range(len(sequence) - num_prev_watch):
                 input_indices = sequence[i:i+num_prev_watch]
