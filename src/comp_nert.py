@@ -47,6 +47,7 @@ class NeRTModel(nn.Module):
         self._b_attn = nn.Parameter(torch.zeros([hidden_size], dtype=torch.float32), requires_grad=True)
 
         self._mha = nn.MultiheadAttention(embed_size, 20 if (embed_size % 20) == 0 else 10)
+        #self._mha = nn.MultiheadAttention(embed_size, 1)
         self._mlp_mha = nn.Linear(embed_size, hidden_size)
 
         nn.init.xavier_normal_(self._W_attn.data)
@@ -62,11 +63,17 @@ class NeRTModel(nn.Module):
                 device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
 
         # x2: [batch_size, seq_len, num_of_temporal, embed_dim]
-        x2 = pack(x2, seq_lens, batch_first=True)
+        x2 = pack(x2, seq_lens, batch_first=True).data
 
-        mha_input = torch.transpose(x2.data, 0, 1)
-        x2, _ = self._mha(mha_input, mha_input, mha_input)
-        x2 = torch.mean(x2, 0, keepdim=False)
+        mha_input = torch.transpose(x2, 0, 1)
+        _, x2_score = self._mha(mha_input, mha_input, mha_input)
+        x2_score = torch.softmax(torch.mean(x2_score, 2, keepdim=False), dim=1)
+        x2_score = torch.unsqueeze(x2_score, dim=1)
+
+        x2 = torch.squeeze(torch.bmm(x2_score, x2), dim=1)
+
+        #x2 = torch.mean(x2, 0, keepdim=False)
+        #x2 = torch.mean(x2.data, 1, keepdim=False)
         x2 = self._mlp_mha(x2)
 
         # sequence embedding
@@ -89,7 +96,7 @@ class NeRTModel(nn.Module):
             cursor += sequence_lenth
 
         outputs = torch.transpose(outputs, 0, 1)
-        outputs = self._dropout(outputs)
+        #outputs = self._dropout(outputs)
 
         return outputs
 
