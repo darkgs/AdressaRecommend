@@ -119,6 +119,12 @@ class RecInputWordEmbed(object):
 
 
 class RecInputMixin(object):
+    def get_article_size(self):
+        return len(self._dict_rec_input['idx2url'])
+
+    def get_user_size(self):
+        return self._dict_rec_input['user_size']
+
     def load_rec_input(self, dict_url2vec={}, dict_rec_input={}, options={}):
         assert(dict_rec_input and dict_url2vec)
 
@@ -305,7 +311,7 @@ class AdressaRNNInput(RecInputCategoryMixin, RecInputMixin):
 
         datas = []
 
-        for timestamp_start, timestamp_end, sequence, time_sequence in \
+        for timestamp_start, timestamp_end, user_ids, sequence, time_sequence in \
                 self._dict_rec_input['dataset'][data_type]:
             pad_indices = [idx for idx in pad_sequence(sequence, self.get_pad_idx())]
             pad_time_indices = [idx for idx in pad_sequence(time_sequence, -1)]
@@ -337,7 +343,7 @@ class AdressaRNNInput(RecInputCategoryMixin, RecInputMixin):
 
             datas.append(
                 (seq_x, seq_y, seq_cate, seq_cate_y, seq_len, idx_x, idx_y, seq_trendy, idx_trendy, \
-                    seq_candi, idx_candi, timestamp_start, timestamp_end)
+                    seq_candi, idx_candi, timestamp_start, timestamp_end, user_ids)
             )
 
         self._dataset[data_type] = AdressaDataset(datas)
@@ -349,13 +355,14 @@ def adressa_collate_train(batch):
     batch.sort(key=lambda x: x[4], reverse=True)
 
     seq_x, seq_y, seq_cate, seq_cate_y, seq_len, x_indices, y_indices, seq_trendy, \
-        trendy_indices, _, _, \
-        timestamp_starts,timestamp_ends = zip(*batch)
+        trendy_indices, seq_candi, candi_indices, \
+        timestamp_starts, timestamp_ends, user_ids = zip(*batch)
 
     return torch.FloatTensor(seq_x), torch.FloatTensor(seq_y), torch.FloatTensor(seq_trendy), \
         torch.FloatTensor(seq_cate), torch.FloatTensor(seq_cate_y), torch.IntTensor(seq_len), \
         timestamp_starts, timestamp_ends, \
-        x_indices, y_indices, trendy_indices
+        x_indices, y_indices, trendy_indices, \
+        torch.LongTensor(user_ids), torch.LongTensor(x_indices)
 
 
 def adressa_collate(batch):
@@ -363,12 +370,13 @@ def adressa_collate(batch):
 
     seq_x, seq_y, seq_cate, seq_cate_y, seq_len, x_indices, y_indices, seq_trendy, \
         trendy_indices, seq_candi, candi_indices, \
-        timestamp_starts,timestamp_ends = zip(*batch)
+        timestamp_starts, timestamp_ends, user_ids = zip(*batch)
 
     return torch.FloatTensor(seq_x), torch.FloatTensor(seq_y), torch.FloatTensor(seq_trendy), \
         torch.FloatTensor(seq_candi), torch.FloatTensor(seq_cate), torch.FloatTensor(seq_cate_y), \
         torch.IntTensor(seq_len), timestamp_starts, timestamp_ends, \
-        x_indices, y_indices, trendy_indices, candi_indices
+        x_indices, y_indices, trendy_indices, candi_indices, \
+        torch.LongTensor(user_ids), torch.LongTensor(x_indices)
 
 
 class AdressaRec(object):
@@ -392,6 +400,11 @@ class AdressaRec(object):
 
         self._train_dataloader, self._valid_dataloader, self._test_dataloader = \
                                 self.get_dataloader(dict_url2vec)
+
+        # pass size of users, articles for HRAM
+        setattr(options, 'user_size', self._rnn_input.get_user_size())
+        setattr(options, 'article_size', self._rnn_input.get_article_size())
+        setattr(options, 'article_pad_idx', self._rnn_input.get_pad_idx())
 
         self._model = model_class(dim_article, self._rnn_input._cate_dim, options).to(self._device)
         self._model.apply(weights_init)
@@ -487,12 +500,13 @@ class AdressaRec(object):
         for batch_idx, train_input in enumerate(self._train_dataloader):
             input_x_s, input_y_s, input_trendy, input_cate, input_cate_y, seq_lens, \
                 timestamp_starts, timestamp_ends, \
-                indices_x, indices_y, indices_trendy = [self.to_device(input_) for input_ in train_input]
+                indices_x, indices_y, indices_trendy, user_ids, article_ids \
+                = [self.to_device(input_) for input_ in train_input]
 
             self._model.zero_grad()
             self._optimizer.zero_grad()
 
-            outputs = self._model(input_x_s, input_trendy, input_cate, seq_lens)
+            outputs = self._model(input_x_s, input_trendy, input_cate, seq_lens, user_ids, article_ids)
             packed_outputs = pack(outputs, seq_lens, batch_first=True).data
             packed_y_s = pack(input_y_s, seq_lens, batch_first=True).data
 
@@ -512,7 +526,7 @@ class AdressaRec(object):
 
         for batch_idx, test_input in enumerate(self._valid_dataloader):
             input_x_s, input_y_s, input_trendy, input_cate, input_cate_y, seq_lens, \
-                            _, _, _, _, _ = [self.to_device(i_) for i_ in test_input]
+                            _, _, _, _, _, user_ids, article_ids = [self.to_device(i_) for i_ in test_input]
 
             batch_size = input_x_s.shape[0]
 
@@ -520,7 +534,7 @@ class AdressaRec(object):
 #unpacked_y_s, _ = unpack(pack(input_y_s, seq_lens, batch_first=True), batch_first=True)
 #loss = self._criterion(outputs, unpacked_y_s)
 
-            outputs = self._model(input_x_s, input_trendy, input_cate, seq_lens)
+            outputs = self._model(input_x_s, input_trendy, input_cate, seq_lens, user_ids, article_ids)
             packed_outputs = pack(outputs, seq_lens, batch_first=True).data
             packed_y_s = pack(input_y_s, seq_lens, batch_first=True).data
 
@@ -552,7 +566,8 @@ class AdressaRec(object):
         for i, data in enumerate(self._test_dataloader, 0):
 
             input_x_s, input_y_s, input_trendy, input_candi, input_cate, input_cate_y, seq_lens, \
-                timestamp_starts, timestamp_ends, _, indices_y, indices_trendy, indices_candi = \
+                timestamp_starts, timestamp_ends, _, indices_y, \
+                indices_trendy, indices_candi, user_ids, article_ids = \
                 [self.to_device(i_) for i_ in data]
 
             max_len = torch.max(seq_lens, 0)[0].item()
@@ -696,7 +711,8 @@ class AdressaRec(object):
 #                continue
 
             input_x_s, input_y_s, input_trendy, input_candi, input_cate, input_cate_y, seq_lens, \
-                timestamp_starts, timestamp_ends, _, indices_y, indices_trendy, indices_candi = \
+                timestamp_starts, timestamp_ends, _, indices_y, \
+                indices_trendy, indices_candi, user_ids, article_ids = \
                 [self.to_device(i_) for i_ in data]
 
             input_x_s = input_x_s.to(self._device)
@@ -706,6 +722,8 @@ class AdressaRec(object):
             input_cate = input_cate.to(self._device)
             input_cate_y = input_cate_y.to(self._device)
             input_candi = input_candi.to(self._device)
+            user_ids = user_ids.to(self._device)
+            article_ids = article_ids.to(self._device)
 
             outputs = None
             attns = None
@@ -713,12 +731,14 @@ class AdressaRec(object):
             with torch.no_grad():
                 if sim_cate:
                     outputs, cate_pref = self._model.forward_with_cate(input_x_s,
-                            input_trendy, input_cate, seq_lens)
+                            input_trendy, input_cate, seq_lens, user_ids, article_ids)
                 elif attn_mode:
-                    outputs, attns = self._model(input_x_s, input_trendy, input_cate, seq_lens, attn_mode=True)
+                    outputs, attns = self._model(input_x_s, input_trendy, input_cate,
+                            seq_lens, user_ids, article_ids, attn_mode=True)
                     attns = attns.cpu().numpy()
                 else:
-                    outputs = self._model(input_x_s, input_trendy, input_cate, seq_lens)
+                    outputs = self._model(input_x_s, input_trendy, input_cate,
+                            seq_lens, user_ids, article_ids)
 
             batch_size = seq_lens.size(0)
             seq_lens = seq_lens.cpu().numpy()
@@ -840,7 +860,7 @@ class AdressaRec(object):
         for i, data in enumerate(self._test_dataloader, 0):
             input_x_s, input_y_s, input_trendy, input_candi, input_cate, input_cate_y, seq_lens, \
                 timestamp_starts, timestamp_ends, _, \
-                indices_y, indices_trendy, indices_candi = \
+                indices_y, indices_trendy, indices_candi, user_ids, article_ids = \
                 [self.to_device(i_) for i_ in data]
 
             valid_count = 0
@@ -890,7 +910,7 @@ class AdressaRec(object):
         for i, data in enumerate(self._test_dataloader, 0):
             input_x_s, input_y_s, input_trendy, input_candi, input_cate, input_cate_y, seq_lens, \
                 timestamp_starts, timestamp_ends, _, \
-                indices_y, indices_trendy, indices_candi = \
+                indices_y, indices_trendy, indices_candi, user_ids, article_ids = \
                 [self.to_device(i_) for i_ in data]
 
             batch_size = seq_lens.size(0)

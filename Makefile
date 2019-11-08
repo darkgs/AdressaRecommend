@@ -19,7 +19,7 @@ DATA_SET=adressa
 MODE=simple
 #MODE=one_week
 #MODE=one_month
-#MODE=three_month
+MODE=three_month
 
 D2V_EMBED=default
 D2V_EMBED=1000
@@ -51,10 +51,10 @@ data/contentdata:
 data/glob/articles_embeddings.pickle:
 	$(info [Makefile] $@)
 
-$(DATA_BASE_PATH)/article_content.json: data/glob/articles_embeddings.pickle src/extract_article_content.py
+$(DATA_BASE_PATH)/article_content.json: data/contentdata data/glob/articles_embeddings.pickle src/extract_article_content.py
 	$(info [Makefile] $@)
 	$(call asked_delete, $@)
-	python3 src/extract_article_content.py -o $@ -d $(DATA_SET) -g data/glob/articles_embeddings.pickle
+	python3 src/extract_article_content.py -o $@ -d $(DATA_SET) -g data/glob/articles_embeddings.pickle -a data/contentdata
 
 $(BASE_PATH)/data_per_day: $(ADRESSA_DATAS) $(GLOB_DATAS) src/raw_to_per_day.py
 	$(info [Makefile] $@)
@@ -113,6 +113,10 @@ comp_pop: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_E
 comp_nert: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_nert.py
 	$(info [Makefile] $@)
 	python3 src/comp_nert.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u $(DATA_BASE_PATH)/article_to_vec.json -w $(BASE_PATH)/nert
+
+comp_hram: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_hram.py
+	$(info [Makefile] $@)
+	python3 src/comp_hram.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u $(DATA_BASE_PATH)/article_to_vec.json -w $(BASE_PATH)/hram
 
 comp_multicell: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_multicell.py
 	$(info [Makefile] $@)
@@ -196,6 +200,8 @@ stat_rnn_input: $(BASE_PATH)/torch_input src/stat_rnn_input.py
 #run: comp_multicell_no_attention
 #run: stat_adressa_dataset
 #run: comp_npa
-run: comp_nert
+#run: comp_nert
+run: comp_hram
+#run: $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED)
 	$(info run)
 

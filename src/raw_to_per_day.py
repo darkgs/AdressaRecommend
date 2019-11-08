@@ -9,6 +9,7 @@ from multiprocessing.pool import ThreadPool
 
 from ad_util import write_log
 from ad_util import get_files_under_path
+from ad_util import find_best_url
 
 parser = OptionParser()
 parser.add_option('-m', '--mode', dest='mode', type='string', default=None)
@@ -20,35 +21,6 @@ out_dir = None
 data_path = None
 
 dict_url2id = {}
-
-def find_best_url(event_dict=None):
-    if event_dict == None:
-        return None
-
-    url_keys = ['url', 'cannonicalUrl', 'referrerUrl']
-    black_list = ['http://google.no', 'http://facebook.com', 'http://adressa.no/search']
-
-    best_url = None
-    for key in url_keys:
-        url = event_dict.get(key, None)
-        if url == None:
-            continue
-
-        if url.count('/') < 3:
-            continue
-
-        black_url = False
-        for black in black_list:
-            if url.startswith(black):
-                black_url = True
-                break
-        if black_url:
-            continue
-
-        if (best_url == None) or (len(best_url) < len(url)):
-            best_url = url
-
-    return best_url
 
 def raw_to_per_day(raw_path):
     global out_dir, dict_url2id

@@ -21,39 +21,47 @@ parser.add_option('-w', '--ws_path', dest='ws_path', type='string', default=None
 parser.add_option('-s', action="store_true", dest='save_model', default=False)
 parser.add_option('-z', action="store_true", dest='search_mode', default=False)
 
-parser.add_option('-t', '--trendy_count', dest='trendy_count', type='int', default=5)
-parser.add_option('-r', '--recency_count', dest='recency_count', type='int', default=3)
+parser.add_option('-t', '--trendy_count', dest='trendy_count', type='int', default=1)
+parser.add_option('-r', '--recency_count', dest='recency_count', type='int', default=1)
 
 parser.add_option('-e', '--d2v_embed', dest='d2v_embed', type='string', default='1000')
 parser.add_option('-l', '--learning_rate', dest='learning_rate', type='float', default=3e-3)
 parser.add_option('-a', '--hidden_size', dest='hidden_size', type='int', default=1024)
 parser.add_option('-b', '--num_layers', dest='num_layers', type='int', default=1)
+parser.add_option('-c', '--embedding_dim', dest='embedding_dim', type='int', default=300)
 
 
-class NeRTModel(nn.Module):
+class HRAMModel(nn.Module):
     def __init__(self, embed_size, cate_dim, args):
-        super(NeRTModel, self).__init__()
+        super(HRAMModel, self).__init__()
 
         hidden_size = args.hidden_size
         num_layers = args.num_layers
 
-        self.rnn = nn.LSTM(embed_size, int(hidden_size/2), num_layers, batch_first=True, bidirectional=True)
-        #self.rnn = nn.LSTM(embed_size, hidden_size, num_layers, batch_first=True)
-        self.mlp = nn.Linear(hidden_size*2, embed_size)
+        user_size = args.user_size
+        article_size = args.article_size
+        article_pad_idx = args.article_pad_idx
 
-        self._dropout = nn.Dropout(0.3)
+        assert((hidden_size % 2 == 0) and 'rnn hidden should be divisible by 2')
 
-        self._W_attn = nn.Parameter(torch.zeros([hidden_size*2, 1], dtype=torch.float32), requires_grad=True)
-        self._b_attn = nn.Parameter(torch.zeros([1], dtype=torch.float32), requires_grad=True)
+        self.rnn = nn.LSTM(embed_size, int(hidden_size/2), num_layers, 
+                batch_first=True, bidirectional=True)
+        self.rnn_mlp = nn.Linear(hidden_size, embed_size)
 
-        self._mha = nn.MultiheadAttention(embed_size, 20 if (embed_size % 20) == 0 else 10)
-        self._mlp_mha = nn.Linear(embed_size, hidden_size)
+        self.embed_user = nn.Embedding(user_size, args.embedding_dim)
+        self.embed_article = nn.Embedding(article_size, args.embedding_dim, padding_idx = article_pad_idx)
 
-        nn.init.xavier_normal_(self._W_attn.data)
+        #self._W_attn = nn.Parameter(torch.zeros([hidden_size*2, 1], dtype=torch.float32), requires_grad=True)
+        #self._b_attn = nn.Parameter(torch.zeros([1], dtype=torch.float32), requires_grad=True)
+
+        #self._mha = nn.MultiheadAttention(embed_size, 20 if (embed_size % 20) == 0 else 10)
+        #self._mlp_mha = nn.Linear(embed_size, hidden_size)
+
+        #nn.init.xavier_normal_(self._W_attn.data)
 
         self._rnn_hidden_size = hidden_size
 
-    def forward(self, x1, x2, __, seq_lens, _):
+    def forward(self, x1, _, y, seq_lens, user_ids, article_ids):
         batch_size = x1.size(0)
         max_seq_length = x1.size(1)
         embed_size = x1.size(2)
@@ -61,19 +69,9 @@ class NeRTModel(nn.Module):
         outputs = torch.zeros([max_seq_length, batch_size, embed_size],
                 device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
 
-        # x2: [batch_size, seq_len, num_of_temporal, embed_dim]
-        x2 = pack(x2, seq_lens, batch_first=True).data
-
-        mha_input = torch.transpose(x2, 0, 1)
-        _, x2_score = self._mha(mha_input, mha_input, mha_input)
-        x2_score = torch.softmax(torch.mean(x2_score, 2, keepdim=False), dim=1)
-        x2_score = torch.unsqueeze(x2_score, dim=1)
-
-        x2 = torch.squeeze(torch.bmm(x2_score, x2), dim=1)
-
-        #x2 = torch.mean(x2, 0, keepdim=False)
-        #x2 = torch.mean(x2.data, 1, keepdim=False)
-        x2 = self._mlp_mha(x2)
+        # user embedding
+        print('user embed', user_ids.shape, self.embed_user(user_ids).shape)
+        print('article embed', article_ids.shape, self.embed_article(article_ids).shape)
 
         # sequence embedding
         x1 = pack(x1, seq_lens, batch_first=True)
@@ -86,7 +84,9 @@ class NeRTModel(nn.Module):
             sequence_lenth = sequence_lenths[step]
 
             x1_step = x1.data[cursor:cursor+sequence_lenth]
-            x2_step = x2[cursor:cursor+sequence_lenth]
+            x_step = self.rnn_mlp(x1_step)
+            outputs[step][:sequence_lenth] = x_step
+            continue
 
             prev_x1s.append(x1_step)
 
@@ -108,7 +108,6 @@ class NeRTModel(nn.Module):
             cursor += sequence_lenth
 
         outputs = torch.transpose(outputs, 0, 1)
-        #outputs = self._dropout(outputs)
 
         return outputs
 
@@ -147,31 +146,7 @@ def main():
     dict_url2vec = load_json(url2vec_path)
     print('Loading url2vec : end')
 
-    attn_analysis = False
-    if attn_analysis:
-        print('test mode')
-
-    predictor = AdressaRec(NeRTModel, model_ws_path, torch_input_path, dict_url2vec, options)
-
-    if attn_analysis:
-        predictor.load_model()
-        time_start = time.time()
-        hit_5, _, mrr_20 = predictor.test_mrr_trendy_history_test(metric_count=20, candidate_count=20)
-        print('hitory_test :: hit_5 : {}, mrr_20 : {}'.format(hit_5, mrr_20))
-        return
-
-        hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=20,
-                attn_mode=True, length_mode=True)
-        print('candi 20 :: hit_5 : {}, mrr_20 : {}'.format(hit_5, mrr_20))
-        print('time tooks : {}'.format(time.time() - time_start))
-        return
-
-        for candi_count in [40, 60, 80, 100]:
-            time_start = time.time()
-            hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=candi_count)
-            print('candi {} :: hit_5 : {}, mrr_20 : {}'.format(candi_count, hit_5, mrr_20))
-            print('time tooks : {}'.format(time.time() - time_start))
-        return
+    predictor = AdressaRec(HRAMModel, model_ws_path, torch_input_path, dict_url2vec, options)
 
     best_hit_5, best_auc_20, best_mrr_20 = predictor.do_train()
 

@@ -8,6 +8,35 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+def find_best_url(event_dict=None):
+    if event_dict == None:
+        return None
+
+    url_keys = ['url', 'cannonicalUrl', 'referrerUrl']
+    black_list = ['http://google.no', 'http://facebook.com', 'http://adressa.no/search']
+
+    best_url = None
+    for key in url_keys:
+        url = event_dict.get(key, None)
+        if url == None:
+            continue
+
+        if url.count('/') < 3:
+            continue
+
+        black_url = False
+        for black in black_list:
+            if url.startswith(black):
+                black_url = True
+                break
+        if black_url:
+            continue
+
+        if (best_url == None) or (len(best_url) < len(url)):
+            best_url = url
+
+    return best_url
+
 def write_log(log):
 	with open('log.txt', 'a') as log_f:
 		time_stamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')

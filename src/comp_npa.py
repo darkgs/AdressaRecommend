@@ -88,35 +88,6 @@ class SimpleAVGModel(nn.Module):
         return prev_watches, target_embed, candidate_embed
 
 
-class SingleLSTMModel(nn.Module):
-    def __init__(self, embed_size, cate_dim, args):
-        super(SingleLSTMModel, self).__init__()
-
-        hidden_size = args.hidden_size
-        num_layers = args.num_layers
-
-        self.rnn = nn.LSTM(embed_size, hidden_size, num_layers, batch_first=True)
-        self.linear = nn.Linear(hidden_size, embed_size)
-        self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
-
-    def forward(self, x, _, __, seq_lens):
-        batch_size = x.size(0)
-        embed_size = x.size(2)
-
-        x = pack(x, seq_lens, batch_first=True)
-        outputs, _ = self.rnn(x)
-        outputs, _ = unpack(outputs, batch_first=True)
-        outputs = self.linear(outputs)
-
-        return outputs
-
-#        outputs = outputs.view(-1, embed_size)
-#        outputs = self.bn(outputs)
-#        outputs = outputs.view(batch_size, -1, embed_size)
-#
-#        return outputs
-
-
 def main():
     options, args = parser.parse_args()
 
