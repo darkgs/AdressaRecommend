@@ -70,8 +70,8 @@ class HRAMModel(nn.Module):
                 device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
 
         # user embedding
-        print('user embed', user_ids.shape, self.embed_user(user_ids).shape)
-        print('article embed', article_ids.shape, self.embed_article(article_ids).shape)
+#        print('user embed', user_ids.shape, self.embed_user(user_ids).shape)
+#        print('article embed', article_ids.shape, self.embed_article(article_ids).shape)
 
         # sequence embedding
         x1 = pack(x1, seq_lens, batch_first=True)
