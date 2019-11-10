@@ -715,15 +715,14 @@ class AdressaRec(object):
                 indices_trendy, indices_candi, user_ids, article_ids = \
                 [self.to_device(i_) for i_ in data]
 
-            input_x_s = input_x_s.to(self._device)
-            input_y_s = input_y_s.to(self._device)
-            # [batch_size, seq_len, 100, embed_size]]
-            input_trendy = input_trendy.to(self._device)
-            input_cate = input_cate.to(self._device)
-            input_cate_y = input_cate_y.to(self._device)
-            input_candi = input_candi.to(self._device)
-            user_ids = user_ids.to(self._device)
-            article_ids = article_ids.to(self._device)
+#            input_x_s = input_x_s.to(self._device)
+#            input_y_s = input_y_s.to(self._device)
+#            input_trendy = input_trendy.to(self._device)
+#            input_cate = input_cate.to(self._device)
+#            input_cate_y = input_cate_y.to(self._device)
+#            input_candi = input_candi.to(self._device)
+#            user_ids = user_ids.to(self._device)
+#            article_ids = article_ids.to(self._device)
 
             outputs = None
             attns = None
