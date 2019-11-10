@@ -144,18 +144,21 @@ def generate_merged_sequences():
             if seq_len <= 1:
                 continue
 
-            st = 0
-            st_step = max(1, int((seq_len - 20) / 5) + 1)
-            while (st == 0) or (st + 20 <= seq_len):
-                cur_seq = dict_data['sequence'][st:st+20]
-                cur_t_seq = dict_data['time_sequence'][st:st+20]
-
-                sequence_entry = (cur_t_seq[0], cur_t_seq[-1], dict_usr2idx[user_id],
-                    cur_seq, cur_t_seq)
-
-                merged_sequences.append(sequence_entry)
-
-                st += st_step
+            sequence_entry = (dict_data['start_time'], dict_data['end_time'],
+                    dict_data['sequence'], dict_data['time_sequence'])
+            merged_sequences.append(sequence_entry)
+#            st = 0
+#            st_step = max(1, int((seq_len - 20) / 5) + 1)
+#            while (st == 0) or (st + 20 <= seq_len):
+#                cur_seq = dict_data['sequence'][st:st+20]
+#                cur_t_seq = dict_data['time_sequence'][st:st+20]
+#
+#                sequence_entry = (cur_t_seq[0], cur_t_seq[-1], dict_usr2idx[user_id],
+#                    cur_seq, cur_t_seq)
+#
+#                merged_sequences.append(sequence_entry)
+#
+#                st += st_step
 
     merged_sequences.sort(key=lambda x:x[0])
 

@@ -17,7 +17,7 @@ DATA_SET=adressa
 
 # mode in [simple, one_week, one_month, three_month]
 MODE=simple
-#MODE=one_week
+MODE=one_week
 #MODE=one_month
 #MODE=three_month
 
@@ -208,9 +208,9 @@ stat_rnn_input: $(BASE_PATH)/torch_input src/stat_rnn_input.py
 #run: comp_multicell_no_attention
 #run: stat_adressa_dataset
 #run: comp_npa
-#run: comp_nert
+run: comp_nert
 #run: comp_nert_wo_temp
-run: comp_nert_wo_attn
+#run: comp_nert_wo_attn
 #run: comp_hram
 #run: $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED)
 	$(info run)
