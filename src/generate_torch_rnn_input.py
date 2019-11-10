@@ -144,7 +144,7 @@ def generate_merged_sequences():
             if seq_len <= 1:
                 continue
 
-            sequence_entry = (dict_data['start_time'], dict_data['end_time'],
+            sequence_entry = (dict_data['start_time'], dict_data['end_time'], dict_usr2idx[user_id],
                     dict_data['sequence'], dict_data['time_sequence'])
             merged_sequences.append(sequence_entry)
 #            st = 0
