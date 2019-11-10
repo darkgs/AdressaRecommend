@@ -17,7 +17,7 @@ DATA_SET=adressa
 
 # mode in [simple, one_week, one_month, three_month]
 MODE=simple
-MODE=one_week
+#MODE=one_week
 #MODE=one_month
 #MODE=three_month
 
@@ -114,6 +114,14 @@ comp_nert: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_
 	$(info [Makefile] $@)
 	python3 src/comp_nert.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u $(DATA_BASE_PATH)/article_to_vec.json -w $(BASE_PATH)/nert
 
+comp_nert_wo_temp: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_nert_wo_temp.py
+	$(info [Makefile] $@)
+	python3 src/comp_nert_wo_temp.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u $(DATA_BASE_PATH)/article_to_vec.json -w $(BASE_PATH)/nert_wo_temp
+
+comp_nert_wo_attn: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_nert_wo_attn.py
+	$(info [Makefile] $@)
+	python3 src/comp_nert_wo_attn.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u $(DATA_BASE_PATH)/article_to_vec.json -w $(BASE_PATH)/nert_wo_attn
+
 comp_hram: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_hram.py
 	$(info [Makefile] $@)
 	python3 src/comp_hram.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u $(DATA_BASE_PATH)/article_to_vec.json -w $(BASE_PATH)/hram
@@ -199,8 +207,10 @@ stat_rnn_input: $(BASE_PATH)/torch_input src/stat_rnn_input.py
 #run: comp_multicell_no_dropout
 #run: comp_multicell_no_attention
 #run: stat_adressa_dataset
-run: comp_npa
+#run: comp_npa
 #run: comp_nert
+#run: comp_nert_wo_temp
+run: comp_nert_wo_attn
 #run: comp_hram
 #run: $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED)
 	$(info run)

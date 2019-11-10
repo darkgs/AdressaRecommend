@@ -3,6 +3,7 @@ data
 *.pyc
 log.txt
 cache/
+cache_bak/
 report/
 cache_bak_*/
 *.txt
