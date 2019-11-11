@@ -3,6 +3,9 @@ import time
 import os
 import random
 
+
+import numpy as np
+
 import torch
 import torch.nn as nn
 from torch.nn.utils.rnn import pack_padded_sequence as pack
@@ -29,6 +32,8 @@ parser.add_option('-l', '--learning_rate', dest='learning_rate', type='float', d
 parser.add_option('-a', '--hidden_size', dest='hidden_size', type='int', default=1024)
 parser.add_option('-b', '--num_layers', dest='num_layers', type='int', default=1)
 
+parser.add_option('-c', '--u2i_path', dest='u2i_path', type='string', default=None)
+
 
 class NeRTModel(nn.Module):
     def __init__(self, embed_size, cate_dim, args):
@@ -53,13 +58,16 @@ class NeRTModel(nn.Module):
 
         self._rnn_hidden_size = hidden_size
 
-    def forward(self, x1, x2, __, seq_lens, _, ___):
+    def forward(self, x1, x2, cate, seq_lens, _, ___, attn_mode=False):
         batch_size = x1.size(0)
         max_seq_length = x1.size(1)
         embed_size = x1.size(2)
 
         outputs = torch.zeros([max_seq_length, batch_size, embed_size],
                 device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
+
+        #
+        cate = pack(cate, seq_lens, batch_first=True).data
 
         # x2: [batch_size, seq_len, num_of_temporal, embed_dim]
         x2 = pack(x2, seq_lens, batch_first=True).data
@@ -82,15 +90,48 @@ class NeRTModel(nn.Module):
         sequence_lenths = x1.batch_sizes.cpu().numpy()
         cursor = 0
         prev_x1s = []
+        prev_cates = []
+        attn_score = None
+        attn_good_data = []
         for step in range(sequence_lenths.shape[0]):
             sequence_lenth = sequence_lenths[step]
 
             x1_step = x1.data[cursor:cursor+sequence_lenth]
             x2_step = x2[cursor:cursor+sequence_lenth]
 
+            cate_step = cate[cursor:cursor+sequence_lenth]
+
             prev_x1s.append(x1_step)
+            prev_cates.append(cate_step)
 
             prev_x1s = [prev_x1[:sequence_lenth] for prev_x1 in prev_x1s]
+            prev_cates = [prev_cate[:sequence_lenth] for prev_cate in prev_cates]
+
+            prev_cates_t = torch.stack(prev_cates, dim=1)
+            if step == 10:
+                attn_score_cpu = attn_score.clone().detach().cpu().numpy()
+                prev_cates_cpu = prev_cates_t.cpu().numpy()
+                for batch in range(min(attn_score_cpu.shape[0], prev_cates_cpu.shape[0])):
+                    attn_score_cpu_d = np.squeeze(attn_score_cpu[batch,:,:], axis=1)
+                    attn_top_idx = np.argmax(attn_score_cpu_d, axis=0).tolist()
+                    attn_score_cpu_d = attn_score_cpu_d.tolist()
+
+                    prev_cates_cpu_d = np.argmax(prev_cates_cpu[batch,:,:], axis=1).tolist()
+                    if prev_cates_cpu_d[-2] != prev_cates_cpu_d[-1]:
+                        cate_set = set([])
+                        cate_weights = 0.0
+                        for idx, c in enumerate(prev_cates_cpu_d):
+                            if idx == len(prev_cates_cpu_d) - 1:
+                                break
+
+                            cate_set.update([c])
+                            if c == prev_cates_cpu_d[-1]:
+                                cate_weights += attn_score_cpu_d[idx]
+                        cate_count = len(cate_set)
+                        if cate_count > 3:
+                            attn_data = [prev_cates_cpu_d[-1]] + [cate_count] + [cate_weights] \
+                                    + attn_score_cpu_d + prev_cates_cpu_d
+                            attn_good_data.append(attn_data)
 
             prev_hs = torch.stack(prev_x1s, dim=1)
             attn_score = []
@@ -110,6 +151,13 @@ class NeRTModel(nn.Module):
         outputs = torch.transpose(outputs, 0, 1)
         #outputs = self._dropout(outputs)
 
+        with open('attn_data.txt', 'a') as f_att:
+            attn_data_str = ''
+            for data_line in attn_good_data:
+                data_line = [str(d) for d in data_line]
+                attn_data_str += ','.join(data_line) + '\n'
+            f_att.write(attn_data_str)
+
         return outputs
 
 
@@ -123,6 +171,7 @@ def main():
     torch_input_path = options.input
     embedding_dimension = int(options.d2v_embed)
     url2vec_path = '{}_{}'.format(options.u2v_path, embedding_dimension)
+    url2info_path = options.u2i_path
     ws_path = options.ws_path
     search_mode = options.search_mode
     model_ws_path = '{}/model/{}'.format(ws_path, option2str(options))
@@ -147,22 +196,27 @@ def main():
     dict_url2vec = load_json(url2vec_path)
     print('Loading url2vec : end')
 
-    attn_analysis = False
+    print('Loading url2info : start')
+    dict_url2info = load_json(url2info_path)
+    print('Loading url2info : end')
+
+    attn_analysis = True
     if attn_analysis:
         print('test mode')
 
-    predictor = AdressaRec(NeRTModel, model_ws_path, torch_input_path, dict_url2vec, options)
+    predictor = AdressaRec(NeRTModel, model_ws_path, torch_input_path,
+            dict_url2vec, options, dict_url2info=dict_url2info)
 
     if attn_analysis:
         predictor.load_model()
         time_start = time.time()
+        hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=20,
+                attn_mode=True, length_mode=False)
+
+        return 
+
         hit_5, _, mrr_20 = predictor.test_mrr_trendy_history_test(metric_count=20, candidate_count=20)
         print('hitory_test :: hit_5 : {}, mrr_20 : {}'.format(hit_5, mrr_20))
-        return
-
-        hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=20,
-                attn_mode=True, length_mode=True)
-        print('candi 20 :: hit_5 : {}, mrr_20 : {}'.format(hit_5, mrr_20))
         print('time tooks : {}'.format(time.time() - time_start))
         return
 

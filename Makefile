@@ -110,9 +110,9 @@ comp_pop: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_E
 
 ###################
 
-comp_nert: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_nert.py
+comp_nert: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED) $(BASE_PATH)/article_info.json src/adressa_dataset.py src/comp_nert.py
 	$(info [Makefile] $@)
-	python3 src/comp_nert.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u $(DATA_BASE_PATH)/article_to_vec.json -w $(BASE_PATH)/nert
+	python3 src/comp_nert.py -s -i $(BASE_PATH)/torch_input -e $(D2V_EMBED) -u $(DATA_BASE_PATH)/article_to_vec.json -w $(BASE_PATH)/nert -c $(BASE_PATH)/article_info.json
 
 comp_nert_wo_temp: $(BASE_PATH)/torch_input $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED) src/adressa_dataset.py src/comp_nert_wo_temp.py
 	$(info [Makefile] $@)
@@ -208,9 +208,9 @@ stat_rnn_input: $(BASE_PATH)/torch_input src/stat_rnn_input.py
 #run: comp_multicell_no_attention
 #run: stat_adressa_dataset
 #run: comp_npa
-run: comp_nert
+#run: comp_nert
 #run: comp_nert_wo_temp
-#run: comp_nert_wo_attn
+run: comp_nert_wo_attn
 #run: comp_hram
 #run: $(DATA_BASE_PATH)/article_to_vec.json_$(D2V_EMBED)
 	$(info run)

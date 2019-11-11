@@ -88,17 +88,19 @@ class NeRTModel(nn.Module):
             x1_step = x1.data[cursor:cursor+sequence_lenth]
             x2_step = x2[cursor:cursor+sequence_lenth]
 
-#            prev_x1s.append(x1_step)
-#
-#            prev_x1s = [prev_x1[:sequence_lenth] for prev_x1 in prev_x1s]
-#
-#            prev_hs = torch.stack(prev_x1s, dim=1)
+            prev_x1s.append(x1_step)
+
+            prev_x1s = [prev_x1[:sequence_lenth] for prev_x1 in prev_x1s]
+
+            prev_hs = torch.stack(prev_x1s, dim=1)
 #            attn_score = []
 #            for prev in range(prev_hs.size(1)):
 #                attn_input = torch.cat((prev_hs[:,prev,:], x2_step), dim=1)
 #                attn_score.append(torch.matmul(attn_input, self._W_attn) + self._b_attn)
 #            attn_score = torch.softmax(torch.stack(attn_score, dim=1), dim=1)
 #            x1_step = torch.squeeze(torch.bmm(torch.transpose(attn_score, 1, 2), prev_hs), dim=1)
+
+            x1_step = torch.mean(prev_hs, dim=1, keepdim=False)
             
             x_step = torch.cat((x1_step, x2_step), dim=1)
             x_step = self.mlp(x_step)

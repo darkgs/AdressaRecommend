@@ -63,6 +63,7 @@ class RecInputCategoryMixin(object):
             categories.update([category])
 
         categories = sorted(list(categories))
+        print('categories', categories)
 
         return {cate:idx for idx, cate in enumerate(categories)}
 
@@ -732,9 +733,11 @@ class AdressaRec(object):
                     outputs, cate_pref = self._model.forward_with_cate(input_x_s,
                             input_trendy, input_cate, seq_lens, user_ids, article_ids)
                 elif attn_mode:
-                    outputs, attns = self._model(input_x_s, input_trendy, input_cate,
+#                    outputs, attns = self._model(input_x_s, input_trendy, input_cate,
+#                            seq_lens, user_ids, article_ids, attn_mode=True)
+#                    attns = attns.cpu().numpy()
+                    outputs = self._model(input_x_s, input_trendy, input_cate,
                             seq_lens, user_ids, article_ids, attn_mode=True)
-                    attns = attns.cpu().numpy()
                 else:
                     outputs = self._model(input_x_s, input_trendy, input_cate,
                             seq_lens, user_ids, article_ids)
@@ -790,18 +793,18 @@ class AdressaRec(object):
                                     candidates[x] != self._rnn_input.get_pad_idx(), \
                                     scores.argsort()[::-1]))]).tolist()
 
-                    if attn_mode:
-                        valid_candi_len = len(list(filter(lambda x: x != self._rnn_input.get_pad_idx(), candidates)))
-                        # self._options.trendy_count + self._options.recency_count
-                        pop_of_next = candidates.index(next_idx)
-                        hit_index = top_indices.index(next_idx)
-
-                        attn_scores = attns[batch][seq_idx]
-                        popular_score = np.sum(attn_scores[:self._options.trendy_count])
-                        recent_score = np.sum(attn_scores[self._options.trendy_count:])
-
-                        data_by_attn[pop_of_next] += recent_score
-                        data_by_attn_count[pop_of_next] += 1
+#                    if attn_mode:
+#                        valid_candi_len = len(list(filter(lambda x: x != self._rnn_input.get_pad_idx(), candidates)))
+#                        # self._options.trendy_count + self._options.recency_count
+#                        pop_of_next = candidates.index(next_idx)
+#                        hit_index = top_indices.index(next_idx)
+#
+#                        attn_scores = attns[batch][seq_idx]
+#                        popular_score = np.sum(attn_scores[:self._options.trendy_count])
+#                        recent_score = np.sum(attn_scores[self._options.trendy_count:])
+#
+#                        data_by_attn[pop_of_next] += recent_score
+#                        data_by_attn_count[pop_of_next] += 1
 
                     if len(top_indices) < candidate_count:
                         continue
@@ -823,19 +826,19 @@ class AdressaRec(object):
                             data_by_length[seq_idx] += 1.0 / float(hit_index + 1)
                         data_by_length_count[seq_idx] += 1
 
-        if attn_mode:
-            attn_mode_datas = []
-            for idx in range(len(data_by_attn)):
-                if data_by_attn_count[idx] > 0:
-                    attn_mode_datas.append(str(data_by_attn[idx] / data_by_attn_count[idx]))
-                else:
-                    attn_mode_datas.append(str(0.0))
-
-            data_by_attn[pop_of_next] += recent_score
-            data_by_attn_count[pop_of_next] += 1
-
-            print('=========attn_mode=============')
-            print(','.join(attn_mode_datas))
+#        if attn_mode:
+#            attn_mode_datas = []
+#            for idx in range(len(data_by_attn)):
+#                if data_by_attn_count[idx] > 0:
+#                    attn_mode_datas.append(str(data_by_attn[idx] / data_by_attn_count[idx]))
+#                else:
+#                    attn_mode_datas.append(str(0.0))
+#
+#            data_by_attn[pop_of_next] += recent_score
+#            data_by_attn_count[pop_of_next] += 1
+#
+#            print('=========attn_mode=============')
+#            print(','.join(attn_mode_datas))
 
         if length_mode:
             length_mode_datas = []
