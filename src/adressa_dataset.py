@@ -63,7 +63,7 @@ class RecInputCategoryMixin(object):
             categories.update([category])
 
         categories = sorted(list(categories))
-        print('categories', categories)
+        #print('categories', categories)
 
         return {cate:idx for idx, cate in enumerate(categories)}
 

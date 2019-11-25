@@ -213,6 +213,8 @@ def main():
         hit_5, _, mrr_20 = predictor.test_mrr_trendy(metric_count=20, candidate_count=20,
                 attn_mode=True, length_mode=False)
 
+        print(hit_5, mrr_20)
+
         return 
 
         hit_5, _, mrr_20 = predictor.test_mrr_trendy_history_test(metric_count=20, candidate_count=20)
