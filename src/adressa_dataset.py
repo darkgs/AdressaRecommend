@@ -363,7 +363,7 @@ def adressa_collate_train(batch):
         torch.FloatTensor(seq_cate), torch.FloatTensor(seq_cate_y), torch.IntTensor(seq_len), \
         timestamp_starts, timestamp_ends, \
         x_indices, y_indices, trendy_indices, \
-        torch.LongTensor(user_ids), torch.LongTensor(x_indices)
+        torch.LongTensor(user_ids)
 
 
 def adressa_collate(batch):
@@ -377,15 +377,16 @@ def adressa_collate(batch):
         torch.FloatTensor(seq_candi), torch.FloatTensor(seq_cate), torch.FloatTensor(seq_cate_y), \
         torch.IntTensor(seq_len), timestamp_starts, timestamp_ends, \
         x_indices, y_indices, trendy_indices, candi_indices, \
-        torch.LongTensor(user_ids), torch.LongTensor(x_indices)
+        torch.LongTensor(user_ids)
 
 
 class AdressaRec(object):
     def __init__(self, model_class, ws_path, torch_input_path, \
-            dict_url2vec, options, dict_url2info=None, dict_glove=None):
+            dict_url2vec, options, dict_url2info=None, dict_glove=None, hram_mode=False):
         super(AdressaRec, self).__init__()
 
         print("AdressaRec generating ...")
+        self._hram_mode = hram_mode
 
         self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self._ws_path = ws_path
@@ -412,10 +413,14 @@ class AdressaRec(object):
 
 #self._optimizer = torch.optim.SGD(self._model.parameters(), lr=learning_rate, momentum=0.9)
 #self._criterion = nn.MSELoss()
-        self._criterion = nn.BCELoss()
+        if self._hram_mode:
+            self._criterion = nn.CrossEntropyLoss()
+        else:
+            self._criterion = nn.BCELoss()
         self._optimizer = torch.optim.Adam(self._model.parameters(), lr=learning_rate)
 
         self._saved_model_path = self._ws_path + '/predictor.pth.tar'
+
 
         print("AdressaRec generating Done!")
 
@@ -493,29 +498,92 @@ class AdressaRec(object):
         else:
             return data
 
+    def get_samples(self, seq_max, indices_y, seq_lens):
+        # generate pos/neg samples
+        sample_count = 5
+        sample_dummy = np.array([0] * sample_count)
+
+        sample_indices = []
+        for b, seq_len in enumerate(seq_lens):
+            samples = []
+            for s in range(seq_len):
+                forbid = [self._rnn_input.get_pad_idx(), indices_y[b][s]]
+                while True:
+                    sample = np.random.permutation(self._rnn_input.get_article_size())[:sample_count-1]
+                    if not np.any(np.isin(sample, forbid)):
+                        break;
+                sample = np.concatenate([np.array([indices_y[b][s],]), sample], axis=0)
+                samples.append(sample)
+
+            if len(samples) < seq_max:
+                samples += [sample_dummy] * (seq_max - len(samples))
+
+            sample_indices.append(samples)
+        sample_indices = np.stack(sample_indices, axis=0)
+
+        # sample: idx2vec
+        sample_vecs = []
+        for b in range(sample_indices.shape[0]):
+            samples = []
+            for s in range(sample_indices.shape[1]):
+                sample = []
+                for i in range(sample_indices.shape[2]):
+                     sample.append(self._rnn_input.idx2vec(i))
+                samples.append(sample)
+            sample_vecs.append(samples)
+
+        sample_vecs = self.to_device(torch.FloatTensor(sample_vecs))
+        sample_indices = self.to_device(torch.LongTensor(sample_indices))
+
+        #correct = self.to_device(torch.LongTensor([1] + [0] * (sample_count - 1)))
+        correct = self.to_device(torch.LongTensor([1,]))
+
+        return sample_indices, sample_vecs, correct
+
     def train(self):
         self._model.train()
         train_loss = 0.0
         batch_count = len(self._train_dataloader)
 
+        seq_sums = 0
+        seq_count = 0
         for batch_idx, train_input in enumerate(self._train_dataloader):
             input_x_s, input_y_s, input_trendy, input_cate, input_cate_y, seq_lens, \
                 timestamp_starts, timestamp_ends, \
-                indices_x, indices_y, indices_trendy, user_ids, article_ids \
+                indices_x, indices_y, indices_trendy, user_ids\
                 = [self.to_device(input_) for input_ in train_input]
 
             self._model.zero_grad()
             self._optimizer.zero_grad()
 
-            outputs = self._model(input_x_s, input_trendy, input_cate, seq_lens, user_ids, article_ids)
-            packed_outputs = pack(outputs, seq_lens, batch_first=True).data
-            packed_y_s = pack(input_y_s, seq_lens, batch_first=True).data
+            seq_sums += np.sum(seq_lens.cpu().numpy())
+            seq_count += len(seq_lens)
 
-            loss = self._criterion(F.softmax(packed_outputs, dim=1), F.softmax(packed_y_s, dim=1))
+            if self._hram_mode:
+                seq_max = input_x_s.size(1)
+                sample_indices, sample_vecs, correct = self.get_samples(seq_max, indices_y, seq_lens)
+
+                # inferences
+                outputs = self._model(input_x_s, input_trendy, input_cate,
+                        seq_lens, user_ids, sample_indices, sample_vecs)
+
+                # loss
+                packed_outputs = pack(outputs, seq_lens, batch_first=True).data
+                correct = correct.expand(packed_outputs.shape[0])
+
+                loss = self._criterion(packed_outputs, correct)
+            else:
+                outputs = self._model(input_x_s, input_trendy, input_cate,
+                        seq_lens, user_ids)
+                packed_outputs = pack(outputs, seq_lens, batch_first=True).data
+                packed_y_s = pack(input_y_s, seq_lens, batch_first=True).data
+
+                loss = self._criterion(F.softmax(packed_outputs, dim=1), F.softmax(packed_y_s, dim=1))
             loss.backward()
             self._optimizer.step()
 
             train_loss += loss.item()
+        print('seq len', seq_sums/seq_count)
 
         return train_loss / batch_count
 
@@ -527,20 +595,32 @@ class AdressaRec(object):
 
         for batch_idx, test_input in enumerate(self._valid_dataloader):
             input_x_s, input_y_s, input_trendy, input_cate, input_cate_y, seq_lens, \
-                            _, _, _, _, _, user_ids, article_ids = [self.to_device(i_) for i_ in test_input]
+                timestamp_starts, timestamp_ends, \
+                indices_x, indices_y, indices_trendy, user_ids\
+                = [self.to_device(input_) for input_ in test_input]
 
             batch_size = input_x_s.shape[0]
 
-#outputs = self._model(input_x_s, input_trendy, seq_lens)
-#unpacked_y_s, _ = unpack(pack(input_y_s, seq_lens, batch_first=True), batch_first=True)
-#loss = self._criterion(outputs, unpacked_y_s)
+            if self._hram_mode:
+                seq_max = input_x_s.size(1)
+                sample_indices, sample_vecs, correct = self.get_samples(seq_max, indices_y, seq_lens)
 
-            outputs = self._model(input_x_s, input_trendy, input_cate, seq_lens, user_ids, article_ids)
-            packed_outputs = pack(outputs, seq_lens, batch_first=True).data
-            packed_y_s = pack(input_y_s, seq_lens, batch_first=True).data
+                # inferences
+                outputs = self._model(input_x_s, input_trendy, input_cate,
+                        seq_lens, user_ids, sample_indices, sample_vecs)
 
-            loss = self._criterion(F.softmax(packed_outputs, dim=1), F.softmax(packed_y_s, dim=1))
-#loss = self._criterion(packed_outputs, packed_y_s)
+                # loss
+                packed_outputs = pack(outputs, seq_lens, batch_first=True).data
+                #correct = torch.unsqueeze(correct, dim=0).expand(*packed_outputs.shape)
+                correct = correct.expand(packed_outputs.shape[0])
+
+                loss = self._criterion(packed_outputs, correct)
+            else:
+                outputs = self._model(input_x_s, input_trendy, input_cate, seq_lens, user_ids)
+                packed_outputs = pack(outputs, seq_lens, batch_first=True).data
+                packed_y_s = pack(input_y_s, seq_lens, batch_first=True).data
+
+                loss = self._criterion(F.softmax(packed_outputs, dim=1), F.softmax(packed_y_s, dim=1))
 
             test_loss += loss.item() * batch_size
             sampling_count += batch_size
@@ -568,20 +648,12 @@ class AdressaRec(object):
 
             input_x_s, input_y_s, input_trendy, input_candi, input_cate, input_cate_y, seq_lens, \
                 timestamp_starts, timestamp_ends, _, indices_y, \
-                indices_trendy, indices_candi, user_ids, article_ids = \
+                indices_trendy, indices_candi, user_ids = \
                 [self.to_device(i_) for i_ in data]
 
             max_len = torch.max(seq_lens, 0)[0].item()
             if max_len != max_seq_len_data:
                 continue
-
-#            input_x_s = input_x_s.to(self._device)
-#            input_y_s = input_y_s.to(self._device)
-#            # [batch_size, seq_len, 100, embed_size]]
-#            input_trendy = input_trendy.to(self._device)
-#            input_cate = input_cate.to(self._device)
-#            input_cate_y = input_cate_y.to(self._device)
-#            input_candi = input_candi.to(self._device)
 
             outputs = None
             attns = None
@@ -713,34 +785,35 @@ class AdressaRec(object):
 
             input_x_s, input_y_s, input_trendy, input_candi, input_cate, input_cate_y, seq_lens, \
                 timestamp_starts, timestamp_ends, _, indices_y, \
-                indices_trendy, indices_candi, user_ids, article_ids = \
+                indices_trendy, indices_candi, user_ids = \
                 [self.to_device(i_) for i_ in data]
-
-#            input_x_s = input_x_s.to(self._device)
-#            input_y_s = input_y_s.to(self._device)
-#            input_trendy = input_trendy.to(self._device)
-#            input_cate = input_cate.to(self._device)
-#            input_cate_y = input_cate_y.to(self._device)
-#            input_candi = input_candi.to(self._device)
-#            user_ids = user_ids.to(self._device)
-#            article_ids = article_ids.to(self._device)
 
             outputs = None
             attns = None
 
             with torch.no_grad():
-                if sim_cate:
-                    outputs, cate_pref = self._model.forward_with_cate(input_x_s,
-                            input_trendy, input_cate, seq_lens, user_ids, article_ids)
-                elif attn_mode:
-#                    outputs, attns = self._model(input_x_s, input_trendy, input_cate,
-#                            seq_lens, user_ids, article_ids, attn_mode=True)
-#                    attns = attns.cpu().numpy()
+#                if sim_cate:
+#                    outputs, cate_pref = self._model.forward_with_cate(input_x_s,
+#                            input_trendy, input_cate, seq_lens, user_ids)
+#                elif attn_mode:
+#                    outputs = self._model(input_x_s, input_trendy, input_cate,
+#                            seq_lens, user_ids, attn_mode=True)
+#                else:
+#                    outputs = self._model(input_x_s, input_trendy, input_cate,
+#                            seq_lens, user_ids)
+                if self._hram_mode:
+                    sample_indices = torch.cat([torch.unsqueeze(torch.LongTensor(indices_y), dim=2),
+                        torch.LongTensor(indices_candi)], dim=2)
+                    sample_vecs = torch.cat([torch.unsqueeze(input_y_s, dim=2), input_candi], dim=2)
+
+                    sample_indices = self.to_device(sample_indices)
+                    sample_vecs = self.to_device(sample_vecs)
+
+                    # inferences
                     outputs = self._model(input_x_s, input_trendy, input_cate,
-                            seq_lens, user_ids, article_ids, attn_mode=True)
+                            seq_lens, user_ids, sample_indices, sample_vecs)
                 else:
-                    outputs = self._model(input_x_s, input_trendy, input_cate,
-                            seq_lens, user_ids, article_ids)
+                    outputs = self._model(input_x_s, input_trendy, input_cate, seq_lens, user_ids)
 
             batch_size = seq_lens.size(0)
             seq_lens = seq_lens.cpu().numpy()
@@ -769,18 +842,22 @@ class AdressaRec(object):
                     else:
                         candidates_cut = candidate_count - 1
 
-                    scores = 1.0 / torch.mean(((input_candi[batch][seq_idx])[:candidates_cut] - \
+                    if self._hram_mode:
+                        scores = outputs[batch][seq_idx][:candidates_cut].cpu().numpy()
+                        candidates = [next_idx] + candidates[:candidates_cut-1]
+                    else:
+                        scores = 1.0 / torch.mean(((input_candi[batch][seq_idx])[:candidates_cut] - \
                                 outputs[batch][seq_idx]) ** 2, dim=1)
 
-                    candidates = candidates[:candidates_cut]
+                        candidates = candidates[:candidates_cut]
 
-                    scores = scores.cpu().numpy()
-                    if next_idx not in candidates:
-                        next_score = 1.0 / np.mean((np.array(self._rnn_input.idx2vec(next_idx)) - \
-                                    outputs[batch][seq_idx].cpu().numpy()) ** 2)
+                        scores = scores.cpu().numpy()
+                        if next_idx not in candidates:
+                            next_score = 1.0 / np.mean((np.array(self._rnn_input.idx2vec(next_idx)) - \
+                                        outputs[batch][seq_idx].cpu().numpy()) ** 2)
 
-                        candidates = [next_idx] + candidates
-                        scores = np.append(next_score, scores)
+                            candidates = [next_idx] + candidates
+                            scores = np.append(next_score, scores)
 
                     # Naver, additional score as the similarity with category
                     if sim_cate:
@@ -826,20 +903,6 @@ class AdressaRec(object):
                             data_by_length[seq_idx] += 1.0 / float(hit_index + 1)
                         data_by_length_count[seq_idx] += 1
 
-#        if attn_mode:
-#            attn_mode_datas = []
-#            for idx in range(len(data_by_attn)):
-#                if data_by_attn_count[idx] > 0:
-#                    attn_mode_datas.append(str(data_by_attn[idx] / data_by_attn_count[idx]))
-#                else:
-#                    attn_mode_datas.append(str(0.0))
-#
-#            data_by_attn[pop_of_next] += recent_score
-#            data_by_attn_count[pop_of_next] += 1
-#
-#            print('=========attn_mode=============')
-#            print(','.join(attn_mode_datas))
-
         if length_mode:
             length_mode_datas = []
             for idx in range(len(data_by_length)):
@@ -862,7 +925,7 @@ class AdressaRec(object):
         for i, data in enumerate(self._test_dataloader, 0):
             input_x_s, input_y_s, input_trendy, input_candi, input_cate, input_cate_y, seq_lens, \
                 timestamp_starts, timestamp_ends, _, \
-                indices_y, indices_trendy, indices_candi, user_ids, article_ids = \
+                indices_y, indices_trendy, indices_candi, user_ids = \
                 [self.to_device(i_) for i_ in data]
 
             valid_count = 0
@@ -912,7 +975,7 @@ class AdressaRec(object):
         for i, data in enumerate(self._test_dataloader, 0):
             input_x_s, input_y_s, input_trendy, input_candi, input_cate, input_cate_y, seq_lens, \
                 timestamp_starts, timestamp_ends, _, \
-                indices_y, indices_trendy, indices_candi, user_ids, article_ids = \
+                indices_y, indices_trendy, indices_candi, user_ids = \
                 [self.to_device(i_) for i_ in data]
 
             batch_size = seq_lens.size(0)

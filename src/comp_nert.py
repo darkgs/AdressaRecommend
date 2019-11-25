@@ -58,7 +58,7 @@ class NeRTModel(nn.Module):
 
         self._rnn_hidden_size = hidden_size
 
-    def forward(self, x1, x2, cate, seq_lens, _, ___, attn_mode=False):
+    def forward(self, x1, x2, cate, seq_lens, _, attn_mode=False):
         batch_size = x1.size(0)
         max_seq_length = x1.size(1)
         embed_size = x1.size(2)
