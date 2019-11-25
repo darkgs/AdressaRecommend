@@ -174,8 +174,18 @@ class NeRTModel(nn.Module):
                     if len(prev_cate_set) < min_vari_cate_prev or len(pred_cate_set) < min_vari_cate_pred:
                         continue
 
+                    ok = 0
+                    for c in pred_cate_set:
+                        if c not in prev_cate_set:
+                            continue
+                        ok += 1
+
+                    if ok < 4:
+                        continue
+
                     attn_good_data.append(['==================================='])
-                    attn_good_data.append(prev_cates_c)
+                    attn_good_data.append(prev_cates_c[:target_len])
+                    attn_good_data.append(prev_cates_c[target_len:])
                     for s in range(target_len, step+1):
                         attn_score_c = attn_score_save[batch, s-1, :s].cpu().numpy().tolist()
                         attn_good_data.append(attn_score_c[:target_len])
