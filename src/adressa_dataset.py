@@ -688,6 +688,8 @@ class AdressaRec(object):
                     if sim_cate:
                         outputs, cate_pref = self._model.forward_with_cate(input_x_s,
                                 input_trendy, input_cate, seq_lens)
+                    elif attn_mode:
+                        outputs = self._model(input_x_s, input_trendy, input_cate, seq_lens, attn_mode=True)
                     else:
                         outputs = self._model(input_x_s, input_trendy, input_cate, seq_lens)
 #print(outputs.shape)
@@ -812,6 +814,8 @@ class AdressaRec(object):
                     # inferences
                     outputs = self._model(input_x_s, input_trendy, input_cate,
                             seq_lens, user_ids, sample_indices, sample_vecs)
+                elif attn_mode:
+                    outputs = self._model(input_x_s, input_trendy, input_cate, seq_lens, user_ids, attn_mode=True)
                 else:
                     outputs = self._model(input_x_s, input_trendy, input_cate, seq_lens, user_ids)
 

@@ -90,9 +90,10 @@ class NeRTModel(nn.Module):
         sequence_lenths = x1.batch_sizes.cpu().numpy()
         cursor = 0
         prev_x1s = []
-        prev_cates = []
-        attn_score = None
-        attn_good_data = []
+        if attn_mode:
+            prev_cates = []
+            attn_score = None
+            attn_good_data = []
         for step in range(sequence_lenths.shape[0]):
             sequence_lenth = sequence_lenths[step]
 
@@ -102,36 +103,46 @@ class NeRTModel(nn.Module):
             cate_step = cate[cursor:cursor+sequence_lenth]
 
             prev_x1s.append(x1_step)
-            prev_cates.append(cate_step)
+            if attn_mode:
+                prev_cates.append(cate_step)
 
             prev_x1s = [prev_x1[:sequence_lenth] for prev_x1 in prev_x1s]
-            prev_cates = [prev_cate[:sequence_lenth] for prev_cate in prev_cates]
+            if attn_mode:
+                prev_cates = [prev_cate[:sequence_lenth] for prev_cate in prev_cates]
 
-            prev_cates_t = torch.stack(prev_cates, dim=1)
-            if step == 10:
-                attn_score_cpu = attn_score.clone().detach().cpu().numpy()
-                prev_cates_cpu = prev_cates_t.cpu().numpy()
-                for batch in range(min(attn_score_cpu.shape[0], prev_cates_cpu.shape[0])):
-                    attn_score_cpu_d = np.squeeze(attn_score_cpu[batch,:,:], axis=1)
-                    attn_top_idx = np.argmax(attn_score_cpu_d, axis=0).tolist()
-                    attn_score_cpu_d = attn_score_cpu_d.tolist()
+            if attn_mode:
+                prev_cates_t = torch.stack(prev_cates, dim=1)
+                if step == 10:
+                    attn_score_cpu = attn_score.clone().detach().cpu().numpy()
+                    prev_cates_cpu = prev_cates_t.cpu().numpy()
+                    for batch in range(min(attn_score_cpu.shape[0], prev_cates_cpu.shape[0])):
+                        attn_score_cpu_d = np.squeeze(attn_score_cpu[batch,:,:], axis=1)
+                        attn_top_idx = np.argmax(attn_score_cpu_d, axis=0).tolist()
+                        attn_score_cpu_d = attn_score_cpu_d.tolist()
 
-                    prev_cates_cpu_d = np.argmax(prev_cates_cpu[batch,:,:], axis=1).tolist()
-                    if prev_cates_cpu_d[-2] != prev_cates_cpu_d[-1]:
-                        cate_set = set([])
-                        cate_weights = 0.0
-                        for idx, c in enumerate(prev_cates_cpu_d):
-                            if idx == len(prev_cates_cpu_d) - 1:
-                                break
+                        prev_cates_cpu_d = np.argmax(prev_cates_cpu[batch,:,:], axis=1).tolist()
+                        if prev_cates_cpu_d[-2] != prev_cates_cpu_d[-1]:
+                            cate_set = set([])
+                            cate_weights = 0.0
+                            for idx, c in enumerate(prev_cates_cpu_d):
+                                if idx == len(prev_cates_cpu_d) - 1:
+                                    break
 
-                            cate_set.update([c])
-                            if c == prev_cates_cpu_d[-1]:
-                                cate_weights += attn_score_cpu_d[idx]
-                        cate_count = len(cate_set)
-                        if cate_count > 3:
-                            attn_data = [prev_cates_cpu_d[-1]] + [cate_count] + [cate_weights] \
-                                    + attn_score_cpu_d + prev_cates_cpu_d
-                            attn_good_data.append(attn_data)
+                                cate_set.update([c])
+                                if c == prev_cates_cpu_d[-1]:
+                                    cate_weights += attn_score_cpu_d[idx]
+                            cate_count = len(cate_set)
+#                            if cate_count > 3:
+#                                attn_data = [prev_cates_cpu_d[-1]] + [cate_count] + [cate_weights] \
+#                                    + attn_score_cpu_d + prev_cates_cpu_d
+#                                attn_good_data.append(attn_data)
+                    for batch in range(attn_score_cpu.shape[0]):
+                        attn_score_cpu_d = np.squeeze(attn_score_cpu[batch,:,:], axis=1)
+                        attn_top_idx = np.argmax(attn_score_cpu_d, axis=0).tolist()
+                        attn_score_cpu_d = attn_score_cpu_d.tolist()
+
+                        attn_data = [attn_top_idx] + attn_score_cpu_d
+                        attn_good_data.append(attn_data)
 
             prev_hs = torch.stack(prev_x1s, dim=1)
             attn_score = []
@@ -151,12 +162,13 @@ class NeRTModel(nn.Module):
         outputs = torch.transpose(outputs, 0, 1)
         #outputs = self._dropout(outputs)
 
-        with open('attn_data.txt', 'a') as f_att:
-            attn_data_str = ''
-            for data_line in attn_good_data:
-                data_line = [str(d) for d in data_line]
-                attn_data_str += ','.join(data_line) + '\n'
-            f_att.write(attn_data_str)
+        if attn_mode:
+            with open('attn_data.txt', 'a') as f_att:
+                attn_data_str = ''
+                for data_line in attn_good_data:
+                    data_line = [str(d) for d in data_line]
+                    attn_data_str += ','.join(data_line) + '\n'
+                f_att.write(attn_data_str)
 
         return outputs
 
