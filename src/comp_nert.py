@@ -135,12 +135,14 @@ class NeRTModel(nn.Module):
                 sequence_lenth = sequence_lenths[step]
 
                 cate_step = cate[cursor:cursor+sequence_lenth]
+                cursor += sequence_lenth
+
                 prev_cates.append(cate_step)
                 prev_cates = [prev[:sequence_lenth] for prev in prev_cates]
 
                 batch_total += 1
 
-                min_len = 13
+                min_len = 14
                 min_vari_cate_prev = 6
                 min_vari_cate_pred = 4
                 target_len = 10
@@ -161,15 +163,15 @@ class NeRTModel(nn.Module):
                     prev_cates_c = prev_cates_t[batch, :].cpu().numpy().tolist()
 
                     prev_cate_set = set([])
-                    predict_cate_set = set([])
+                    pred_cate_set = set([])
 
                     for i, c in enumerate(prev_cates_c):
                         if i < target_len:
                             prev_cate_set.update([c])
                         else:
-                            predict_cate_set.update([c])
+                            pred_cate_set.update([c])
 
-                    if len(prev_cate_set) < min_vari_cate_prev or len(predict_cate_set) < min_vari_cate_pred:
+                    if len(prev_cate_set) < min_vari_cate_prev or len(pred_cate_set) < min_vari_cate_pred:
                         continue
 
                     attn_good_data.append(['==================================='])
@@ -177,7 +179,6 @@ class NeRTModel(nn.Module):
                     for s in range(target_len, step+1):
                         attn_score_c = attn_score_save[batch, s-1, :s].cpu().numpy().tolist()
                         attn_good_data.append(attn_score_c[:target_len])
-                cursor += sequence_lenth
 
 
         outputs = torch.transpose(outputs, 0, 1)
