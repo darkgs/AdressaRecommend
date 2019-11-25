@@ -13,18 +13,18 @@ endef
 
 # data_set in [adressa, glob]
 DATA_SET=adressa
-#DATA_SET=glob
+DATA_SET=glob
 
 # mode in [simple, one_week, one_month, three_month]
 MODE=simple
-#MODE=one_week
+MODE=one_week
 #MODE=one_month
 #MODE=three_month
 
 D2V_EMBED=default
 D2V_EMBED=1000
 #D2V_EMBED=300
-#D2V_EMBED=250
+D2V_EMBED=250
 
 BASE_PATH=cache/$(DATA_SET)/$(MODE)
 DATA_BASE_PATH=cache/$(DATA_SET)
