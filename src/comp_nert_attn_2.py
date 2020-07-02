@@ -48,7 +48,7 @@ class NeRTModel(nn.Module):
 
         self._dropout = nn.Dropout(0.3)
 
-        self._W_attn = nn.Parameter(torch.zeros([hidden_size*2, 1], dtype=torch.float32), requires_grad=True)
+        self._W_attn = nn.Parameter(torch.zeros([hidden_size, hidden_size], dtype=torch.float32), requires_grad=True)
         self._b_attn = nn.Parameter(torch.zeros([1], dtype=torch.float32), requires_grad=True)
 
         self._mha = nn.MultiheadAttention(embed_size, 20 if (embed_size % 20) == 0 else 10)
@@ -108,8 +108,9 @@ class NeRTModel(nn.Module):
             prev_hs = torch.stack(prev_x1s, dim=1)
             attn_score = []
             for prev in range(prev_hs.size(1)):
-                attn_input = torch.cat((prev_hs[:,prev,:], x2_step), dim=1)
-                attn_score.append(torch.matmul(attn_input, self._W_attn) + self._b_attn)
+                attn_inter = torch.matmul(prev_hs[:,prev,:], self._W_attn)
+                attn_inter = torch.sum(attn_inter * x2_step, dim=1, keepdim=True)
+                attn_score.append(attn_inter + self._b_attn)
             attn_score = torch.softmax(torch.stack(attn_score, dim=1), dim=1)
 
             if attn_mode:

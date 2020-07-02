@@ -2,6 +2,7 @@
 import time
 import os
 import random
+import math
 
 
 import numpy as np
@@ -108,8 +109,9 @@ class NeRTModel(nn.Module):
             prev_hs = torch.stack(prev_x1s, dim=1)
             attn_score = []
             for prev in range(prev_hs.size(1)):
-                attn_input = torch.cat((prev_hs[:,prev,:], x2_step), dim=1)
-                attn_score.append(torch.matmul(attn_input, self._W_attn) + self._b_attn)
+                attn_inter = torch.sum(prev_hs[:,prev,:] * x2_step, dim=1, keepdim=True)
+                attn_inter = attn_inter / math.sqrt(x2_step.shape[1])
+                attn_score.append(attn_inter + self._b_attn)
             attn_score = torch.softmax(torch.stack(attn_score, dim=1), dim=1)
 
             if attn_mode:

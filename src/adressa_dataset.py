@@ -63,7 +63,6 @@ class RecInputCategoryMixin(object):
             categories.update([category])
 
         categories = sorted(list(categories))
-        print('categories', categories)
 
         return {cate:idx for idx, cate in enumerate(categories)}
 
@@ -583,7 +582,6 @@ class AdressaRec(object):
             self._optimizer.step()
 
             train_loss += loss.item()
-        print('seq len', seq_sums/seq_count)
 
         return train_loss / batch_count
 

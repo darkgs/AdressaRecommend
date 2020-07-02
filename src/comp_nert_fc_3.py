@@ -44,7 +44,15 @@ class NeRTModel(nn.Module):
 
         self.rnn = nn.LSTM(embed_size, int(hidden_size/2), num_layers, batch_first=True, bidirectional=True)
         #self.rnn = nn.LSTM(embed_size, hidden_size, num_layers, batch_first=True)
-        self.mlp = nn.Linear(hidden_size*2, embed_size)
+        #self.mlp = nn.Linear(hidden_size*2, embed_size)
+        self.mlp = nn.Sequential(
+                nn.Linear(hidden_size * 2, hidden_size * 11 // 10),
+                nn.ReLU(inplace=True),
+                nn.Linear(hidden_size * 11 // 10, hidden_size * 9 // 10),
+                nn.ReLU(inplace=True),
+                nn.Linear(hidden_size * 9 // 10, hidden_size * 7 // 10),
+                nn.ReLU(inplace=True),
+                nn.Linear(hidden_size * 7 // 10, embed_size))
 
         self._dropout = nn.Dropout(0.3)
 
